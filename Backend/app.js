@@ -17,7 +17,9 @@ app.get('/', (_req, res) => {
 
 // ─── Route modules ───
 app.use('/api/users', require('./routes/userRoutes'));
-app.use('/api/boards', require('./routes/boardRoutes'));
+app.use('/api/boards',  require('./routes/boardRoutes'));
+app.use('/api/columns', require('./routes/columnRoutes'));
+app.use('/api/tasks',   require('./routes/taskRoutes'));
 
 // ─── Start server & sync database ───
 const PORT = process.env.PORT || 3000;
