@@ -15,9 +15,9 @@ app.get('/', (_req, res) => {
   res.json({ status: 'ok', service: 'Office Task Board API' });
 });
 
-// ─── Future: mount route modules here ───
-// app.use('/api/users',   require('./routes/users'));
-// app.use('/api/boards',  require('./routes/boards'));
+// ─── Route modules ───
+app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/boards', require('./routes/boardRoutes'));
 
 // ─── Start server & sync database ───
 const PORT = process.env.PORT || 3000;
