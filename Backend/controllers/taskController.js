@@ -29,6 +29,9 @@ exports.createTask = async (req, res) => {
       position: finalPosition,
     });
 
+    // Real-time: notify all connected clients
+    req.app.get('io').emit('task_created', task);
+
     return res.status(201).json({ status: 'success', data: { task } });
   } catch (err) {
     console.error('createTask error:', err);
@@ -62,6 +65,9 @@ exports.updateTask = async (req, res) => {
 
     await task.save();
 
+    // Real-time: notify all connected clients
+    req.app.get('io').emit('task_updated', task);
+
     return res.json({ status: 'success', data: { task } });
   } catch (err) {
     console.error('updateTask error:', err);
@@ -77,7 +83,12 @@ exports.deleteTask = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Task not found' });
     }
 
+    const taskId = task.id;
+    const columnId = task.column_id;
     await task.destroy();
+
+    // Real-time: notify all connected clients
+    req.app.get('io').emit('task_deleted', { id: taskId, column_id: columnId });
 
     return res.json({ status: 'success', message: 'Task deleted' });
   } catch (err) {

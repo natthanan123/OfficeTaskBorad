@@ -66,6 +66,25 @@ exports.login = async (req, res) => {
   }
 };
 
+// ─── POST /avatar ── Upload profile picture ───
+exports.uploadAvatar = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ status: 'error', message: 'No image file provided' });
+    }
+
+    // Build a public URL path for the uploaded file
+    const avatar_url = `/uploads/avatars/${req.file.filename}`;
+
+    await req.user.update({ avatar_url });
+
+    return res.json({ status: 'success', data: { avatar_url } });
+  } catch (err) {
+    console.error('uploadAvatar error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not upload avatar' });
+  }
+};
+
 // ─── GET /me ───
 exports.getMe = async (req, res) => {
   try {

@@ -1,0 +1,21 @@
+POST   /api/users/register    ใช้สมัครสมาชิก
+POST   /api/users/login       ใช้ล็อกอิน
+GET    /api/users/me          ใช้ดูโปรไฟล์ตัวเอง (ต้องแนบ Token)
+POST   /api/users/avatar      ใช้อัปโหลดรูปโปรไฟล์ (ต้องแนบ Token, form-data key: avatar)
+
+POST   /api/boards            ใช้สร้างบอร์ดใหม่ (ต้องแนบ Token)
+GET    /api/boards            ใช้ดึงบอร์ดทั้งหมด (ต้องแนบ Token)
+GET    /api/boards/:id        ใช้ดึงบอร์ดพร้อมคอลัมน์และงานทั้งหมด (ต้องแนบ Token)
+
+POST   /api/columns           ใช้สร้างคอลัมน์ในบอร์ด (ต้องแนบ Token)
+PUT    /api/columns/:id       ใช้แก้ไขชื่อหรือลำดับคอลัมน์ (ต้องแนบ Token)
+DELETE /api/columns/:id       ใช้ลบคอลัมน์ (ต้องแนบ Token)
+
+POST   /api/tasks             ใช้สร้างงานในคอลัมน์ (ต้องแนบ Token)
+PUT    /api/tasks/:id         ใช้แก้ไขงานหรือย้ายงานข้ามคอลัมน์ (ต้องแนบ Token)
+DELETE /api/tasks/:id         ใช้ลบงาน (ต้องแนบ Token)
+
+─── WebSocket Events (Socket.io) ───
+task_created                   เมื่อสร้างงานใหม่
+task_updated                   เมื่อแก้ไขหรือย้ายงาน
+task_deleted                   เมื่อลบงาน
