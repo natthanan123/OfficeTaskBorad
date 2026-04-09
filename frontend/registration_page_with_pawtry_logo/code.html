@@ -3,7 +3,7 @@
 <html class="light" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Create Your Account - The Curator</title>
+<title>Create Your Account - Pawtry</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
@@ -92,14 +92,19 @@
             background: rgba(255, 255, 255, 0.8);
             backdrop-filter: blur(16px);
         }
+        /* Hide browser-native password reveal button (Edge / IE) so our custom eye icon doesn't double up */
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear {
+            display: none;
+        }
     </style>
 </head>
 <body class="bg-warm-foundation min-h-screen flex flex-col">
 <!-- Auth Shell Navigation (Simplified for focus) -->
 <header class="w-full px-8 py-6 flex justify-center md:justify-start">
 <div class="flex items-center gap-2">
-<img alt="The Curator Logo" class="h-10 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/ADBb0uj__edXt6JQvtEF97h7HyBQD_YMcfaB1tWNjsZxZK1VIlPOYrfMlAdZWii_uH5OpyULG396S7C2drZXyKoLkT6UDhyLWPqo94xO_lBJWKvQk9x7xZtkpR_ngWD73fblgFq8eL1ioclk4C3ksI7BUFjTUuz7y6_rbZ21O4o4uTTveDPlHFsWfCgVRjzAcFwcr0SdZiulMhlkqaIK1TcCxquQp9_0QGJCcn43boKApNXPt1cvq3clxzE6pxLUMecCigRRGjMS9DUn2A"/>
-<span class="text-xl font-bold tracking-tight text-on-surface">The Curator</span>
+<img alt="Pawtry Logo" class="h-10 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/ADBb0uj__edXt6JQvtEF97h7HyBQD_YMcfaB1tWNjsZxZK1VIlPOYrfMlAdZWii_uH5OpyULG396S7C2drZXyKoLkT6UDhyLWPqo94xO_lBJWKvQk9x7xZtkpR_ngWD73fblgFq8eL1ioclk4C3ksI7BUFjTUuz7y6_rbZ21O4o4uTTveDPlHFsWfCgVRjzAcFwcr0SdZiulMhlkqaIK1TcCxquQp9_0QGJCcn43boKApNXPt1cvq3clxzE6pxLUMecCigRRGjMS9DUn2A"/>
+<span class="text-xl font-bold tracking-tight text-on-surface">Pawtry</span>
 </div>
 </header>
 <main class="flex-grow flex items-center justify-center px-4 py-12">
@@ -110,7 +115,7 @@
 <h1 class="text-[2.75rem] font-extrabold text-on-surface tracking-tight leading-tight mb-3">Create your account</h1>
 <p class="text-on-surface-variant body-md">Start curating your workspace with intentionality.</p>
 </div>
-<form class="space-y-5">
+<form id="register-form" class="space-y-5" novalidate>
 <!-- Full Name -->
 <div class="space-y-1.5">
 <label class="text-sm font-medium text-on-surface-variant block px-1" for="full_name">Full Name</label>
@@ -125,14 +130,19 @@
 <div class="space-y-1.5">
 <label class="text-sm font-medium text-on-surface-variant block px-1" for="password">Password</label>
 <div class="relative">
-<input class="w-full px-4 py-3 bg-surface-container-lowest ghost-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 outline-none placeholder:text-on-surface-variant/40" id="password" name="password" placeholder="••••••••" type="password"/>
-<button class="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 hover:text-primary transition-colors" type="button">
-<span class="material-symbols-outlined text-[20px]" data-icon="visibility">visibility</span>
+<input class="w-full pl-4 pr-12 py-3 bg-surface-container-lowest ghost-border rounded-xl focus:ring-2 focus:ring-primary focus:border-primary transition-all duration-200 outline-none placeholder:text-on-surface-variant/40" id="password" name="password" placeholder="••••••••" type="password"/>
+<button id="password-toggle" class="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 hover:text-primary transition-colors" type="button" aria-label="Toggle password visibility">
+<span id="password-toggle-icon" class="material-symbols-outlined text-[20px]">visibility</span>
 </button>
 </div>
 </div>
+<!-- Error Message (hidden by default) -->
+<div id="register-error" class="hidden items-start gap-2 px-4 py-3 rounded-xl bg-error-container border border-error/30 text-sm font-medium" role="alert">
+<span class="material-symbols-outlined text-error text-[20px] flex-shrink-0">error</span>
+<span id="register-error-text" class="text-[#ba1a1a] leading-snug"></span>
+</div>
 <!-- CTA Button -->
-<button class="w-full py-3.5 bg-gradient-to-r from-primary to-primary-container text-on-primary font-semibold rounded-xl active:scale-95 transition-all duration-200 shadow-lg shadow-primary/20 mt-4" type="submit">
+<button id="register-submit" class="w-full py-3.5 bg-gradient-to-r from-primary to-primary-container text-on-primary font-semibold rounded-xl active:scale-95 transition-all duration-200 shadow-lg shadow-primary/20 mt-4 disabled:opacity-60 disabled:cursor-not-allowed" type="submit">
                         Create Account
                     </button>
 </form>
@@ -145,7 +155,7 @@
 </div>
 </div>
 <!-- Google Auth -->
-<button class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-surface-container-lowest ghost-border rounded-xl hover:bg-surface-container-low active:scale-[0.98] transition-all duration-200">
+<button id="google-signup" type="button" class="w-full flex items-center justify-center gap-3 py-3 px-4 bg-surface-container-lowest ghost-border rounded-xl hover:bg-surface-container-low active:scale-[0.98] transition-all duration-200">
 <svg class="w-5 h-5" viewbox="0 0 24 24">
 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"></path>
 <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"></path>
@@ -156,7 +166,7 @@
 </button>
 <p class="text-center mt-10 text-on-surface-variant body-md">
                     Already have an account? 
-                    <a class="text-primary font-semibold hover:underline decoration-2 underline-offset-4 ml-1" href="#">Sign in</a>
+                    <a class="text-primary font-semibold hover:underline decoration-2 underline-offset-4 ml-1" href="../login_page_with_pawtry_logo/code.html">Sign in</a>
 </p>
 </div>
 <!-- Contextual Information -->
@@ -180,8 +190,8 @@
 <footer class="bg-[#f8f9fa] dark:bg-slate-950 border-t border-[#c7c4d8]/20 mt-auto">
 <div class="flex flex-col md:flex-row justify-between items-center w-full px-8 py-12 max-w-7xl mx-auto">
 <div class="mb-6 md:mb-0">
-<span class="text-lg font-bold text-[#191c1d]">The Curator</span>
-<p class="text-sm font-['Inter'] text-[#191c1d]/60 mt-1">© 2024 The Curator Workspace. All rights reserved.</p>
+<span class="text-lg font-bold text-[#191c1d]">Pawtry</span>
+<p class="text-sm font-['Inter'] text-[#191c1d]/60 mt-1">© 2024 Pawtry Workspace. All rights reserved.</p>
 </div>
 <div class="flex gap-8">
 <a class="text-sm font-['Inter'] text-[#191c1d]/60 hover:text-[#3525cd] transition-opacity hover:opacity-80" href="#">Privacy Policy</a>
@@ -191,4 +201,95 @@
 </div>
 </div>
 </footer>
+<!-- ─── Register API wiring ─── -->
+<script>
+  (function () {
+    const API_BASE = 'http://localhost:3000/api';
+    const LOGIN_PAGE = '../login_page_with_pawtry_logo/code.html';
+
+    const form         = document.getElementById('register-form');
+    const nameInput    = document.getElementById('full_name');
+    const emailInput   = document.getElementById('email');
+    const passInput    = document.getElementById('password');
+    const submitBtn    = document.getElementById('register-submit');
+    const errorBox     = document.getElementById('register-error');
+    const errorText    = document.getElementById('register-error-text');
+    const pwToggleBtn  = document.getElementById('password-toggle');
+    const pwToggleIcon = document.getElementById('password-toggle-icon');
+    const googleBtn    = document.getElementById('google-signup');
+
+    // ── Password visibility toggle ──
+    pwToggleBtn.addEventListener('click', () => {
+      const isHidden = passInput.type === 'password';
+      passInput.type = isHidden ? 'text' : 'password';
+      pwToggleIcon.textContent = isHidden ? 'visibility_off' : 'visibility';
+    });
+
+    // ── Not-yet-implemented stub ──
+    googleBtn.addEventListener('click', () => {
+      alert('Google Login is not yet implemented. This requires backend OAuth2 setup.');
+    });
+
+    function showError(message) {
+      errorText.textContent = message;
+      errorBox.classList.remove('hidden');
+      errorBox.classList.add('flex');
+    }
+
+    function clearError() {
+      errorBox.classList.add('hidden');
+      errorBox.classList.remove('flex');
+      errorText.textContent = '';
+    }
+
+    function setLoading(isLoading) {
+      submitBtn.disabled = isLoading;
+      submitBtn.textContent = isLoading ? 'Creating account...' : 'Create Account';
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearError();
+
+      const full_name = nameInput.value.trim();
+      const email     = emailInput.value.trim();
+      const password  = passInput.value;
+
+      // Client-side guardrails (mirror Joi rules in backend/validators/userValidator.js)
+      if (!full_name || !email || !password) {
+        showError('กรุณากรอกชื่อ อีเมล และรหัสผ่านให้ครบถ้วน');
+        return;
+      }
+      if (password.length < 6) {
+        showError('รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_BASE}/users/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ full_name, email, password }),
+        });
+
+        const payload = await res.json().catch(() => ({}));
+
+        if (!res.ok || payload.status !== 'success') {
+          const msg = payload.message || `สมัครสมาชิกไม่สำเร็จ (HTTP ${res.status})`;
+          showError(msg);
+          return;
+        }
+
+        alert('สมัครสมาชิกสำเร็จ! กรุณาเข้าสู่ระบบ');
+        window.location.href = LOGIN_PAGE;
+      } catch (err) {
+        console.error('Register request failed:', err);
+        showError('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบว่า backend กำลังทำงานอยู่ที่ http://localhost:3000');
+      } finally {
+        setLoading(false);
+      }
+    });
+  })();
+</script>
 </body></html>

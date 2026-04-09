@@ -3,7 +3,7 @@
 <html class="light" lang="en"><head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Login | The Curator</title>
+<title>Login | Pawtry</title>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
@@ -92,6 +92,11 @@
         .ghost-border {
             border: 1px solid rgba(199, 196, 216, 0.2);
         }
+        /* Hide browser-native password reveal button (Edge / IE) so our custom eye icon doesn't double up */
+        input[type="password"]::-ms-reveal,
+        input[type="password"]::-ms-clear {
+            display: none;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col antialiased text-on-surface">
@@ -127,11 +132,14 @@
 <div class="space-y-1.5">
 <div class="flex justify-between items-center px-1">
 <label class="text-[0.875rem] font-semibold text-on-surface-variant" for="password">Password</label>
-<a class="text-[0.75rem] font-bold text-primary hover:text-primary-container transition-colors" href="#">Forgot?</a>
+<a id="forgot-password" class="text-[0.75rem] font-bold text-primary hover:text-primary-container transition-colors cursor-pointer" href="#">Forgot?</a>
 </div>
 <div class="relative">
 <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-[20px]" data-icon="lock">lock</span>
-<input class="w-full pl-11 pr-4 py-3 bg-surface-container-lowest border border-outline-variant/20 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-on-surface placeholder:text-outline/50" id="password" name="password" placeholder="••••••••" type="password"/>
+<input class="w-full pl-11 pr-12 py-3 bg-surface-container-lowest border border-outline-variant/20 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-on-surface placeholder:text-outline/50" id="password" name="password" placeholder="••••••••" type="password"/>
+<button id="password-toggle" class="absolute right-3 top-1/2 -translate-y-1/2 text-on-surface-variant/60 hover:text-primary transition-colors" type="button" aria-label="Toggle password visibility">
+<span id="password-toggle-icon" class="material-symbols-outlined text-[20px]">visibility</span>
+</button>
 </div>
 </div>
 <!-- Error Message (hidden by default) -->
@@ -150,7 +158,7 @@
 <div class="flex-grow border-t border-outline-variant/20"></div>
 </div>
 <!-- Social Sign In -->
-<button class="w-full py-3 px-4 flex items-center justify-center gap-3 bg-surface-container-low border border-outline-variant/30 rounded-xl hover:bg-surface-container-high active:scale-[0.98] transition-all duration-200" type="button">
+<button id="google-login" class="w-full py-3 px-4 flex items-center justify-center gap-3 bg-surface-container-low border border-outline-variant/30 rounded-xl hover:bg-surface-container-high active:scale-[0.98] transition-all duration-200" type="button">
 <img alt="Google Logo" class="w-5 h-5" data-alt="Official multi-colored Google logo icon representing third-party authentication services for secure login" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGNXFH-hzqK53Ubwycdsh01zNdpOluUxtpGD8a9quQizCBokx-oOhP9EJuFJLOMGMsjMSvMk9ELhk5Bou-WGl5FSmsig7qIZtDYz_RN7UfxSW6IgzJ_AHK3H7J5qLbQcw8VulaAf-rBf0WmuN1NeM-oeGTGj392dG06q98IvydqEbLcxo3lmPgsvwm-plKcMIzhY7EFPMntBzWdS_q2YWe-hq-v5dxd_Z2a_Hq6iOFHn-StgMI9tK32XgLqFY_A5LXHyo8Ws2tN5A"/>
 <span class="text-sm font-semibold text-on-surface">Sign in with Google</span>
 </button>
@@ -159,7 +167,7 @@
 <div class="mt-8 text-center">
 <p class="text-sm text-on-surface-variant">
                         Don't have an account? 
-                        <a class="text-primary font-bold hover:underline ml-1 transition-all" href="#">Sign up</a>
+                        <a class="text-primary font-bold hover:underline ml-1 transition-all" href="../registration_page_with_pawtry_logo/code.html">Sign up</a>
 </p>
 </div>
 </div>
@@ -181,7 +189,7 @@
 <!-- The navigation shell is suppressed to prioritize the task-focused journey of logging in -->
 <footer class="w-full px-8 py-8 flex flex-col md:flex-row justify-between items-center text-[0.75rem] font-medium text-outline/60">
 <div class="mb-4 md:mb-0">
-            © 2024 The Curator Workspace. All rights reserved.
+            © 2024 Pawtry Workspace. All rights reserved.
         </div>
 <div class="flex gap-6">
 <a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
@@ -194,12 +202,33 @@
   (function () {
     const API_BASE = 'http://localhost:3000/api';
 
-    const form       = document.getElementById('login-form');
-    const emailInput = document.getElementById('email');
-    const passInput  = document.getElementById('password');
-    const submitBtn  = document.getElementById('login-submit');
-    const errorBox   = document.getElementById('login-error');
-    const errorText  = document.getElementById('login-error-text');
+    const form         = document.getElementById('login-form');
+    const emailInput   = document.getElementById('email');
+    const passInput    = document.getElementById('password');
+    const submitBtn    = document.getElementById('login-submit');
+    const errorBox     = document.getElementById('login-error');
+    const errorText    = document.getElementById('login-error-text');
+    const pwToggleBtn  = document.getElementById('password-toggle');
+    const pwToggleIcon = document.getElementById('password-toggle-icon');
+    const googleBtn    = document.getElementById('google-login');
+    const forgotLink   = document.getElementById('forgot-password');
+
+    // ── Password visibility toggle ──
+    pwToggleBtn.addEventListener('click', () => {
+      const isHidden = passInput.type === 'password';
+      passInput.type = isHidden ? 'text' : 'password';
+      pwToggleIcon.textContent = isHidden ? 'visibility_off' : 'visibility';
+    });
+
+    // ── Not-yet-implemented stubs ──
+    googleBtn.addEventListener('click', () => {
+      alert('Google Login is not yet implemented. This requires backend OAuth2 setup.');
+    });
+
+    forgotLink.addEventListener('click', (e) => {
+      e.preventDefault();
+      alert('This feature is not yet implemented.');
+    });
 
     function showError(message) {
       errorText.textContent = message;
