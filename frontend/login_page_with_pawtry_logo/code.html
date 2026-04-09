@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Login | The Curator</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-container": "#a44100",
+                        "on-error": "#ffffff",
+                        "on-tertiary-fixed": "#351000",
+                        "on-secondary-container": "#454386",
+                        "error": "#ba1a1a",
+                        "secondary-fixed-dim": "#c3c0ff",
+                        "secondary": "#58579b",
+                        "surface-container-high": "#e7e8e9",
+                        "primary": "#3525cd",
+                        "on-error-container": "#93000a",
+                        "tertiary-fixed": "#ffdbcc",
+                        "on-tertiary": "#ffffff",
+                        "surface-container-low": "#f3f4f5",
+                        "on-surface": "#191c1d",
+                        "primary-fixed-dim": "#c3c0ff",
+                        "inverse-on-surface": "#f0f1f2",
+                        "surface-bright": "#f8f9fa",
+                        "secondary-fixed": "#e2dfff",
+                        "on-primary": "#ffffff",
+                        "surface-container": "#edeeef",
+                        "outline": "#777587",
+                        "surface-container-highest": "#e1e3e4",
+                        "background": "#f8f9fa",
+                        "tertiary-fixed-dim": "#ffb695",
+                        "inverse-primary": "#c3c0ff",
+                        "on-primary-container": "#dad7ff",
+                        "surface-dim": "#d9dadb",
+                        "tertiary": "#7e3000",
+                        "on-tertiary-container": "#ffd2be",
+                        "surface": "#f8f9fa",
+                        "error-container": "#ffdad6",
+                        "on-secondary": "#ffffff",
+                        "primary-container": "#4f46e5",
+                        "surface-variant": "#e1e3e4",
+                        "primary-fixed": "#e2dfff",
+                        "on-secondary-fixed": "#140f54",
+                        "on-primary-fixed": "#0f0069",
+                        "on-background": "#191c1d",
+                        "outline-variant": "#c7c4d8",
+                        "secondary-container": "#b6b4ff",
+                        "surface-tint": "#4d44e3",
+                        "surface-container-lowest": "#ffffff",
+                        "on-secondary-fixed-variant": "#413f82",
+                        "inverse-surface": "#2e3132",
+                        "on-primary-fixed-variant": "#3323cc",
+                        "on-tertiary-fixed-variant": "#7b2f00",
+                        "on-surface-variant": "#464555"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "fontFamily": {
+                        "headline": ["Inter"],
+                        "body": ["Inter"],
+                        "label": ["Inter"]
+                    }
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8f9fa; /* surface color from config */
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+        }
+        .ghost-border {
+            border: 1px solid rgba(199, 196, 216, 0.2);
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col antialiased text-on-surface">
+<!-- Main Content Canvas -->
+<main class="flex-grow flex items-center justify-center px-6 py-12 relative overflow-hidden">
+<!-- Background Aesthetic Elements (Tonal Architecture) -->
+<div class="absolute top-0 left-0 w-full h-full -z-10 overflow-hidden">
+<div class="absolute -top-24 -right-24 w-96 h-96 bg-primary-fixed opacity-20 rounded-full blur-3xl"></div>
+<div class="absolute -bottom-24 -left-24 w-96 h-96 bg-secondary-fixed opacity-20 rounded-full blur-3xl"></div>
+</div>
+<!-- Login Card -->
+<div class="w-full max-w-md">
+<div class="bg-surface-container-lowest glass-effect xl:rounded-xl ghost-border p-8 md:p-10 shadow-[0_40px_60px_-15px_rgba(25,28,29,0.06)]">
+<!-- Brand Anchor -->
+<div class="flex flex-col items-center mb-10">
+<div class="w-24 h-24 mb-4 flex items-center justify-center overflow-hidden rounded-xl shadow-lg">
+<img alt="Pawtry Logo" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida/ADBb0uj__edXt6JQvtEF97h7HyBQD_YMcfaB1tWNjsZxZK1VIlPOYrfMlAdZWii_uH5OpyULG396S7C2drZXyKoLkT6UDhyLWPqo94xO_lBJWKvQk9x7xZtkpR_ngWD73fblgFq8eL1ioclk4C3ksI7BUFjTUuz7y6_rbZ21O4o4uTTveDPlHFsWfCgVRjzAcFwcr0SdZiulMhlkqaIK1TcCxquQp9_0QGJCcn43boKApNXPt1cvq3clxzE6pxLUMecCigRRGjMS9DUn2A"/>
+</div>
+<h1 class="text-2xl font-extrabold tracking-tight text-on-surface mb-1">Welcome back</h1>
+<p class="text-sm text-on-surface-variant font-medium">Log in to your workspace</p>
+</div>
+<!-- Login Form -->
+<form id="login-form" class="space-y-6" novalidate>
+<!-- Email Field -->
+<div class="space-y-1.5">
+<label class="text-[0.875rem] font-semibold text-on-surface-variant ml-1" for="email">Email Address</label>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-[20px]" data-icon="mail">mail</span>
+<input class="w-full pl-11 pr-4 py-3 bg-surface-container-lowest border border-outline-variant/20 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-on-surface placeholder:text-outline/50" id="email" name="email" placeholder="name@company.com" type="email"/>
+</div>
+</div>
+<!-- Password Field -->
+<div class="space-y-1.5">
+<div class="flex justify-between items-center px-1">
+<label class="text-[0.875rem] font-semibold text-on-surface-variant" for="password">Password</label>
+<a class="text-[0.75rem] font-bold text-primary hover:text-primary-container transition-colors" href="#">Forgot?</a>
+</div>
+<div class="relative">
+<span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-[20px]" data-icon="lock">lock</span>
+<input class="w-full pl-11 pr-4 py-3 bg-surface-container-lowest border border-outline-variant/20 rounded-xl focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all outline-none text-on-surface placeholder:text-outline/50" id="password" name="password" placeholder="••••••••" type="password"/>
+</div>
+</div>
+<!-- Error Message (hidden by default) -->
+<div id="login-error" class="hidden items-start gap-2 px-4 py-3 rounded-xl bg-error-container border border-error/30 text-error-container text-sm font-medium" role="alert">
+<span class="material-symbols-outlined text-error text-[20px] flex-shrink-0">error</span>
+<span id="login-error-text" class="text-[#ba1a1a] leading-snug"></span>
+</div>
+<!-- Sign In Button -->
+<button id="login-submit" class="w-full py-3.5 bg-gradient-to-br from-primary to-primary-container text-on-primary font-bold rounded-xl shadow-lg shadow-primary/25 hover:shadow-primary/40 active:scale-[0.98] transition-all duration-200 disabled:opacity-60 disabled:cursor-not-allowed" type="submit">
+                        Sign In
+                    </button>
+<!-- Divider -->
+<div class="relative flex items-center py-2">
+<div class="flex-grow border-t border-outline-variant/20"></div>
+<span class="flex-shrink mx-4 text-[0.75rem] font-bold text-outline/60 uppercase tracking-widest">Or continue with</span>
+<div class="flex-grow border-t border-outline-variant/20"></div>
+</div>
+<!-- Social Sign In -->
+<button class="w-full py-3 px-4 flex items-center justify-center gap-3 bg-surface-container-low border border-outline-variant/30 rounded-xl hover:bg-surface-container-high active:scale-[0.98] transition-all duration-200" type="button">
+<img alt="Google Logo" class="w-5 h-5" data-alt="Official multi-colored Google logo icon representing third-party authentication services for secure login" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGNXFH-hzqK53Ubwycdsh01zNdpOluUxtpGD8a9quQizCBokx-oOhP9EJuFJLOMGMsjMSvMk9ELhk5Bou-WGl5FSmsig7qIZtDYz_RN7UfxSW6IgzJ_AHK3H7J5qLbQcw8VulaAf-rBf0WmuN1NeM-oeGTGj392dG06q98IvydqEbLcxo3lmPgsvwm-plKcMIzhY7EFPMntBzWdS_q2YWe-hq-v5dxd_Z2a_Hq6iOFHn-StgMI9tK32XgLqFY_A5LXHyo8Ws2tN5A"/>
+<span class="text-sm font-semibold text-on-surface">Sign in with Google</span>
+</button>
+</form>
+<!-- Footer Text -->
+<div class="mt-8 text-center">
+<p class="text-sm text-on-surface-variant">
+                        Don't have an account? 
+                        <a class="text-primary font-bold hover:underline ml-1 transition-all" href="#">Sign up</a>
+</p>
+</div>
+</div>
+<!-- Bottom decorative detail -->
+<div class="mt-12 flex justify-center items-center gap-6 opacity-40">
+<div class="flex items-center gap-1.5 grayscale">
+<span class="material-symbols-outlined text-[16px]" data-icon="shield">shield</span>
+<span class="text-[11px] font-bold tracking-widest uppercase">Secure encryption</span>
+</div>
+<div class="w-1 h-1 bg-outline-variant rounded-full"></div>
+<div class="flex items-center gap-1.5 grayscale">
+<span class="material-symbols-outlined text-[16px]" data-icon="verified_user">verified_user</span>
+<span class="text-[11px] font-bold tracking-widest uppercase">GDPR Compliant</span>
+</div>
+</div>
+</div>
+</main>
+<!-- Shared Component Footer (Transactional Suppression Logic - Hidden per UX goal of focusing the user) -->
+<!-- The navigation shell is suppressed to prioritize the task-focused journey of logging in -->
+<footer class="w-full px-8 py-8 flex flex-col md:flex-row justify-between items-center text-[0.75rem] font-medium text-outline/60">
+<div class="mb-4 md:mb-0">
+            © 2024 The Curator Workspace. All rights reserved.
+        </div>
+<div class="flex gap-6">
+<a class="hover:text-primary transition-colors" href="#">Privacy Policy</a>
+<a class="hover:text-primary transition-colors" href="#">Terms of Service</a>
+<a class="hover:text-primary transition-colors" href="#">Help Center</a>
+</div>
+</footer>
+<!-- ─── Login API wiring ─── -->
+<script>
+  (function () {
+    const API_BASE = 'http://localhost:3000/api';
+
+    const form       = document.getElementById('login-form');
+    const emailInput = document.getElementById('email');
+    const passInput  = document.getElementById('password');
+    const submitBtn  = document.getElementById('login-submit');
+    const errorBox   = document.getElementById('login-error');
+    const errorText  = document.getElementById('login-error-text');
+
+    function showError(message) {
+      errorText.textContent = message;
+      errorBox.classList.remove('hidden');
+      errorBox.classList.add('flex');
+    }
+
+    function clearError() {
+      errorBox.classList.add('hidden');
+      errorBox.classList.remove('flex');
+      errorText.textContent = '';
+    }
+
+    function setLoading(isLoading) {
+      submitBtn.disabled = isLoading;
+      submitBtn.textContent = isLoading ? 'Signing in...' : 'Sign In';
+    }
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      clearError();
+
+      const email    = emailInput.value.trim();
+      const password = passInput.value;
+
+      if (!email || !password) {
+        showError('กรุณากรอกอีเมลและรหัสผ่านให้ครบถ้วน');
+        return;
+      }
+
+      setLoading(true);
+      try {
+        const res = await fetch(`${API_BASE}/users/login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password }),
+        });
+
+        const payload = await res.json().catch(() => ({}));
+
+        if (!res.ok || payload.status !== 'success') {
+          const msg = payload.message || `เข้าสู่ระบบไม่สำเร็จ (HTTP ${res.status})`;
+          showError(msg);
+          return;
+        }
+
+        const token = payload.data && payload.data.token;
+        if (!token) {
+          showError('ไม่พบ token ในคำตอบจากเซิร์ฟเวอร์');
+          return;
+        }
+
+        localStorage.setItem('token', token);
+        alert('ล็อกอินสำเร็จ! (จะ redirect ไปหน้า Board ทีหลัง)');
+        // TODO: window.location.href = '/board';
+      } catch (err) {
+        console.error('Login request failed:', err);
+        showError('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบว่า backend กำลังทำงานอยู่ที่ http://localhost:3000');
+      } finally {
+        setLoading(false);
+      }
+    });
+  })();
+</script>
+</body></html>

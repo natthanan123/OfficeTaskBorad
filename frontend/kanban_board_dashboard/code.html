@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>The Curator | Workspace</title>
+<!-- Google Fonts: Inter & Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface-container-high": "#e7e8e9",
+                    "on-secondary-fixed-variant": "#413f82",
+                    "on-primary-fixed": "#0f0069",
+                    "surface-variant": "#e1e3e4",
+                    "primary-fixed": "#e2dfff",
+                    "tertiary": "#7e3000",
+                    "tertiary-fixed-dim": "#ffb695",
+                    "primary-fixed-dim": "#c3c0ff",
+                    "on-background": "#191c1d",
+                    "error-container": "#ffdad6",
+                    "on-tertiary-fixed-variant": "#7b2f00",
+                    "on-secondary-fixed": "#140f54",
+                    "tertiary-container": "#a44100",
+                    "surface": "#f8f9fa",
+                    "primary-container": "#4f46e5",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-fixed": "#351000",
+                    "on-tertiary": "#ffffff",
+                    "surface-bright": "#f8f9fa",
+                    "inverse-surface": "#2e3132",
+                    "on-surface": "#191c1d",
+                    "error": "#ba1a1a",
+                    "on-primary-fixed-variant": "#3323cc",
+                    "secondary": "#58579b",
+                    "primary": "#3525cd",
+                    "surface-container-low": "#f3f4f5",
+                    "background": "#f8f9fa",
+                    "secondary-fixed-dim": "#c3c0ff",
+                    "on-secondary": "#ffffff",
+                    "tertiary-fixed": "#ffdbcc",
+                    "on-tertiary-container": "#ffd2be",
+                    "inverse-on-surface": "#f0f1f2",
+                    "outline": "#777587",
+                    "surface-dim": "#d9dadb",
+                    "outline-variant": "#c7c4d8",
+                    "on-surface-variant": "#464555",
+                    "on-secondary-container": "#454386",
+                    "on-error": "#ffffff",
+                    "surface-container-highest": "#e1e3e4",
+                    "secondary-container": "#b6b4ff",
+                    "inverse-primary": "#c3c0ff",
+                    "on-primary": "#ffffff",
+                    "surface-container": "#edeeef",
+                    "on-error-container": "#93000a",
+                    "on-primary-container": "#dad7ff",
+                    "secondary-fixed": "#e2dfff",
+                    "surface-tint": "#4d44e3"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.125rem",
+                    "lg": "0.25rem",
+                    "xl": "0.5rem",
+                    "full": "0.75rem"
+            },
+            "fontFamily": {
+                    "headline": ["Inter", "sans-serif"],
+                    "body": ["Inter", "sans-serif"],
+                    "label": ["Inter", "sans-serif"]
+            }
+          },
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        body { font-family: 'Inter', sans-serif; }
+        .kanban-scroll::-webkit-scrollbar { height: 8px; }
+        .kanban-scroll::-webkit-scrollbar-track { background: #f3f4f5; }
+        .kanban-scroll::-webkit-scrollbar-thumb { background: #c7c4d8; border-radius: 10px; }
+        .kanban-column { min-width: 320px; max-width: 320px; }
+    </style>
+</head>
+<body class="bg-surface text-on-surface flex overflow-hidden h-screen">
+<!-- Shared SideNavBar -->
+<aside class="bg-slate-50 dark:bg-slate-900 h-screen w-64 border-r-0 flex flex-col py-6 font-inter body-md tracking-tight">
+<div class="px-6 mb-8 flex items-center space-x-3">
+<div class="w-8 h-8 bg-primary-container rounded-lg flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-sm" style="font-variation-settings: 'FILL' 1;">grid_view</span>
+</div>
+<div>
+<h2 class="text-lg font-bold text-indigo-700 dark:text-indigo-300">The Curator</h2>
+<p class="text-[10px] uppercase tracking-widest text-slate-500">Workspace</p>
+</div>
+</div>
+<nav class="flex-1 space-y-1 px-4">
+<!-- Active Tab: Projects (Mapped to current context) -->
+<a class="flex items-center space-x-3 px-3 py-2 text-indigo-700 dark:text-indigo-300 font-semibold border-r-2 border-indigo-600 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="dashboard">dashboard</span>
+<span>Projects</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="tactic">tactic</span>
+<span>Templates</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="archive">archive</span>
+<span>Archive</span>
+</a>
+<a class="flex items-center space-x-3 px-3 py-2 text-slate-500 dark:text-slate-400 hover:text-indigo-500 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 transition-colors" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span>Analytics</span>
+</a>
+</nav>
+<div class="px-4 mt-auto">
+<button class="w-full py-3 bg-gradient-to-br from-primary to-primary-container text-on-primary rounded-xl font-semibold shadow-md active:scale-95 transition-all duration-200">
+                New Project
+            </button>
+<div class="mt-6 flex items-center space-x-3 px-2">
+<img alt="User workspace avatar" class="w-8 h-8 rounded-full border-2 border-primary-fixed" data-alt="portrait of a professional creative director with soft studio lighting and clean background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7odRQzTXnuRSFFi5ioKZznRnJ4nvprwmF_ELCqA0MEXcgZ8nEVjxeSawsNS5c7VOZ2-AjvmZcvu6I7ISmyqJfrq6J2StQXFFY0OE1l5E1deBQ3wEQVvrg4apYhs1FB-zW625iL5jugsGXwPc1lXqvuioAZ_JBY_pbn0F_GJkWPiqDvXQKl1lmRCzvBVx_Oes5swREZ6Y3tyMgtqVC1QumYcFEAbl8HXXAailtSm334yzZJ2srQhUOttigr09rfenbSg3YdpBK65M"/>
+<div class="overflow-hidden">
+<p class="text-xs font-bold truncate">Website Redesign</p>
+<p class="text-[10px] text-slate-500">Active Sprint</p>
+</div>
+</div>
+</div>
+</aside>
+<div class="flex-1 flex flex-col min-w-0">
+<!-- Shared TopNavBar -->
+<header class="flex justify-between items-center px-8 h-16 w-full sticky top-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-indigo-100/20 dark:border-indigo-900/20 shadow-sm dark:shadow-none">
+<div class="flex items-center flex-1">
+<div class="relative w-full max-w-md">
+<span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
+<input class="w-full bg-surface-container-low border-none rounded-full py-1.5 pl-10 pr-4 text-sm focus:ring-1 focus:ring-primary" placeholder="Search tasks, docs, or people..." type="text"/>
+</div>
+<nav class="hidden md:flex ml-10 space-x-6 h-full items-center font-inter title-lg text-sm font-medium">
+<a class="text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 h-16 flex items-center mt-[2px]" href="#">Overview</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-opacity" href="#">Team</a>
+<a class="text-slate-500 dark:text-slate-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-opacity" href="#">Timeline</a>
+</nav>
+</div>
+<div class="flex items-center space-x-4 ml-4">
+<button class="text-slate-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+</button>
+<button class="text-slate-500 hover:text-primary transition-colors">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+<div class="flex items-center space-x-3 pl-4 border-l border-slate-200">
+<span class="text-sm font-semibold hidden lg:block">Alex Rivera</span>
+<img alt="User profile" class="w-9 h-9 rounded-full bg-slate-200" data-alt="close-up portrait of professional male executive Alex Rivera with a friendly smile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-kkg75UNU9rQPwOSfIuwXQrpB4b4PFyFu5qfvkWqfypVsj7FedlTWfN3H90CyeYgjG8b-7a7usSs6UJChFSzcs5PSnxRtNSDxUlTAW1cP55BtAu_sQHnQUDXWfMij9z0xC-J7VTV_AYYjDW4VL84kbtXLIvbBN5OHXIzwWq2K5NcNVrEIprHEja92E2OP6YUtQ0O8dka7ZdizAgP9XAgBnQeS5jRloZVG225pUovq6Cv3DRf_644o0KVY2IkjEWBiRAd2tnDblQg"/>
+</div>
+</div>
+</header>
+<!-- Main Canvas -->
+<main class="flex-1 bg-surface p-8 overflow-hidden flex flex-col">
+<div class="flex justify-between items-end mb-8">
+<div>
+<h1 class="text-3xl font-extrabold tracking-tight text-on-surface mb-2">Website Redesign</h1>
+<div class="flex items-center space-x-4">
+<div class="flex -space-x-2">
+<img class="w-6 h-6 rounded-full border-2 border-surface" data-alt="professional portrait of woman smiling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrd7b1-x7REKifArpWOdDPGGAdksLAvqGYa38pBmt-qUW8xm66fQApcLMclfa9vzjRRWyyjDe0OezxryBiQmdRRlPNFk05E7Lr7Qa1WqQF4YN3L406L7ZJlvyk0Rsc1n0r-upAl_SMHyqGMSjvXYtsfm-r70Pay58jozJGz8F9_57qDjOLKroqknD033j6hJVRCZeppk3rV8x0EIrEVWPfeUYrrok1rqszV00MKJbNC1LKB5NTOQtoMsZuoYO7UZCFfXLpe8iLhlo"/>
+<img class="w-6 h-6 rounded-full border-2 border-surface" data-alt="portrait of a man with blue eyes" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAGZhHyDttEj3EHTyGlkCL94g-8bINKCVZ8GnkpOevwPeUyzrLmUW7hT99yoTLNspdAVuqFZRERxGDaNHOaWvD10oldiv81eJtL86pMswTHzWRTYhTdnoeX-7HYSiL2JHDYeoqDIHSdHZm8f8hf57giPKNZN8J5_aREROY2f-n4s-Gr0_teunTc29bkIfRO9U6PqOaYXb_iDrq5PpaLHSE04jRvKUm6wyyijMs0ML-Ye7w8VoTjx4KNaThtzKNDKf_kBOCn5pjoERE"/>
+<img class="w-6 h-6 rounded-full border-2 border-surface" data-alt="modern professional woman portrait" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCqBG75K5gtawlYcA21rdZz7naVYHd2LzrACx9XwDKfowaBd2ZUkVNa64vr0ZAF1Ah0z7Gs4ESqGTO4kc_PaoMXSIFduzU662ZcWJ9MNT_q-a-fX5g3aVb9xXKp5AMPR1KKhwOnNBEBqKOLwjBNnUOxTpV-cPgE3QH6MJC3JnnS2MzrrRH5Qkzu7aT7Sf2Jv1atQPROulW3mfA1bglVi9tF-vTsJyQJ97iTB9KOmZCOKkJDhXwFnHPpLf_58JczxMbEg-4qp8yP1Jk"/>
+<div class="w-6 h-6 rounded-full bg-primary-fixed flex items-center justify-center text-[10px] font-bold text-on-primary-fixed border-2 border-surface">+4</div>
+</div>
+<span class="w-1 h-1 bg-outline-variant rounded-full"></span>
+<p class="text-sm text-on-surface-variant font-medium">85% tasks completed</p>
+</div>
+</div>
+<div class="flex space-x-3">
+<button class="bg-surface-container-high px-4 py-2 rounded-xl text-sm font-semibold text-on-surface flex items-center space-x-2">
+<span class="material-symbols-outlined text-sm">filter_list</span>
+<span>Filter</span>
+</button>
+<button class="bg-primary text-on-primary px-4 py-2 rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-lg shadow-primary/20">
+<span class="material-symbols-outlined text-sm">add</span>
+<span>Add View</span>
+</button>
+</div>
+</div>
+<!-- Kanban Board -->
+<div class="flex-1 flex space-x-6 overflow-x-auto pb-6 kanban-scroll">
+<!-- To Do -->
+<div class="kanban-column flex flex-col h-full bg-surface-container-low rounded-xl p-3">
+<div class="flex justify-between items-center px-2 py-3 mb-2">
+<div class="flex items-center space-x-2">
+<h3 class="font-bold text-on-surface-variant tracking-tight">To Do</h3>
+<span class="bg-surface-container-highest px-2 py-0.5 rounded-full text-[10px] font-bold text-on-surface-variant">3</span>
+</div>
+<button class="text-on-surface-variant/50 hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
+</div>
+<div class="space-y-4 flex-1 overflow-y-auto pr-1">
+<!-- Card 1 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-transparent hover:border-primary/20 transition-all cursor-pointer">
+<div class="flex flex-wrap gap-2 mb-3">
+<span class="px-2 py-0.5 rounded-full bg-secondary-fixed text-[10px] font-bold text-on-secondary-fixed">Design</span>
+</div>
+<h4 class="font-bold text-on-surface leading-tight mb-4">Design homepage wireframes</h4>
+<div class="flex justify-between items-center">
+<div class="flex -space-x-1">
+<img class="w-6 h-6 rounded-full border border-surface" data-alt="avatar of Alex Rivera" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDDsUS2ghbNml4eMLPH_MTMit46A769OayfkbRf-zZzr-GN7IC-gMJDDi7ikuDJD_faprs-Z6_V006I2XutU6ots_7uv-F-HdOrOYRdTIrgYPjGK3EamAaxDX-uNnaR_txFzQV5JGWtOXo0JzpE9V8yRxUmFMZio5OsX2hiGPF2yCFagUlPyHcPDPvVsCtwQayJ__Cp38mclAr4lHAgKeeh672a6cA5TOMlHwebFD0hL6LaQgYsXUjn6Wh4Unbun95YOU1dZ4X3MPU"/>
+</div>
+<div class="flex items-center space-x-1 text-slate-400">
+<span class="material-symbols-outlined text-xs">calendar_today</span>
+<span class="text-[10px] font-medium uppercase">Dec 15</span>
+</div>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-transparent hover:border-primary/20 transition-all cursor-pointer">
+<div class="flex flex-wrap gap-2 mb-3">
+<span class="px-2 py-0.5 rounded-full bg-tertiary-fixed text-[10px] font-bold text-tertiary">High Priority</span>
+</div>
+<h4 class="font-bold text-on-surface leading-tight mb-4">Finalize project roadmap with stakeholders</h4>
+<div class="flex justify-between items-center">
+<div class="flex -space-x-1">
+<img class="w-6 h-6 rounded-full border border-surface" data-alt="female avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWVTTMzqVWUGykTF1nwWdkNaEyF_B1CQa4q-5FkAPNHiV93HqNJbHs8j3KtZjst25dS9S-3wS8FeXYBaSQsMRB95phfJa3la57IznR_uGQZcV-BACPOcVPlFX0FZp6N8vHIMXmHN48xhxR0YdIheiKRfpXvI3hAuFHN2EVr14Xl2cBKEasjtfhcX9VW2ogd4iuPqMaB_mPX7l8OXxTPj1Q9Hh-Ja4X2TomTRv0cKo9PORfxfUzbrOEepXMdFdHAwRLUvmQf3XOMC4"/>
+<img class="w-6 h-6 rounded-full border border-surface" data-alt="male avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAelJjsFUsvABoSB6yRoCToIXwGzK5iwHWP85QBUotV84pAzp05YyLjAMdHbOuvUHxC3HWfPoXDlIhl7Lh_yOSe1CqGvAWK8uTIYdNlJFLvKDg6WcxnZ5k7Le-ip0ZPGKVeCWXaHEL86-QeZqJgd3XMdrLP2uHOq1hPIzLEmnlVL_Uf5F5QRE8AI9QWebnYwl2jWvvn44p52zD-HuYiBkGksqr9Oh5HylGasSTExA1rSHe2luKjvsRIpYXhn6ScveRi_zZrlFeXsGM"/>
+</div>
+<div class="flex items-center space-x-1 text-slate-400">
+<span class="material-symbols-outlined text-xs">calendar_today</span>
+<span class="text-[10px] font-medium uppercase">Dec 16</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- In Progress -->
+<div class="kanban-column flex flex-col h-full bg-surface-container-low rounded-xl p-3">
+<div class="flex justify-between items-center px-2 py-3 mb-2">
+<div class="flex items-center space-x-2">
+<h3 class="font-bold text-on-surface-variant tracking-tight">In Progress</h3>
+<span class="bg-secondary-container px-2 py-0.5 rounded-full text-[10px] font-bold text-on-secondary-container">2</span>
+</div>
+<button class="text-on-surface-variant/50 hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
+</div>
+<div class="space-y-4 flex-1 overflow-y-auto pr-1">
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-transparent hover:border-primary/20 transition-all cursor-pointer">
+<div class="flex flex-wrap gap-2 mb-3">
+<span class="px-2 py-0.5 rounded-full bg-primary-fixed text-[10px] font-bold text-on-primary-fixed">Development</span>
+</div>
+<h4 class="font-bold text-on-surface leading-tight mb-4">API Integration for Dashboard widgets</h4>
+<div class="flex justify-between items-center">
+<div class="flex -space-x-1">
+<img class="w-6 h-6 rounded-full border border-surface" data-alt="avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCUL9scjbsyLCvZReoLUEyDPUi00TrNmlmnAZdo6oJIuVtzn125gurItadyQF_7jrfcE9LK1bt2R-e8SSc9Z45qsDyfMabybY-PFi9vXQJs48nQ0D-GiL5OsQj5eJ0sMJa8uMglNHoPRFxiJJ-uWn9jzf8r8ulzZh5xOHNvS8Oq2U8H8l8DKiY10GczXNBOJwWgAVPpJrVMaOxCjgfA6S_1Ipr2Qid4uZN_sEb19FolOPGs9IUi0ZVknreJQvT2terjH52dVZ3TLU"/>
+</div>
+<div class="flex items-center space-x-1 text-primary">
+<span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
+<span class="text-[10px] font-bold uppercase">Today</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Review -->
+<div class="kanban-column flex flex-col h-full bg-surface-container-low rounded-xl p-3">
+<div class="flex justify-between items-center px-2 py-3 mb-2">
+<div class="flex items-center space-x-2">
+<h3 class="font-bold text-on-surface-variant tracking-tight">Review</h3>
+<span class="bg-surface-container-highest px-2 py-0.5 rounded-full text-[10px] font-bold text-on-surface-variant">1</span>
+</div>
+<button class="text-on-surface-variant/50 hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
+</div>
+<div class="space-y-4 flex-1 overflow-y-auto pr-1">
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-transparent hover:border-primary/20 transition-all cursor-pointer">
+<div class="flex flex-wrap gap-2 mb-3">
+<span class="px-2 py-0.5 rounded-full bg-secondary-fixed text-[10px] font-bold text-on-secondary-fixed">Design</span>
+</div>
+<h4 class="font-bold text-on-surface leading-tight mb-4">User Feedback Session: Module Alpha</h4>
+<div class="flex justify-between items-center">
+<div class="flex -space-x-1">
+<img class="w-6 h-6 rounded-full border border-surface" data-alt="avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDObj-GA0fh8c_OL9ev5fZ7niGxZGbfLDn_wKGKm_xlChA5M5OuXvbI9Xvb6srrTj-euYL2317FeCZYG1g6SRz6--jEz9ZwVF1qxSWBztot9w3NKKK-rjS4QxnwUsYO-9-YTViwIYQC2CYIC6rH1WWjPmtP2FeBAG99cW066lhN18XRQHYPYZgidzrMUNFJpZwrN8PcqkEai03AJSG798mB49hTm_vnd6OfdNy_Bo4s_LgVWJnYqRzPmCVGil7cWD4Y3nItYcmP1og"/>
+<img class="w-6 h-6 rounded-full border border-surface" data-alt="avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAvLb2dQffw9NwBWp7kXASdhAdWIrQqvUOeykU7SaH8Kt8KBoDWwkqssJUzYr-WlgRaZkJG_TonT8-qOzkqj_kDkFwXcq59JgI4K8C2EoM_0-NEpTtbnzjOx6iiIvG7VKBpZtA4r4oNWG3PKO6x3I6Ph7muZbRwthYDWiEYs8UXXjxCzd6uSzuo2YiN8PnvqLSa4Hd7hw5qmwctvu69_yyW_1vaCaBlewUb9zbKeAcCJcE2DQ4EOLWnLhNhbtW3f0K6RaghzDISJE4"/>
+</div>
+<div class="flex items-center space-x-1 text-slate-400">
+<span class="material-symbols-outlined text-xs">calendar_today</span>
+<span class="text-[10px] font-medium uppercase">Dec 12</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Done -->
+<div class="kanban-column flex flex-col h-full bg-surface-container-low rounded-xl p-3">
+<div class="flex justify-between items-center px-2 py-3 mb-2">
+<div class="flex items-center space-x-2">
+<h3 class="font-bold text-on-surface-variant tracking-tight">Done</h3>
+<span class="bg-surface-container-highest px-2 py-0.5 rounded-full text-[10px] font-bold text-on-surface-variant">12</span>
+</div>
+<button class="text-on-surface-variant/50 hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
+</div>
+<div class="space-y-4 flex-1 overflow-y-auto pr-1 opacity-70 grayscale-[0.2]">
+<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-l-4 border-emerald-500">
+<div class="flex flex-wrap gap-2 mb-3">
+<span class="px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-bold text-slate-500">Marketing</span>
+</div>
+<h4 class="font-bold text-on-surface leading-tight mb-2 line-through">Draft announcement newsletter</h4>
+<div class="flex items-center text-emerald-600 text-[10px] font-bold mb-3">
+<span class="material-symbols-outlined text-xs mr-1">check_circle</span>
+<span>COMPLETED</span>
+</div>
+<div class="flex justify-between items-center">
+<img class="w-6 h-6 rounded-full border border-surface" data-alt="avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBny2UL672Iyd3OS0wS1z9NwA7LGYQgEikJcgcbbojWLkdaQShL1vJcknYCNorqh0TSBC0fbDZXQc9_NOP7wnT7khjGBfB-Qu5cg13lt1lDh6y36IqZOFa-LWkL2eY3kYQvJnvUi-oIeuu7ItL9XPq5T03HNI72OaSiWKrQgfJwyMuhBO9VrjIYenoKmL2S7Asi-fdPoxrbxMNX-Af0O6eVWqejc8ZadVg_HLZzh_WfG8Ba_RW86vttMan6w2-3RPSNfbtzKqvFelo"/>
+<div class="text-[10px] font-medium text-slate-400 uppercase">Dec 08</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+</div>
+<!-- Floating Action Button: Suppressed contextually as per instructions unless specified, but for a Kanban, a specialized task FAB is standard -->
+<button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">
+<span class="material-symbols-outlined text-2xl" data-weight="fill">add_task</span>
+</button>
+</body></html>
