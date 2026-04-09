@@ -153,17 +153,18 @@
 <button class="text-slate-500 hover:text-primary transition-colors">
 <span class="material-symbols-outlined" data-icon="settings">settings</span>
 </button>
-<div class="flex items-center space-x-3 pl-4 border-l border-slate-200">
-<span class="text-sm font-semibold hidden lg:block">Alex Rivera</span>
-<img alt="User profile" class="w-9 h-9 rounded-full bg-slate-200" data-alt="close-up portrait of professional male executive Alex Rivera with a friendly smile" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-kkg75UNU9rQPwOSfIuwXQrpB4b4PFyFu5qfvkWqfypVsj7FedlTWfN3H90CyeYgjG8b-7a7usSs6UJChFSzcs5PSnxRtNSDxUlTAW1cP55BtAu_sQHnQUDXWfMij9z0xC-J7VTV_AYYjDW4VL84kbtXLIvbBN5OHXIzwWq2K5NcNVrEIprHEja92E2OP6YUtQ0O8dka7ZdizAgP9XAgBnQeS5jRloZVG225pUovq6Cv3DRf_644o0KVY2IkjEWBiRAd2tnDblQg"/>
-</div>
+<button id="user-menu" type="button" title="Click to logout" class="flex items-center space-x-3 pl-4 border-l border-slate-200 hover:opacity-80 transition-opacity cursor-pointer">
+<span id="user-name" class="text-sm font-semibold hidden lg:block">Loading...</span>
+<img alt="User profile" class="w-9 h-9 rounded-full bg-slate-200" src="https://lh3.googleusercontent.com/aida-public/AB6AXuD-kkg75UNU9rQPwOSfIuwXQrpB4b4PFyFu5qfvkWqfypVsj7FedlTWfN3H90CyeYgjG8b-7a7usSs6UJChFSzcs5PSnxRtNSDxUlTAW1cP55BtAu_sQHnQUDXWfMij9z0xC-J7VTV_AYYjDW4VL84kbtXLIvbBN5OHXIzwWq2K5NcNVrEIprHEja92E2OP6YUtQ0O8dka7ZdizAgP9XAgBnQeS5jRloZVG225pUovq6Cv3DRf_644o0KVY2IkjEWBiRAd2tnDblQg"/>
+<span id="logout-icon" class="material-symbols-outlined text-slate-400 text-[20px]">logout</span>
+</button>
 </div>
 </header>
 <!-- Main Canvas -->
 <main class="flex-1 bg-surface p-8 overflow-hidden flex flex-col">
 <div class="flex justify-between items-end mb-8">
 <div>
-<h1 class="text-3xl font-extrabold tracking-tight text-on-surface mb-2">Website Redesign</h1>
+<h1 id="board-title" class="text-3xl font-extrabold tracking-tight text-on-surface mb-2">Loading board...</h1>
 <div class="flex items-center space-x-4">
 <div class="flex -space-x-2">
 <img class="w-6 h-6 rounded-full border-2 border-surface" data-alt="professional portrait of woman smiling" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrd7b1-x7REKifArpWOdDPGGAdksLAvqGYa38pBmt-qUW8xm66fQApcLMclfa9vzjRRWyyjDe0OezxryBiQmdRRlPNFk05E7Lr7Qa1WqQF4YN3L406L7ZJlvyk0Rsc1n0r-upAl_SMHyqGMSjvXYtsfm-r70Pay58jozJGz8F9_57qDjOLKroqknD033j6hJVRCZeppk3rV8x0EIrEVWPfeUYrrok1rqszV00MKJbNC1LKB5NTOQtoMsZuoYO7UZCFfXLpe8iLhlo"/>
@@ -186,132 +187,13 @@
 </button>
 </div>
 </div>
-<!-- Kanban Board -->
-<div class="flex-1 flex space-x-6 overflow-x-auto pb-6 kanban-scroll">
-<!-- To Do -->
-<div class="kanban-column flex flex-col h-full bg-surface-container-low rounded-xl p-3">
-<div class="flex justify-between items-center px-2 py-3 mb-2">
-<div class="flex items-center space-x-2">
-<h3 class="font-bold text-on-surface-variant tracking-tight">To Do</h3>
-<span class="bg-surface-container-highest px-2 py-0.5 rounded-full text-[10px] font-bold text-on-surface-variant">3</span>
-</div>
-<button class="text-on-surface-variant/50 hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
-</div>
-<div class="space-y-4 flex-1 overflow-y-auto pr-1">
-<!-- Card 1 -->
-<div class="bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-transparent hover:border-primary/20 transition-all cursor-pointer">
-<div class="flex flex-wrap gap-2 mb-3">
-<span class="px-2 py-0.5 rounded-full bg-secondary-fixed text-[10px] font-bold text-on-secondary-fixed">Design</span>
-</div>
-<h4 class="font-bold text-on-surface leading-tight mb-4">Design homepage wireframes</h4>
-<div class="flex justify-between items-center">
-<div class="flex -space-x-1">
-<img class="w-6 h-6 rounded-full border border-surface" data-alt="avatar of Alex Rivera" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDDsUS2ghbNml4eMLPH_MTMit46A769OayfkbRf-zZzr-GN7IC-gMJDDi7ikuDJD_faprs-Z6_V006I2XutU6ots_7uv-F-HdOrOYRdTIrgYPjGK3EamAaxDX-uNnaR_txFzQV5JGWtOXo0JzpE9V8yRxUmFMZio5OsX2hiGPF2yCFagUlPyHcPDPvVsCtwQayJ__Cp38mclAr4lHAgKeeh672a6cA5TOMlHwebFD0hL6LaQgYsXUjn6Wh4Unbun95YOU1dZ4X3MPU"/>
-</div>
-<div class="flex items-center space-x-1 text-slate-400">
-<span class="material-symbols-outlined text-xs">calendar_today</span>
-<span class="text-[10px] font-medium uppercase">Dec 15</span>
-</div>
-</div>
-</div>
-<!-- Card 2 -->
-<div class="bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-transparent hover:border-primary/20 transition-all cursor-pointer">
-<div class="flex flex-wrap gap-2 mb-3">
-<span class="px-2 py-0.5 rounded-full bg-tertiary-fixed text-[10px] font-bold text-tertiary">High Priority</span>
-</div>
-<h4 class="font-bold text-on-surface leading-tight mb-4">Finalize project roadmap with stakeholders</h4>
-<div class="flex justify-between items-center">
-<div class="flex -space-x-1">
-<img class="w-6 h-6 rounded-full border border-surface" data-alt="female avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCWVTTMzqVWUGykTF1nwWdkNaEyF_B1CQa4q-5FkAPNHiV93HqNJbHs8j3KtZjst25dS9S-3wS8FeXYBaSQsMRB95phfJa3la57IznR_uGQZcV-BACPOcVPlFX0FZp6N8vHIMXmHN48xhxR0YdIheiKRfpXvI3hAuFHN2EVr14Xl2cBKEasjtfhcX9VW2ogd4iuPqMaB_mPX7l8OXxTPj1Q9Hh-Ja4X2TomTRv0cKo9PORfxfUzbrOEepXMdFdHAwRLUvmQf3XOMC4"/>
-<img class="w-6 h-6 rounded-full border border-surface" data-alt="male avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAelJjsFUsvABoSB6yRoCToIXwGzK5iwHWP85QBUotV84pAzp05YyLjAMdHbOuvUHxC3HWfPoXDlIhl7Lh_yOSe1CqGvAWK8uTIYdNlJFLvKDg6WcxnZ5k7Le-ip0ZPGKVeCWXaHEL86-QeZqJgd3XMdrLP2uHOq1hPIzLEmnlVL_Uf5F5QRE8AI9QWebnYwl2jWvvn44p52zD-HuYiBkGksqr9Oh5HylGasSTExA1rSHe2luKjvsRIpYXhn6ScveRi_zZrlFeXsGM"/>
-</div>
-<div class="flex items-center space-x-1 text-slate-400">
-<span class="material-symbols-outlined text-xs">calendar_today</span>
-<span class="text-[10px] font-medium uppercase">Dec 16</span>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- In Progress -->
-<div class="kanban-column flex flex-col h-full bg-surface-container-low rounded-xl p-3">
-<div class="flex justify-between items-center px-2 py-3 mb-2">
-<div class="flex items-center space-x-2">
-<h3 class="font-bold text-on-surface-variant tracking-tight">In Progress</h3>
-<span class="bg-secondary-container px-2 py-0.5 rounded-full text-[10px] font-bold text-on-secondary-container">2</span>
-</div>
-<button class="text-on-surface-variant/50 hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
-</div>
-<div class="space-y-4 flex-1 overflow-y-auto pr-1">
-<div class="bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-transparent hover:border-primary/20 transition-all cursor-pointer">
-<div class="flex flex-wrap gap-2 mb-3">
-<span class="px-2 py-0.5 rounded-full bg-primary-fixed text-[10px] font-bold text-on-primary-fixed">Development</span>
-</div>
-<h4 class="font-bold text-on-surface leading-tight mb-4">API Integration for Dashboard widgets</h4>
-<div class="flex justify-between items-center">
-<div class="flex -space-x-1">
-<img class="w-6 h-6 rounded-full border border-surface" data-alt="avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCCUL9scjbsyLCvZReoLUEyDPUi00TrNmlmnAZdo6oJIuVtzn125gurItadyQF_7jrfcE9LK1bt2R-e8SSc9Z45qsDyfMabybY-PFi9vXQJs48nQ0D-GiL5OsQj5eJ0sMJa8uMglNHoPRFxiJJ-uWn9jzf8r8ulzZh5xOHNvS8Oq2U8H8l8DKiY10GczXNBOJwWgAVPpJrVMaOxCjgfA6S_1Ipr2Qid4uZN_sEb19FolOPGs9IUi0ZVknreJQvT2terjH52dVZ3TLU"/>
-</div>
-<div class="flex items-center space-x-1 text-primary">
-<span class="material-symbols-outlined text-xs" style="font-variation-settings: 'FILL' 1;">calendar_today</span>
-<span class="text-[10px] font-bold uppercase">Today</span>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Review -->
-<div class="kanban-column flex flex-col h-full bg-surface-container-low rounded-xl p-3">
-<div class="flex justify-between items-center px-2 py-3 mb-2">
-<div class="flex items-center space-x-2">
-<h3 class="font-bold text-on-surface-variant tracking-tight">Review</h3>
-<span class="bg-surface-container-highest px-2 py-0.5 rounded-full text-[10px] font-bold text-on-surface-variant">1</span>
-</div>
-<button class="text-on-surface-variant/50 hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
-</div>
-<div class="space-y-4 flex-1 overflow-y-auto pr-1">
-<div class="bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-transparent hover:border-primary/20 transition-all cursor-pointer">
-<div class="flex flex-wrap gap-2 mb-3">
-<span class="px-2 py-0.5 rounded-full bg-secondary-fixed text-[10px] font-bold text-on-secondary-fixed">Design</span>
-</div>
-<h4 class="font-bold text-on-surface leading-tight mb-4">User Feedback Session: Module Alpha</h4>
-<div class="flex justify-between items-center">
-<div class="flex -space-x-1">
-<img class="w-6 h-6 rounded-full border border-surface" data-alt="avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDObj-GA0fh8c_OL9ev5fZ7niGxZGbfLDn_wKGKm_xlChA5M5OuXvbI9Xvb6srrTj-euYL2317FeCZYG1g6SRz6--jEz9ZwVF1qxSWBztot9w3NKKK-rjS4QxnwUsYO-9-YTViwIYQC2CYIC6rH1WWjPmtP2FeBAG99cW066lhN18XRQHYPYZgidzrMUNFJpZwrN8PcqkEai03AJSG798mB49hTm_vnd6OfdNy_Bo4s_LgVWJnYqRzPmCVGil7cWD4Y3nItYcmP1og"/>
-<img class="w-6 h-6 rounded-full border border-surface" data-alt="avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAvLb2dQffw9NwBWp7kXASdhAdWIrQqvUOeykU7SaH8Kt8KBoDWwkqssJUzYr-WlgRaZkJG_TonT8-qOzkqj_kDkFwXcq59JgI4K8C2EoM_0-NEpTtbnzjOx6iiIvG7VKBpZtA4r4oNWG3PKO6x3I6Ph7muZbRwthYDWiEYs8UXXjxCzd6uSzuo2YiN8PnvqLSa4Hd7hw5qmwctvu69_yyW_1vaCaBlewUb9zbKeAcCJcE2DQ4EOLWnLhNhbtW3f0K6RaghzDISJE4"/>
-</div>
-<div class="flex items-center space-x-1 text-slate-400">
-<span class="material-symbols-outlined text-xs">calendar_today</span>
-<span class="text-[10px] font-medium uppercase">Dec 12</span>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Done -->
-<div class="kanban-column flex flex-col h-full bg-surface-container-low rounded-xl p-3">
-<div class="flex justify-between items-center px-2 py-3 mb-2">
-<div class="flex items-center space-x-2">
-<h3 class="font-bold text-on-surface-variant tracking-tight">Done</h3>
-<span class="bg-surface-container-highest px-2 py-0.5 rounded-full text-[10px] font-bold text-on-surface-variant">12</span>
-</div>
-<button class="text-on-surface-variant/50 hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
-</div>
-<div class="space-y-4 flex-1 overflow-y-auto pr-1 opacity-70 grayscale-[0.2]">
-<div class="bg-surface-container-lowest p-4 rounded-xl shadow-sm border-l-4 border-emerald-500">
-<div class="flex flex-wrap gap-2 mb-3">
-<span class="px-2 py-0.5 rounded-full bg-slate-100 text-[10px] font-bold text-slate-500">Marketing</span>
-</div>
-<h4 class="font-bold text-on-surface leading-tight mb-2 line-through">Draft announcement newsletter</h4>
-<div class="flex items-center text-emerald-600 text-[10px] font-bold mb-3">
-<span class="material-symbols-outlined text-xs mr-1">check_circle</span>
-<span>COMPLETED</span>
-</div>
-<div class="flex justify-between items-center">
-<img class="w-6 h-6 rounded-full border border-surface" data-alt="avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBny2UL672Iyd3OS0wS1z9NwA7LGYQgEikJcgcbbojWLkdaQShL1vJcknYCNorqh0TSBC0fbDZXQc9_NOP7wnT7khjGBfB-Qu5cg13lt1lDh6y36IqZOFa-LWkL2eY3kYQvJnvUi-oIeuu7ItL9XPq5T03HNI72OaSiWKrQgfJwyMuhBO9VrjIYenoKmL2S7Asi-fdPoxrbxMNX-Af0O6eVWqejc8ZadVg_HLZzh_WfG8Ba_RW86vttMan6w2-3RPSNfbtzKqvFelo"/>
-<div class="text-[10px] font-medium text-slate-400 uppercase">Dec 08</div>
-</div>
-</div>
+<!-- Kanban Board (rendered dynamically from API) -->
+<div id="kanban-columns" class="flex-1 flex space-x-6 overflow-x-auto pb-6 kanban-scroll">
+<!-- Loading state -->
+<div id="kanban-loading" class="flex-1 flex items-center justify-center text-on-surface-variant">
+<div class="flex flex-col items-center gap-3">
+<span class="material-symbols-outlined text-primary animate-spin text-[32px]">progress_activity</span>
+<p class="text-sm font-medium">Loading board...</p>
 </div>
 </div>
 </div>
@@ -321,4 +203,224 @@
 <button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">
 <span class="material-symbols-outlined text-2xl" data-weight="fill">add_task</span>
 </button>
+<!-- ─── Kanban Board API wiring ─── -->
+<script>
+  (function () {
+    const API_BASE   = 'http://localhost:3000/api';
+    const LOGIN_PAGE = '../login_page_with_pawtry_logo/code.html';
+
+    // ── 1. Authorization guard ──
+    const token = localStorage.getItem('token');
+    if (!token) {
+      window.location.replace(LOGIN_PAGE);
+      return;
+    }
+
+    const boardTitleEl = document.getElementById('board-title');
+    const columnsEl    = document.getElementById('kanban-columns');
+    const userNameEl   = document.getElementById('user-name');
+    const userMenuBtn  = document.getElementById('user-menu');
+
+    // ── Helper: authed fetch ──
+    async function api(path) {
+      const res = await fetch(`${API_BASE}${path}`, {
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+      if (res.status === 401) {
+        // Token expired or invalid → kick back to login
+        localStorage.removeItem('token');
+        window.location.replace(LOGIN_PAGE);
+        throw new Error('Unauthorized');
+      }
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok || payload.status !== 'success') {
+        throw new Error(payload.message || `Request failed (HTTP ${res.status})`);
+      }
+      return payload.data;
+    }
+
+    // ── Helper: HTML escape (prevents XSS from user-entered titles) ──
+    function escapeHtml(str) {
+      if (str == null) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // ── Helper: format date as "MMM DD" (e.g. "Apr 09") ──
+    function formatDueDate(isoDate) {
+      if (!isoDate) return '';
+      const d = new Date(isoDate);
+      if (isNaN(d.getTime())) return '';
+      return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
+    }
+
+    // ── Helper: get initials from full name ──
+    function initials(name) {
+      if (!name) return '?';
+      return name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
+    }
+
+    // ── Helper: deterministic color from a string (for assignee avatars) ──
+    function colorFor(str) {
+      const palette = ['#3525cd', '#58579b', '#7e3000', '#a44100', '#4f46e5', '#454386'];
+      let hash = 0;
+      for (let i = 0; i < (str || '').length; i++) hash = (hash * 31 + str.charCodeAt(i)) >>> 0;
+      return palette[hash % palette.length];
+    }
+
+    // ── Render a single task card ──
+    function renderTaskCard(task) {
+      const assignees = Array.isArray(task.assignees) ? task.assignees : [];
+      const visibleAssignees = assignees.slice(0, 3);
+      const overflow = assignees.length - visibleAssignees.length;
+
+      const assigneeAvatars = visibleAssignees.map(u => `
+        <div class="w-6 h-6 rounded-full border border-surface flex items-center justify-center text-[9px] font-bold text-white"
+             style="background-color: ${colorFor(u.email || u.id || u.full_name)};"
+             title="${escapeHtml(u.full_name || u.email)}">
+          ${escapeHtml(initials(u.full_name))}
+        </div>
+      `).join('');
+
+      const overflowBadge = overflow > 0
+        ? `<div class="w-6 h-6 rounded-full bg-primary-fixed flex items-center justify-center text-[10px] font-bold text-on-primary-fixed border border-surface">+${overflow}</div>`
+        : '';
+
+      const dueLabel = formatDueDate(task.due_date);
+      const dueBlock = dueLabel
+        ? `<div class="flex items-center space-x-1 text-slate-400">
+             <span class="material-symbols-outlined text-xs">calendar_today</span>
+             <span class="text-[10px] font-medium uppercase">${escapeHtml(dueLabel)}</span>
+           </div>`
+        : '';
+
+      const descBlock = task.description
+        ? `<p class="text-xs text-on-surface-variant mb-3 line-clamp-2">${escapeHtml(task.description)}</p>`
+        : '';
+
+      return `
+        <div class="bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-transparent hover:border-primary/20 transition-all cursor-pointer"
+             data-task-id="${escapeHtml(task.id)}">
+          <h4 class="font-bold text-on-surface leading-tight mb-2">${escapeHtml(task.title)}</h4>
+          ${descBlock}
+          <div class="flex justify-between items-center mt-3">
+            <div class="flex -space-x-1">${assigneeAvatars}${overflowBadge}</div>
+            ${dueBlock}
+          </div>
+        </div>
+      `;
+    }
+
+    // ── Render a single column ──
+    function renderColumn(column) {
+      const tasks = Array.isArray(column.tasks) ? [...column.tasks] : [];
+      tasks.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      const cardsHtml = tasks.length
+        ? tasks.map(renderTaskCard).join('')
+        : `<p class="text-xs text-on-surface-variant/50 italic text-center py-4">No tasks yet</p>`;
+
+      return `
+        <div class="kanban-column flex flex-col h-full bg-surface-container-low rounded-xl p-3" data-column-id="${escapeHtml(column.id)}">
+          <div class="flex justify-between items-center px-2 py-3 mb-2">
+            <div class="flex items-center space-x-2">
+              <h3 class="font-bold text-on-surface-variant tracking-tight">${escapeHtml(column.title)}</h3>
+              <span class="bg-surface-container-highest px-2 py-0.5 rounded-full text-[10px] font-bold text-on-surface-variant">${tasks.length}</span>
+            </div>
+            <button class="text-on-surface-variant/50 hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
+          </div>
+          <div class="space-y-4 flex-1 overflow-y-auto pr-1">
+            ${cardsHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    // ── Render the entire board ──
+    function renderBoard(board) {
+      boardTitleEl.textContent = board.title || 'Untitled Board';
+      document.title = `${board.title || 'Board'} | Pawtry`;
+
+      const columns = Array.isArray(board.columns) ? [...board.columns] : [];
+      columns.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+
+      if (columns.length === 0) {
+        columnsEl.innerHTML = `
+          <div class="flex-1 flex items-center justify-center text-on-surface-variant">
+            <div class="flex flex-col items-center gap-2">
+              <span class="material-symbols-outlined text-[32px] text-outline">view_kanban</span>
+              <p class="text-sm font-medium">This board has no columns yet.</p>
+            </div>
+          </div>
+        `;
+        return;
+      }
+
+      columnsEl.innerHTML = columns.map(renderColumn).join('');
+    }
+
+    // ── Render error state ──
+    function renderError(message) {
+      boardTitleEl.textContent = 'Could not load board';
+      columnsEl.innerHTML = `
+        <div class="flex-1 flex items-center justify-center">
+          <div class="flex flex-col items-center gap-3 max-w-md text-center">
+            <span class="material-symbols-outlined text-error text-[40px]">error</span>
+            <p class="text-sm font-semibold text-on-surface">${escapeHtml(message)}</p>
+            <p class="text-xs text-on-surface-variant">ตรวจสอบว่า backend กำลังทำงานอยู่ที่ http://localhost:3000 และมี board ในฐานข้อมูล</p>
+          </div>
+        </div>
+      `;
+    }
+
+    // ── 2 + 3. Fetch boards → fetch first board details → render ──
+    async function loadBoard() {
+      try {
+        // Show profile name in parallel (non-blocking)
+        api('/users/me').then(d => {
+          if (d && d.user) userNameEl.textContent = d.user.full_name || d.user.email;
+        }).catch(() => { /* ignore */ });
+
+        const list = await api('/boards');
+        const boards = (list && list.boards) || [];
+        if (boards.length === 0) {
+          boardTitleEl.textContent = 'No boards yet';
+          columnsEl.innerHTML = `
+            <div class="flex-1 flex items-center justify-center text-on-surface-variant">
+              <div class="flex flex-col items-center gap-2">
+                <span class="material-symbols-outlined text-[32px] text-outline">dashboard_customize</span>
+                <p class="text-sm font-medium">ยังไม่มี board ในฐานข้อมูล</p>
+              </div>
+            </div>
+          `;
+          return;
+        }
+
+        const firstBoardId = boards[0].id;
+        const detail = await api(`/boards/${firstBoardId}`);
+        renderBoard(detail.board);
+      } catch (err) {
+        if (err.message === 'Unauthorized') return;
+        console.error('Failed to load board:', err);
+        renderError(err.message || 'Unknown error');
+      }
+    }
+
+    // ── 4. Logout ──
+    userMenuBtn.addEventListener('click', () => {
+      if (confirm('Logout from Pawtry?')) {
+        localStorage.removeItem('token');
+        window.location.replace(LOGIN_PAGE);
+      }
+    });
+
+    loadBoard();
+  })();
+</script>
 </body></html>
