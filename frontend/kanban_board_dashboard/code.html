@@ -86,11 +86,6 @@
         .kanban-scroll::-webkit-scrollbar-track { background: #f3f4f5; }
         .kanban-scroll::-webkit-scrollbar-thumb { background: #c7c4d8; border-radius: 10px; }
         .kanban-column { min-width: 320px; max-width: 320px; }
-        /* Modal animation */
-        @keyframes fadeInUp {
-          from { opacity: 0; transform: translateY(12px) scale(0.97); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
-        }
         /* Drag & Drop effects */
         .task-card-dragging { opacity: 0.4; transform: scale(0.96); }
         .column-drag-over > .kanban-drop-zone {
@@ -215,88 +210,6 @@
 <button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">
 <span class="material-symbols-outlined text-2xl" data-weight="fill">add_task</span>
 </button>
-<!-- ─── Create Task Modal ─── -->
-<div id="create-task-modal" class="fixed inset-0 z-[100] hidden">
-  <div id="modal-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-  <div class="absolute inset-0 flex items-center justify-center p-4">
-    <div class="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-md relative animate-[fadeInUp_0.2s_ease-out]">
-      <div class="px-6 pt-6 pb-4 border-b border-outline-variant/20">
-        <h2 class="text-lg font-bold text-on-surface">New Task</h2>
-        <p id="modal-column-name" class="text-xs text-on-surface-variant mt-0.5"></p>
-      </div>
-      <form id="create-task-form" class="px-6 py-5 space-y-4">
-        <div>
-          <label for="task-title-input" class="block text-sm font-semibold text-on-surface mb-1.5">Title <span class="text-error">*</span></label>
-          <input id="task-title-input" type="text" required maxlength="200" placeholder="e.g. Design homepage mockup"
-                 class="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"/>
-        </div>
-        <div>
-          <label for="task-desc-input" class="block text-sm font-semibold text-on-surface mb-1.5">Description</label>
-          <textarea id="task-desc-input" rows="3" maxlength="1000" placeholder="Add details about this task..."
-                    class="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all resize-none"></textarea>
-        </div>
-      </form>
-      <div class="px-6 pb-6 flex justify-end space-x-3">
-        <button id="modal-cancel-btn" type="button" class="px-5 py-2.5 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-colors">Cancel</button>
-        <button id="modal-create-btn" type="button" class="px-5 py-2.5 text-sm font-bold text-on-primary bg-primary rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
-          <span id="create-btn-text">Create</span>
-          <span id="create-btn-spinner" class="material-symbols-outlined text-base animate-spin hidden">progress_activity</span>
-        </button>
-      </div>
-    </div>
-  </div>
-</div>
-
-<!-- ─── Task Detail Modal ─── -->
-<div id="detail-modal" class="fixed inset-0 z-[100] hidden">
-  <div id="detail-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-  <div class="absolute inset-0 flex items-center justify-center p-4">
-    <div class="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-2xl relative animate-[fadeInUp_0.2s_ease-out] max-h-[85vh] flex flex-col">
-      <!-- Header -->
-      <div class="flex items-start justify-between px-6 pt-6 pb-4 border-b border-outline-variant/20">
-        <div class="flex items-center space-x-3 min-w-0">
-          <span class="material-symbols-outlined text-primary text-xl flex-shrink-0">task_alt</span>
-          <h2 id="detail-title" class="text-lg font-bold text-on-surface truncate"></h2>
-        </div>
-        <button id="detail-close-btn" type="button" class="ml-4 flex-shrink-0 w-8 h-8 flex items-center justify-center rounded-lg text-on-surface-variant/60 hover:text-on-surface hover:bg-surface-container-high transition-colors">
-          <span class="material-symbols-outlined text-xl">close</span>
-        </button>
-      </div>
-      <!-- Body: 2-column Trello-style layout -->
-      <div class="flex-1 overflow-y-auto p-6">
-        <div class="flex gap-6">
-          <!-- Left column (main content) -->
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center space-x-2 mb-3">
-              <span class="material-symbols-outlined text-on-surface-variant text-base">description</span>
-              <h3 class="text-sm font-bold text-on-surface-variant">Description</h3>
-            </div>
-            <div id="detail-desc" class="text-sm text-on-surface leading-relaxed whitespace-pre-wrap"></div>
-          </div>
-          <!-- Right column (sidebar placeholder) -->
-          <div class="w-40 flex-shrink-0 hidden md:block">
-            <h3 class="text-[11px] font-bold text-on-surface-variant/50 uppercase tracking-wider mb-3">Actions</h3>
-            <div class="space-y-2">
-              <div class="flex items-center space-x-2 px-3 py-2 rounded-lg bg-surface-container-low text-on-surface-variant/40 text-xs font-medium">
-                <span class="material-symbols-outlined text-sm">person_add</span>
-                <span>Members</span>
-              </div>
-              <div class="flex items-center space-x-2 px-3 py-2 rounded-lg bg-surface-container-low text-on-surface-variant/40 text-xs font-medium">
-                <span class="material-symbols-outlined text-sm">label</span>
-                <span>Labels</span>
-              </div>
-              <div class="flex items-center space-x-2 px-3 py-2 rounded-lg bg-surface-container-low text-on-surface-variant/40 text-xs font-medium">
-                <span class="material-symbols-outlined text-sm">calendar_today</span>
-                <span>Due Date</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
 <!-- ─── Kanban Board API wiring ─── -->
 <script>
   (function () {
@@ -406,9 +319,7 @@
         <div class="task-card bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-transparent hover:border-primary/20 transition-all cursor-grab active:cursor-grabbing"
              draggable="true"
              data-task-id="${escapeHtml(task.id)}"
-             data-column-id="${escapeHtml(task.column_id)}"
-             data-task-title="${escapeHtml(task.title)}"
-             data-task-desc="${escapeHtml(task.description || '')}"
+             data-column-id="${escapeHtml(task.column_id)}">
           <h4 class="font-bold text-on-surface leading-tight mb-2">${escapeHtml(task.title)}</h4>
           ${descBlock}
           <div class="flex justify-between items-center mt-3">
@@ -470,7 +381,6 @@
 
       columnsEl.innerHTML = columns.map(renderColumn).join('');
       setupDragAndDrop();
-      setupAddTaskButtons();
     }
 
     // ── Helper: update task count badge in a column ──
@@ -492,68 +402,24 @@
       }
     }
 
-    // ── Attach drag events to a single card (reusable for new cards) ──
-    let didDrag = false;
-    function attachDragEvents(card) {
-      card.addEventListener('dragstart', (e) => {
-        didDrag = true;
-        e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', JSON.stringify({
-          taskId: card.dataset.taskId,
-          sourceColumnId: card.dataset.columnId,
-        }));
-        requestAnimationFrame(() => card.classList.add('task-card-dragging'));
-      });
-
-      card.addEventListener('dragend', () => {
-        card.classList.remove('task-card-dragging');
-        columnsEl.querySelectorAll('.column-drag-over').forEach(c => c.classList.remove('column-drag-over'));
-        // Reset drag flag after a tick so the click handler can check it
-        setTimeout(() => { didDrag = false; }, 0);
-      });
-    }
-
-    // ── Task Detail Modal Logic ──
-    const detailModal    = document.getElementById('detail-modal');
-    const detailBackdrop = document.getElementById('detail-backdrop');
-    const detailTitle    = document.getElementById('detail-title');
-    const detailDesc     = document.getElementById('detail-desc');
-    const detailCloseBtn = document.getElementById('detail-close-btn');
-
-    function openDetailModal(card) {
-      const title = card.dataset.taskTitle || 'Untitled';
-      const desc  = card.dataset.taskDesc  || '';
-      detailTitle.textContent = title;
-      detailDesc.textContent  = desc || 'No description provided.';
-      if (!desc) detailDesc.classList.add('italic', 'text-on-surface-variant/50');
-      else       detailDesc.classList.remove('italic', 'text-on-surface-variant/50');
-      detailModal.classList.remove('hidden');
-    }
-
-    function closeDetailModal() {
-      detailModal.classList.add('hidden');
-    }
-
-    detailCloseBtn.addEventListener('click', closeDetailModal);
-    detailBackdrop.addEventListener('click', closeDetailModal);
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !detailModal.classList.contains('hidden')) closeDetailModal();
-    });
-
-    // ── Attach click-to-detail event to a single card ──
-    function attachCardClickEvent(card) {
-      card.addEventListener('click', () => {
-        if (didDrag) return; // Ignore click if user just finished dragging
-        openDetailModal(card);
-      });
-    }
-
     // ── Setup Drag & Drop on all rendered columns ──
     function setupDragAndDrop() {
-      // --- Draggable cards + click-to-detail ---
+      // --- Draggable cards ---
       columnsEl.querySelectorAll('.task-card').forEach(card => {
-        attachDragEvents(card);
-        attachCardClickEvent(card);
+        card.addEventListener('dragstart', (e) => {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', JSON.stringify({
+            taskId: card.dataset.taskId,
+            sourceColumnId: card.dataset.columnId,
+          }));
+          requestAnimationFrame(() => card.classList.add('task-card-dragging'));
+        });
+
+        card.addEventListener('dragend', () => {
+          card.classList.remove('task-card-dragging');
+          // Clean up any lingering column highlights
+          columnsEl.querySelectorAll('.column-drag-over').forEach(c => c.classList.remove('column-drag-over'));
+        });
       });
 
       // --- Drop zones (columns) ---
@@ -612,118 +478,8 @@
           } catch (err) {
             console.error('Failed to move task:', err);
             alert('ย้าย Task ไม่สำเร็จ: ' + (err.message || 'Unknown error') + '\nจะโหลดบอร์ดใหม่เพื่อให้ตรงกับฐานข้อมูล');
-            // Rollback: re-fetch the board so UI matches DB
             loadBoard();
           }
-        });
-      });
-    }
-
-    // ── Create Task Modal Logic ──
-    const modal          = document.getElementById('create-task-modal');
-    const modalBackdrop  = document.getElementById('modal-backdrop');
-    const modalColName   = document.getElementById('modal-column-name');
-    const modalForm      = document.getElementById('create-task-form');
-    const titleInput     = document.getElementById('task-title-input');
-    const descInput      = document.getElementById('task-desc-input');
-    const cancelBtn      = document.getElementById('modal-cancel-btn');
-    const createBtn      = document.getElementById('modal-create-btn');
-    const createBtnText  = document.getElementById('create-btn-text');
-    const createBtnSpin  = document.getElementById('create-btn-spinner');
-
-    let activeColumnId = null;
-
-    function openModal(columnId, columnTitle) {
-      activeColumnId = columnId;
-      modalColName.textContent = columnTitle ? `Column: ${columnTitle}` : '';
-      titleInput.value = '';
-      descInput.value = '';
-      createBtn.disabled = false;
-      modal.classList.remove('hidden');
-      requestAnimationFrame(() => titleInput.focus());
-    }
-
-    function closeModal() {
-      modal.classList.add('hidden');
-      activeColumnId = null;
-    }
-
-    cancelBtn.addEventListener('click', closeModal);
-    modalBackdrop.addEventListener('click', closeModal);
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
-    });
-
-    function setCreateLoading(loading) {
-      createBtn.disabled = loading;
-      createBtnText.textContent = loading ? 'Creating...' : 'Create';
-      createBtnSpin.classList.toggle('hidden', !loading);
-    }
-
-    async function handleCreateTask() {
-      const title = titleInput.value.trim();
-      if (!title) {
-        titleInput.focus();
-        titleInput.classList.add('ring-2', 'ring-error/50');
-        setTimeout(() => titleInput.classList.remove('ring-2', 'ring-error/50'), 1500);
-        return;
-      }
-
-      const description = descInput.value.trim() || undefined;
-
-      setCreateLoading(true);
-      try {
-        const data = await api('/tasks', {
-          method: 'POST',
-          body: { column_id: activeColumnId, title, description },
-        });
-
-        const newTask = data.task;
-        const targetColumnId = activeColumnId;
-        closeModal();
-
-        // Append the new card to the column
-        const colEl = columnsEl.querySelector(`.kanban-column[data-column-id="${targetColumnId}"]`);
-        if (colEl) {
-          const dropZone = colEl.querySelector('.kanban-drop-zone');
-          if (dropZone) {
-            // Remove empty placeholder if present
-            const placeholder = dropZone.querySelector('.empty-placeholder');
-            if (placeholder) placeholder.remove();
-
-            // Create card DOM from HTML string
-            const temp = document.createElement('div');
-            temp.innerHTML = renderTaskCard(newTask);
-            const cardEl = temp.firstElementChild;
-            dropZone.appendChild(cardEl);
-
-            // Attach drag + click events to the new card
-            attachDragEvents(cardEl);
-            attachCardClickEvent(cardEl);
-
-            // Update badge
-            updateColumnBadge(colEl);
-          }
-        }
-      } catch (err) {
-        console.error('Failed to create task:', err);
-        alert('สร้าง Task ไม่สำเร็จ: ' + (err.message || 'Unknown error'));
-      } finally {
-        setCreateLoading(false);
-      }
-    }
-
-    createBtn.addEventListener('click', handleCreateTask);
-    modalForm.addEventListener('submit', (e) => { e.preventDefault(); handleCreateTask(); });
-
-    // ── Setup "+ Add Task" buttons ──
-    function setupAddTaskButtons() {
-      columnsEl.querySelectorAll('.add-task-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const columnId = btn.dataset.columnId;
-          const colEl = btn.closest('.kanban-column');
-          const columnTitle = colEl ? colEl.querySelector('h3')?.textContent : '';
-          openModal(columnId, columnTitle);
         });
       });
     }

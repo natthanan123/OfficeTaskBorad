@@ -132,7 +132,7 @@
 <div class="space-y-1.5">
 <div class="flex justify-between items-center px-1">
 <label class="text-[0.875rem] font-semibold text-on-surface-variant" for="password">Password</label>
-<a id="forgot-password" class="text-[0.75rem] font-bold text-primary hover:text-primary-container transition-colors cursor-pointer" href="#">Forgot?</a>
+<a id="forgot-password" class="text-[0.75rem] font-bold text-primary hover:text-primary-container transition-colors cursor-pointer" href="../forgot_page/code.html">Forgot?</a>
 </div>
 <div class="relative">
 <span class="material-symbols-outlined absolute left-3.5 top-1/2 -translate-y-1/2 text-outline text-[20px]" data-icon="lock">lock</span>
@@ -225,10 +225,7 @@
       alert('Google Login is not yet implemented. This requires backend OAuth2 setup.');
     });
 
-    forgotLink.addEventListener('click', (e) => {
-      e.preventDefault();
-      alert('This feature is not yet implemented.');
-    });
+    // Forgot password link now uses href directly — no JS needed
 
     function showError(message) {
       errorText.textContent = message;

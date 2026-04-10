@@ -1,4 +1,6 @@
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
+const nodemailer = require('nodemailer');
 const { User } = require('../models');
 
 const signToken = (id) =>
@@ -82,6 +84,125 @@ exports.uploadAvatar = async (req, res) => {
   } catch (err) {
     console.error('uploadAvatar error:', err);
     return res.status(500).json({ status: 'error', message: 'Could not upload avatar' });
+  }
+};
+
+// ─── POST /forgot-password ───
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ status: 'error', message: 'email is required' });
+    }
+
+    // Always respond with success to prevent email enumeration
+    const successResponse = {
+      status: 'success',
+      message: 'If this email is registered, a reset link has been sent.',
+    };
+
+    const user = await User.scope('withPassword').findOne({ where: { email } });
+    if (!user) {
+      return res.json(successResponse);
+    }
+
+    // Generate a secure reset token
+    const resetToken = crypto.randomBytes(20).toString('hex');
+    const resetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+
+    await user.update({
+      reset_token: resetToken,
+      reset_token_expiry: resetExpiry,
+    });
+
+    // Build the reset link
+    const resetLink = `http://localhost:3000/reset-password.html?token=${resetToken}`;
+
+    // Log for developer testing
+    console.log('─────────────────────────────────────────');
+    console.log('🔑 Password Reset Link (dev):');
+    console.log(resetLink);
+    console.log('─────────────────────────────────────────');
+
+    // Send email via Nodemailer (Ethereal test account)
+    try {
+      const testAccount = await nodemailer.createTestAccount();
+
+      const transporter = nodemailer.createTransport({
+        host: testAccount.smtp.host,
+        port: testAccount.smtp.port,
+        secure: testAccount.smtp.secure,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      });
+
+      const info = await transporter.sendMail({
+        from: '"Pawtry Workspace" <noreply@pawtry.dev>',
+        to: email,
+        subject: 'Reset Your Password - Pawtry',
+        text: `Click this link to reset your password: ${resetLink}\n\nThis link will expire in 1 hour.\nIf you did not request this, please ignore this email.`,
+        html: `
+          <div style="font-family:Arial,sans-serif;max-width:480px;margin:0 auto;padding:24px;">
+            <h2 style="color:#3525cd;">Reset Your Password</h2>
+            <p>Click the button below to reset your password. This link will expire in <strong>1 hour</strong>.</p>
+            <a href="${resetLink}" style="display:inline-block;padding:12px 24px;background:#3525cd;color:#fff;text-decoration:none;border-radius:8px;font-weight:600;margin:16px 0;">Reset Password</a>
+            <p style="color:#777;font-size:12px;margin-top:24px;">If you did not request this, please ignore this email.</p>
+          </div>
+        `,
+      });
+
+      console.log('📧 Preview URL: %s', nodemailer.getTestMessageUrl(info));
+    } catch (mailErr) {
+      // Email sending failure should not block the response
+      console.error('Nodemailer error (non-blocking):', mailErr.message);
+    }
+
+    return res.json(successResponse);
+  } catch (err) {
+    console.error('forgotPassword error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not process forgot password request' });
+  }
+};
+
+// ─── POST /reset-password ───
+exports.resetPassword = async (req, res) => {
+  try {
+    const { token, new_password } = req.body;
+
+    if (!token || !new_password) {
+      return res.status(400).json({ status: 'error', message: 'token and new_password are required' });
+    }
+
+    if (new_password.length < 6) {
+      return res.status(400).json({ status: 'error', message: 'Password must be at least 6 characters' });
+    }
+
+    // Find user with matching token that hasn't expired
+    const { Op } = require('sequelize');
+    const user = await User.scope('withPassword').findOne({
+      where: {
+        reset_token: token,
+        reset_token_expiry: { [Op.gt]: new Date() },
+      },
+    });
+
+    if (!user) {
+      return res.status(400).json({ status: 'error', message: 'Invalid or expired reset token' });
+    }
+
+    // Update password (beforeUpdate hook will hash it automatically)
+    user.password_hash = new_password;
+    user.reset_token = null;
+    user.reset_token_expiry = null;
+    await user.save();
+
+    return res.json({ status: 'success', message: 'Password has been reset successfully' });
+  } catch (err) {
+    console.error('resetPassword error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not reset password' });
   }
 };
 

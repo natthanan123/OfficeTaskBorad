@@ -90,7 +90,7 @@
 <main class="w-full max-w-md flex flex-col items-center">
 <!-- Brand Logo -->
 <div class="mb-10">
-<img alt="Pawtry Logo" class="h-12 w-auto" data-alt="minimalist and elegant logo for a premium pet care brand featuring a stylized paw or bone element in indigo tones" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAKAdoDSFTOZGk758oYC4Tt5TAoD8KIHw-uhc3P9ktQMd8O9QSGnbiI5gzlE2CYHhuEObTmaTHqeKvqc7TW_9xywGHpUE8QGBlqCidDK9oScv4NGKyRN0YcyfjVXjG9sw6KdkFXvZ2A8r48yQv9H2IYvjgT8MoTH2Dt4ehWjr2J9Hh87t7X9prNnsyb6GXXBlz-fOhG3daGtza3F2fKlFzsIkQFR65aCX5MmwuIHcyflaF0ZuyY8_gx22S9WQOrzRb2UFaoWPY8kKc"/>
+<img alt="Pawtry Logo" class="h-12 w-auto" src="../pawtry.png"/>
 </div>
 <!-- Focused Content Card -->
 <div class="w-full bg-surface-container-lowest p-10 rounded-xl flex flex-col items-center">
@@ -118,7 +118,7 @@
 <footer class="mt-10 text-center">
 <p class="text-on-surface-variant text-sm font-medium">
                     Remembered your password? 
-                    <a class="text-primary hover:text-primary-container underline underline-offset-4 ml-1 transition-colors" href="#">Login</a>
+                    <a class="text-primary hover:text-primary-container underline underline-offset-4 ml-1 transition-colors" href="../login_page_with_pawtry_logo/code.html">Login</a>
 </p>
 </footer>
 </div>
@@ -129,4 +129,58 @@
             </p>
 </div>
 </main>
+<script>
+(function () {
+  const API_BASE   = 'http://localhost:3000/api';
+  const LOGIN_PAGE = '../login_page_with_pawtry_logo/code.html';
+
+  const form      = document.querySelector('form');
+  const emailInput = document.getElementById('email');
+  const submitBtn  = form.querySelector('button[type="submit"]');
+  const btnText    = submitBtn.textContent.trim();
+
+  function setLoading(loading) {
+    submitBtn.disabled = loading;
+    submitBtn.innerHTML = loading
+      ? '<span class="material-symbols-outlined animate-spin text-base">progress_activity</span> Sending...'
+      : btnText;
+    submitBtn.style.opacity = loading ? '0.7' : '1';
+  }
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const email = emailInput.value.trim();
+    if (!email) {
+      alert('กรุณากรอกอีเมล');
+      emailInput.focus();
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/users/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+
+      const payload = await res.json().catch(() => ({}));
+
+      if (!res.ok || payload.status !== 'success') {
+        alert(payload.message || `เกิดข้อผิดพลาด (HTTP ${res.status})`);
+        return;
+      }
+
+      alert('Reset link sent to your email!');
+      window.location.href = LOGIN_PAGE;
+    } catch (err) {
+      console.error('Forgot password request failed:', err);
+      alert('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบว่า backend กำลังทำงานอยู่');
+    } finally {
+      setLoading(false);
+    }
+  });
+})();
+</script>
 </body></html>
