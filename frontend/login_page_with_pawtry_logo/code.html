@@ -282,8 +282,7 @@
         }
 
         localStorage.setItem('token', token);
-        alert('ล็อกอินสำเร็จ! (จะ redirect ไปหน้า Board ทีหลัง)');
-        // TODO: window.location.href = '/board';
+        window.location.href = '../kanban_board_dashboard/code.html';
       } catch (err) {
         console.error('Login request failed:', err);
         showError('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบว่า backend กำลังทำงานอยู่ที่ http://localhost:3000');

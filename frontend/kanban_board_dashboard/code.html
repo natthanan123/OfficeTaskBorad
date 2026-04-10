@@ -86,6 +86,18 @@
         .kanban-scroll::-webkit-scrollbar-track { background: #f3f4f5; }
         .kanban-scroll::-webkit-scrollbar-thumb { background: #c7c4d8; border-radius: 10px; }
         .kanban-column { min-width: 320px; max-width: 320px; }
+        /* Modal animation */
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(12px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        /* Drag & Drop effects */
+        .task-card-dragging { opacity: 0.4; transform: scale(0.96); }
+        .column-drag-over > .kanban-drop-zone {
+          background-color: rgba(53,37,205,0.06);
+          border: 2px dashed rgba(53,37,205,0.25);
+          border-radius: 0.75rem;
+        }
     </style>
 </head>
 <body class="bg-surface text-on-surface flex overflow-hidden h-screen">
@@ -203,6 +215,38 @@
 <button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">
 <span class="material-symbols-outlined text-2xl" data-weight="fill">add_task</span>
 </button>
+<!-- ─── Create Task Modal ─── -->
+<div id="create-task-modal" class="fixed inset-0 z-[100] hidden">
+  <div id="modal-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
+  <div class="absolute inset-0 flex items-center justify-center p-4">
+    <div class="bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-md relative animate-[fadeInUp_0.2s_ease-out]">
+      <div class="px-6 pt-6 pb-4 border-b border-outline-variant/20">
+        <h2 class="text-lg font-bold text-on-surface">New Task</h2>
+        <p id="modal-column-name" class="text-xs text-on-surface-variant mt-0.5"></p>
+      </div>
+      <form id="create-task-form" class="px-6 py-5 space-y-4">
+        <div>
+          <label for="task-title-input" class="block text-sm font-semibold text-on-surface mb-1.5">Title <span class="text-error">*</span></label>
+          <input id="task-title-input" type="text" required maxlength="200" placeholder="e.g. Design homepage mockup"
+                 class="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all"/>
+        </div>
+        <div>
+          <label for="task-desc-input" class="block text-sm font-semibold text-on-surface mb-1.5">Description</label>
+          <textarea id="task-desc-input" rows="3" maxlength="1000" placeholder="Add details about this task..."
+                    class="w-full bg-surface-container-low border border-outline-variant/30 rounded-xl px-4 py-2.5 text-sm text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all resize-none"></textarea>
+        </div>
+      </form>
+      <div class="px-6 pb-6 flex justify-end space-x-3">
+        <button id="modal-cancel-btn" type="button" class="px-5 py-2.5 text-sm font-semibold text-on-surface-variant hover:bg-surface-container-high rounded-xl transition-colors">Cancel</button>
+        <button id="modal-create-btn" type="button" class="px-5 py-2.5 text-sm font-bold text-on-primary bg-primary rounded-xl shadow-lg shadow-primary/20 hover:shadow-primary/30 active:scale-[0.97] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2">
+          <span id="create-btn-text">Create</span>
+          <span id="create-btn-spinner" class="material-symbols-outlined text-base animate-spin hidden">progress_activity</span>
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ─── Kanban Board API wiring ─── -->
 <script>
   (function () {
@@ -222,15 +266,18 @@
     const userMenuBtn  = document.getElementById('user-menu');
 
     // ── Helper: authed fetch ──
-    async function api(path) {
-      const res = await fetch(`${API_BASE}${path}`, {
+    async function api(path, { method = 'GET', body } = {}) {
+      const opts = {
+        method,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
-      });
+      };
+      if (body) opts.body = JSON.stringify(body);
+
+      const res = await fetch(`${API_BASE}${path}`, opts);
       if (res.status === 401) {
-        // Token expired or invalid → kick back to login
         localStorage.removeItem('token');
         window.location.replace(LOGIN_PAGE);
         throw new Error('Unauthorized');
@@ -306,8 +353,10 @@
         : '';
 
       return `
-        <div class="bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-transparent hover:border-primary/20 transition-all cursor-pointer"
-             data-task-id="${escapeHtml(task.id)}">
+        <div class="task-card bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-transparent hover:border-primary/20 transition-all cursor-grab active:cursor-grabbing"
+             draggable="true"
+             data-task-id="${escapeHtml(task.id)}"
+             data-column-id="${escapeHtml(task.column_id)}">
           <h4 class="font-bold text-on-surface leading-tight mb-2">${escapeHtml(task.title)}</h4>
           ${descBlock}
           <div class="flex justify-between items-center mt-3">
@@ -335,9 +384,14 @@
             </div>
             <button class="text-on-surface-variant/50 hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
           </div>
-          <div class="space-y-4 flex-1 overflow-y-auto pr-1">
+          <div class="kanban-drop-zone space-y-4 flex-1 overflow-y-auto pr-1 transition-all duration-150">
             ${cardsHtml}
           </div>
+          <button class="add-task-btn mt-3 w-full py-2 text-sm text-on-surface-variant/50 hover:text-primary hover:bg-primary/5 rounded-lg transition-all flex items-center justify-center space-x-1 group"
+                  data-column-id="${escapeHtml(column.id)}">
+            <span class="material-symbols-outlined text-base group-hover:text-primary">add</span>
+            <span>Add Task</span>
+          </button>
         </div>
       `;
     }
@@ -363,6 +417,219 @@
       }
 
       columnsEl.innerHTML = columns.map(renderColumn).join('');
+      setupDragAndDrop();
+      setupAddTaskButtons();
+    }
+
+    // ── Helper: update task count badge in a column ──
+    function updateColumnBadge(columnEl) {
+      const dropZone = columnEl.querySelector('.kanban-drop-zone');
+      const badge = columnEl.querySelector('.bg-surface-container-highest');
+      if (!dropZone || !badge) return;
+      const count = dropZone.querySelectorAll('.task-card').length;
+      badge.textContent = count;
+      // Show / hide empty placeholder
+      const placeholder = dropZone.querySelector('.empty-placeholder');
+      if (count === 0 && !placeholder) {
+        const p = document.createElement('p');
+        p.className = 'empty-placeholder text-xs text-on-surface-variant/50 italic text-center py-4';
+        p.textContent = 'No tasks yet';
+        dropZone.appendChild(p);
+      } else if (count > 0 && placeholder) {
+        placeholder.remove();
+      }
+    }
+
+    // ── Attach drag events to a single card (reusable for new cards) ──
+    function attachDragEvents(card) {
+      card.addEventListener('dragstart', (e) => {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+          taskId: card.dataset.taskId,
+          sourceColumnId: card.dataset.columnId,
+        }));
+        requestAnimationFrame(() => card.classList.add('task-card-dragging'));
+      });
+
+      card.addEventListener('dragend', () => {
+        card.classList.remove('task-card-dragging');
+        columnsEl.querySelectorAll('.column-drag-over').forEach(c => c.classList.remove('column-drag-over'));
+      });
+    }
+
+    // ── Setup Drag & Drop on all rendered columns ──
+    function setupDragAndDrop() {
+      // --- Draggable cards ---
+      columnsEl.querySelectorAll('.task-card').forEach(card => attachDragEvents(card));
+
+      // --- Drop zones (columns) ---
+      columnsEl.querySelectorAll('.kanban-column').forEach(colEl => {
+        const dropZone = colEl.querySelector('.kanban-drop-zone');
+        if (!dropZone) return;
+
+        colEl.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+          colEl.classList.add('column-drag-over');
+        });
+
+        colEl.addEventListener('dragleave', (e) => {
+          // Only remove highlight when truly leaving the column (not entering a child)
+          if (!colEl.contains(e.relatedTarget)) {
+            colEl.classList.remove('column-drag-over');
+          }
+        });
+
+        colEl.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          colEl.classList.remove('column-drag-over');
+
+          let data;
+          try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+          const { taskId, sourceColumnId } = data;
+          const targetColumnId = colEl.dataset.columnId;
+
+          // Same column → do nothing
+          if (String(sourceColumnId) === String(targetColumnId)) return;
+
+          const card = columnsEl.querySelector(`.task-card[data-task-id="${taskId}"]`);
+          if (!card) return;
+
+          // ── Optimistic UI update ──
+          // Remove empty placeholder from target if present
+          const targetPlaceholder = dropZone.querySelector('.empty-placeholder');
+          if (targetPlaceholder) targetPlaceholder.remove();
+
+          // Move DOM element
+          card.dataset.columnId = targetColumnId;
+          dropZone.appendChild(card);
+
+          // Update badges on both columns
+          const sourceColEl = columnsEl.querySelector(`.kanban-column[data-column-id="${sourceColumnId}"]`);
+          if (sourceColEl) updateColumnBadge(sourceColEl);
+          updateColumnBadge(colEl);
+
+          // ── Persist to backend ──
+          try {
+            await api(`/tasks/${taskId}`, {
+              method: 'PUT',
+              body: { column_id: targetColumnId },
+            });
+          } catch (err) {
+            console.error('Failed to move task:', err);
+            alert('ย้าย Task ไม่สำเร็จ: ' + (err.message || 'Unknown error') + '\nจะโหลดบอร์ดใหม่เพื่อให้ตรงกับฐานข้อมูล');
+            // Rollback: re-fetch the board so UI matches DB
+            loadBoard();
+          }
+        });
+      });
+    }
+
+    // ── Create Task Modal Logic ──
+    const modal          = document.getElementById('create-task-modal');
+    const modalBackdrop  = document.getElementById('modal-backdrop');
+    const modalColName   = document.getElementById('modal-column-name');
+    const modalForm      = document.getElementById('create-task-form');
+    const titleInput     = document.getElementById('task-title-input');
+    const descInput      = document.getElementById('task-desc-input');
+    const cancelBtn      = document.getElementById('modal-cancel-btn');
+    const createBtn      = document.getElementById('modal-create-btn');
+    const createBtnText  = document.getElementById('create-btn-text');
+    const createBtnSpin  = document.getElementById('create-btn-spinner');
+
+    let activeColumnId = null;
+
+    function openModal(columnId, columnTitle) {
+      activeColumnId = columnId;
+      modalColName.textContent = columnTitle ? `Column: ${columnTitle}` : '';
+      titleInput.value = '';
+      descInput.value = '';
+      createBtn.disabled = false;
+      modal.classList.remove('hidden');
+      requestAnimationFrame(() => titleInput.focus());
+    }
+
+    function closeModal() {
+      modal.classList.add('hidden');
+      activeColumnId = null;
+    }
+
+    cancelBtn.addEventListener('click', closeModal);
+    modalBackdrop.addEventListener('click', closeModal);
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
+    });
+
+    function setCreateLoading(loading) {
+      createBtn.disabled = loading;
+      createBtnText.textContent = loading ? 'Creating...' : 'Create';
+      createBtnSpin.classList.toggle('hidden', !loading);
+    }
+
+    async function handleCreateTask() {
+      const title = titleInput.value.trim();
+      if (!title) {
+        titleInput.focus();
+        titleInput.classList.add('ring-2', 'ring-error/50');
+        setTimeout(() => titleInput.classList.remove('ring-2', 'ring-error/50'), 1500);
+        return;
+      }
+
+      const description = descInput.value.trim() || undefined;
+
+      setCreateLoading(true);
+      try {
+        const data = await api('/tasks', {
+          method: 'POST',
+          body: { column_id: activeColumnId, title, description },
+        });
+
+        const newTask = data.task;
+        closeModal();
+
+        // Append the new card to the column
+        const colEl = columnsEl.querySelector(`.kanban-column[data-column-id="${activeColumnId}"]`);
+        if (colEl) {
+          const dropZone = colEl.querySelector('.kanban-drop-zone');
+          if (dropZone) {
+            // Remove empty placeholder if present
+            const placeholder = dropZone.querySelector('.empty-placeholder');
+            if (placeholder) placeholder.remove();
+
+            // Create card DOM from HTML string
+            const temp = document.createElement('div');
+            temp.innerHTML = renderTaskCard(newTask);
+            const cardEl = temp.firstElementChild;
+            dropZone.appendChild(cardEl);
+
+            // Attach drag events to the new card
+            attachDragEvents(cardEl);
+
+            // Update badge
+            updateColumnBadge(colEl);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to create task:', err);
+        alert('สร้าง Task ไม่สำเร็จ: ' + (err.message || 'Unknown error'));
+      } finally {
+        setCreateLoading(false);
+      }
+    }
+
+    createBtn.addEventListener('click', handleCreateTask);
+    modalForm.addEventListener('submit', (e) => { e.preventDefault(); handleCreateTask(); });
+
+    // ── Setup "+ Add Task" buttons ──
+    function setupAddTaskButtons() {
+      columnsEl.querySelectorAll('.add-task-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const columnId = btn.dataset.columnId;
+          const colEl = btn.closest('.kanban-column');
+          const columnTitle = colEl ? colEl.querySelector('h3')?.textContent : '';
+          openModal(columnId, columnTitle);
+        });
+      });
     }
 
     // ── Render error state ──
