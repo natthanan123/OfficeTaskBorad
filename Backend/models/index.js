@@ -1,10 +1,12 @@
 const sequelize = require('../config/database');
 
 // ─── Import model definitions ───
-const User   = require('./User')(sequelize);
-const Board  = require('./Board')(sequelize);
-const Column = require('./Column')(sequelize);
-const Task   = require('./Task')(sequelize);
+const User         = require('./User')(sequelize);
+const Board        = require('./Board')(sequelize);
+const Column       = require('./Column')(sequelize);
+const Task         = require('./Task')(sequelize);
+const BoardMember  = require('./BoardMember')(sequelize);
+const Notification = require('./Notification')(sequelize);
 
 // ═══════════════════════════════════════════
 //  Associations
@@ -43,6 +45,42 @@ User.belongsToMany(Task, {
 // ── Task (M) <──> Label (N)
 // These will be added when we create the Comment, Attachment, and Label models.
 
+// ── User (1) ──> BoardMember (N) ──
+// A user can have many board memberships (across different boards).
+User.hasMany(BoardMember, {
+  foreignKey: { name: 'user_id', allowNull: false },
+  as: 'boardMemberships',
+  onDelete: 'CASCADE',
+});
+BoardMember.belongsTo(User, {
+  foreignKey: { name: 'user_id', allowNull: false },
+  as: 'user',
+});
+
+// ── Board (1) ──> BoardMember (N) ──
+// A board has many members; deleting a board removes its membership rows.
+Board.hasMany(BoardMember, {
+  foreignKey: { name: 'board_id', allowNull: false },
+  as: 'members',
+  onDelete: 'CASCADE',
+});
+BoardMember.belongsTo(Board, {
+  foreignKey: { name: 'board_id', allowNull: false },
+  as: 'board',
+});
+
+// ── User (1) ──> Notification (N) ──
+// A notification always belongs to exactly one recipient user.
+User.hasMany(Notification, {
+  foreignKey: { name: 'user_id', allowNull: false },
+  as: 'notifications',
+  onDelete: 'CASCADE',
+});
+Notification.belongsTo(User, {
+  foreignKey: { name: 'user_id', allowNull: false },
+  as: 'user',
+});
+
 // ─── Export everything the rest of the app needs ───
 module.exports = {
   sequelize,
@@ -50,4 +88,6 @@ module.exports = {
   Board,
   Column,
   Task,
+  BoardMember,
+  Notification,
 };

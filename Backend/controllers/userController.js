@@ -117,7 +117,8 @@ exports.forgotPassword = async (req, res) => {
     });
 
     // Build the reset link
-    const resetLink = `http://localhost:3000/reset-password.html?token=${resetToken}`;
+    const frontendBase = process.env.FRONTEND_URL || 'http://127.0.0.1:5500';
+    const resetLink = `${frontendBase}/frontend/ResetPassword_Page/code.html?token=${resetToken}`;
 
     // Log for developer testing
     console.log('─────────────────────────────────────────');
