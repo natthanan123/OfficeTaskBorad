@@ -1,5 +1,15 @@
 const { Column, Board } = require('../models');
 
+// ─── Helper: broadcast a real-time refresh hint to a board's room ───
+function emitBoardUpdate(req, boardId, type) {
+  if (!boardId) return;
+  try {
+    req.app.get('io').to(`board_${boardId}`).emit('board_updated', { type, board_id: boardId });
+  } catch (socketErr) {
+    console.error(`socket emit (${type}) failed:`, socketErr);
+  }
+}
+
 // ─── POST / ── Create a column for a board ───
 exports.createColumn = async (req, res) => {
   try {
@@ -23,6 +33,8 @@ exports.createColumn = async (req, res) => {
 
     const column = await Column.create({ board_id, title, position: finalPosition });
 
+    emitBoardUpdate(req, board_id, 'column_created');
+
     return res.status(201).json({ status: 'success', data: { column } });
   } catch (err) {
     console.error('createColumn error:', err);
@@ -45,6 +57,8 @@ exports.updateColumn = async (req, res) => {
 
     await column.save();
 
+    emitBoardUpdate(req, column.board_id, 'column_updated');
+
     return res.json({ status: 'success', data: { column } });
   } catch (err) {
     console.error('updateColumn error:', err);
@@ -60,7 +74,14 @@ exports.deleteColumn = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Column not found' });
     }
 
+    // Capture the board id BEFORE destroy — the instance still has it in
+    // memory after destroy, but it's safer to snapshot here to avoid edge
+    // cases with Sequelize hooks that could null the reference.
+    const boardId = column.board_id;
+
     await column.destroy();
+
+    emitBoardUpdate(req, boardId, 'column_deleted');
 
     return res.json({ status: 'success', message: 'Column deleted' });
   } catch (err) {

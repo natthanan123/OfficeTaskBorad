@@ -8,6 +8,9 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Socket.io client is served by the backend automatically at this path,
+     so its version always matches the server. No CDN dependency needed. -->
+<script src="http://localhost:3000/socket.io/socket.io.js"></script>
 <script id="tailwind-config">
       tailwind.config = {
         darkMode: "class",
@@ -150,9 +153,23 @@
 </nav>
 </div>
 <div class="flex items-center space-x-4 ml-4">
-<button class="text-slate-500 hover:text-primary transition-colors">
+<!-- Notification bell (with badge + dropdown popup) -->
+<div class="relative">
+<button id="notification-btn" type="button" class="relative text-slate-500 hover:text-primary transition-colors">
 <span class="material-symbols-outlined" data-icon="notifications">notifications</span>
+<span id="notification-badge" class="hidden absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-error text-white text-[10px] font-bold flex items-center justify-center border-2 border-white dark:border-slate-950 leading-none"></span>
 </button>
+<!-- Notification popup -->
+<div id="notification-popup" class="hidden absolute right-0 mt-2 w-96 bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant/20 z-50 overflow-hidden">
+<div class="px-4 py-3 border-b border-outline-variant/20 flex items-center justify-between">
+<h4 class="text-sm font-bold text-on-surface">Notifications</h4>
+<span id="notification-summary" class="text-[11px] text-on-surface-variant"></span>
+</div>
+<ul id="notification-list" class="max-h-96 overflow-y-auto">
+<li class="px-4 py-8 text-xs text-center text-on-surface-variant italic">Loading notifications...</li>
+</ul>
+</div>
+</div>
 <button class="text-slate-500 hover:text-primary transition-colors">
 <span class="material-symbols-outlined" data-icon="settings">settings</span>
 </button>
@@ -172,13 +189,33 @@
 <div id="board-members" class="mt-2 min-h-[24px]"></div>
 </div>
 <div class="flex space-x-3">
+<!-- Invite (with popup dropdown) -->
+<div class="relative">
+<button id="invite-btn" type="button" class="bg-surface-container-high px-4 py-2 rounded-xl text-sm font-semibold text-on-surface flex items-center space-x-2 hover:opacity-90 transition-opacity">
+<span class="material-symbols-outlined text-sm">person_add</span>
+<span>Invite</span>
+</button>
+<!-- Invite popup (real API wired — POST /api/boards/:id/invite) -->
+<div id="invite-popup" class="hidden absolute right-0 mt-2 w-80 bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant/20 z-50 overflow-hidden">
+<div class="px-4 py-3 border-b border-outline-variant/20">
+<h4 class="text-sm font-bold text-on-surface">Invite to this board</h4>
+<p class="text-[11px] text-on-surface-variant mt-0.5">Enter a teammate's email address</p>
+</div>
+<div class="p-4 space-y-3">
+<input id="invite-email-input" type="email" placeholder="name@example.com" autocomplete="email" class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"/>
+<button id="submit-invite-btn" type="button" class="w-full py-2 bg-primary text-on-primary rounded-lg text-sm font-semibold hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100">Send Invite</button>
+</div>
+</div>
+</div>
+<!-- Filter (mockup, unchanged) -->
 <button class="bg-surface-container-high px-4 py-2 rounded-xl text-sm font-semibold text-on-surface flex items-center space-x-2">
 <span class="material-symbols-outlined text-sm">filter_list</span>
 <span>Filter</span>
 </button>
-<button class="bg-primary text-on-primary px-4 py-2 rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-lg shadow-primary/20">
+<!-- Add Column (typo fixed + wired up in JS) -->
+<button id="add-column-btn" type="button" class="bg-primary text-on-primary px-4 py-2 rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-lg shadow-primary/20 disabled:opacity-60 disabled:cursor-not-allowed">
 <span class="material-symbols-outlined text-sm">add</span>
-<span>Add View</span>
+<span>Add Column</span>
 </button>
 </div>
 </div>
@@ -198,6 +235,8 @@
 <button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">
 <span class="material-symbols-outlined text-2xl" data-weight="fill">add_task</span>
 </button>
+<!-- ─── Toast container (real-time notifications drop in here) ─── -->
+<div id="toast-container" class="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 items-end pointer-events-none"></div>
 <!-- ─── Task Detail Modal ─── -->
 <div id="task-modal" class="fixed inset-0 z-[100] hidden">
   <!-- Backdrop -->
@@ -275,6 +314,14 @@
     const userMenuBtn  = document.getElementById('user-menu');
     const boardListEl  = document.getElementById('board-list-container');
     const newBoardBtn  = document.getElementById('new-board-btn');
+    const addColumnBtn = document.getElementById('add-column-btn');
+    const inviteBtn    = document.getElementById('invite-btn');
+    const invitePopup  = document.getElementById('invite-popup');
+    const notificationBtn     = document.getElementById('notification-btn');
+    const notificationPopup   = document.getElementById('notification-popup');
+    const notificationBadge   = document.getElementById('notification-badge');
+    const notificationListEl  = document.getElementById('notification-list');
+    const notificationSummary = document.getElementById('notification-summary');
 
     // ── Task data cache (for modal) ──
     const taskCache = new Map();
@@ -282,6 +329,23 @@
     // ── Boards state ──
     let activeBoardId = null;
     let cachedBoards  = [];
+
+    // ── Notifications state ──
+    let cachedNotifications = [];
+    let unreadCount         = 0;
+
+    // ── Real-time (socket.io) state ──
+    // `io` is the global function exposed by the socket.io client script
+    // loaded from the backend in <head>. We connect lazily and re-join rooms
+    // on every (re)connect so reconnects don't silently drop subscriptions.
+    const socket = (typeof io === 'function')
+      ? io('http://localhost:3000', {
+          auth: { token },
+          transports: ['websocket', 'polling'],
+        })
+      : null;
+    let currentUserId = null;
+    let boardUpdateDebounce = null;
 
     // ── Helper: authed fetch ──
     async function api(path, { method = 'GET', body } = {}) {
@@ -906,6 +970,13 @@
     // ── Fetch a single board's details and render its columns/tasks ──
     async function loadBoardData(boardId) {
       if (!boardId) return;
+
+      // Real-time: subscribe to this board's room so we receive live updates
+      // from teammates. The server auto-leaves the previous board room.
+      if (socket && socket.connected) {
+        socket.emit('join_board_room', boardId);
+      }
+
       try {
         // Loading state in the canvas
         columnsEl.innerHTML = `
@@ -925,12 +996,26 @@
       }
     }
 
-    // ── Page bootstrap: profile + board list + initial board render ──
+    // ── Page bootstrap: profile + board list + notifications + initial board render ──
     async function bootstrapDashboard() {
-      // Profile name (non-blocking)
+      // Profile name (non-blocking) — also captures userId for the socket
+      // private room, so future 'new_notification' emits reach this tab.
       api('/users/me').then(d => {
-        if (d && d.user) userNameEl.textContent = d.user.full_name || d.user.email;
+        if (d && d.user) {
+          userNameEl.textContent = d.user.full_name || d.user.email;
+          currentUserId = d.user.id;
+          if (socket && socket.connected) {
+            socket.emit('join_user_room', currentUserId);
+          }
+          // If socket hasn't connected yet, the 'connect' handler below
+          // will pick up currentUserId and join on its own.
+        }
       }).catch(() => { /* ignore */ });
+
+      // Notifications (non-blocking — badge should pop up asap, even if
+      // boards are slow to load). Still awaited below for correctness on
+      // the error path via its own try/catch.
+      fetchNotifications();
 
       await loadBoards();
 
@@ -981,6 +1066,359 @@
         newBoardBtn.disabled = false;
       }
     });
+
+    // ── Add Column button: prompt → POST /api/columns → refresh canvas ──
+    addColumnBtn.addEventListener('click', async () => {
+      if (!activeBoardId) {
+        alert('Please select or create a board first');
+        return;
+      }
+      const raw = prompt('Enter new column name:');
+      if (raw === null) return; // user cancelled
+      const title = raw.trim();
+      if (!title) return;       // empty / whitespace-only
+
+      addColumnBtn.disabled = true;
+      try {
+        await api('/columns', {
+          method: 'POST',
+          body: { title, board_id: activeBoardId },
+        });
+        await loadBoardData(activeBoardId);
+      } catch (err) {
+        if (err.message === 'Unauthorized') return;
+        console.error('Failed to create column:', err);
+        alert('Could not create column: ' + (err.message || 'Unknown error'));
+      } finally {
+        addColumnBtn.disabled = false;
+      }
+    });
+
+    // ── Invite popup: toggle on button click, close on outside click ──
+    inviteBtn.addEventListener('click', (e) => {
+      e.stopPropagation(); // prevent the document handler below from instantly closing it
+      invitePopup.classList.toggle('hidden');
+    });
+
+    document.addEventListener('click', (e) => {
+      if (invitePopup.classList.contains('hidden')) return;
+      // Ignore clicks inside the popup or on the trigger button itself
+      if (invitePopup.contains(e.target) || inviteBtn.contains(e.target)) return;
+      invitePopup.classList.add('hidden');
+    });
+
+    // ── Submit invite: POST /api/boards/:id/invite ──
+    const inviteEmailInput = document.getElementById('invite-email-input');
+    const submitInviteBtn  = document.getElementById('submit-invite-btn');
+
+    async function submitInvite() {
+      if (!activeBoardId) {
+        alert('Please select or create a board first');
+        return;
+      }
+      const email = inviteEmailInput.value.trim();
+      if (!email) {
+        alert('Please enter an email address');
+        inviteEmailInput.focus();
+        return;
+      }
+
+      submitInviteBtn.disabled = true;
+      const originalLabel = submitInviteBtn.textContent;
+      submitInviteBtn.textContent = 'Sending...';
+      try {
+        await api(`/boards/${activeBoardId}/invite`, {
+          method: 'POST',
+          body: { email },
+        });
+        alert('Invitation sent successfully!');
+        inviteEmailInput.value = '';
+        invitePopup.classList.add('hidden');
+      } catch (err) {
+        if (err.message === 'Unauthorized') return;
+        console.error('Failed to send invite:', err);
+        alert(err.message || 'Could not send invitation');
+      } finally {
+        submitInviteBtn.disabled = false;
+        submitInviteBtn.textContent = originalLabel;
+      }
+    }
+
+    submitInviteBtn.addEventListener('click', submitInvite);
+    // Convenience: hitting Enter inside the input submits too
+    inviteEmailInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        submitInvite();
+      }
+    });
+
+    // ═══════════════════════════════════════════
+    //  Notifications system
+    // ═══════════════════════════════════════════
+
+    // ── Format an ISO timestamp into a short relative/absolute label ──
+    function formatNotificationTime(iso) {
+      if (!iso) return '';
+      const d = new Date(iso);
+      if (isNaN(d.getTime())) return '';
+      const diffMs = Date.now() - d.getTime();
+      const mins = Math.floor(diffMs / 60000);
+      if (mins < 1)   return 'Just now';
+      if (mins < 60)  return `${mins}m ago`;
+      const hours = Math.floor(mins / 60);
+      if (hours < 24) return `${hours}h ago`;
+      const days = Math.floor(hours / 24);
+      if (days < 7)   return `${days}d ago`;
+      return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
+    }
+
+    // ── Update the red badge on the bell ──
+    function updateNotificationBadge(count) {
+      unreadCount = Math.max(0, count);
+      if (unreadCount === 0) {
+        notificationBadge.classList.add('hidden');
+        notificationBadge.textContent = '';
+      } else {
+        notificationBadge.classList.remove('hidden');
+        notificationBadge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
+      }
+    }
+
+    // ── Build the HTML for a single notification row ──
+    function renderNotificationItem(n) {
+      const unread  = !n.is_read;
+      const icon    = n.type === 'board_invite' ? 'group_add' : 'notifications';
+      const timeStr = formatNotificationTime(n.created_at);
+
+      // Accept/Reject buttons only for pending board invites
+      let actionsHtml = '';
+      if (n.type === 'board_invite' && n.reference_id) {
+        const refId = escapeHtml(n.reference_id);
+        const notifId = escapeHtml(n.id);
+        actionsHtml = `
+          <div class="flex gap-2 mt-2">
+            <button type="button" class="invite-respond-btn px-3 py-1 bg-primary text-on-primary text-xs font-semibold rounded-full hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    data-action="accepted" data-board-id="${refId}" data-notification-id="${notifId}">
+              Accept
+            </button>
+            <button type="button" class="invite-respond-btn px-3 py-1 bg-surface-container-high text-on-surface text-xs font-semibold rounded-full hover:bg-error-container hover:text-on-error-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    data-action="rejected" data-board-id="${refId}" data-notification-id="${notifId}">
+              Reject
+            </button>
+          </div>
+        `;
+      }
+
+      const unreadBgClass = unread ? 'bg-indigo-50/40 dark:bg-indigo-900/10' : '';
+      const msgClasses    = unread
+        ? 'font-semibold text-on-surface'
+        : 'text-on-surface-variant';
+
+      return `
+        <li data-notification-id="${escapeHtml(n.id)}"
+            data-is-read="${unread ? 'false' : 'true'}"
+            class="notification-item border-b border-outline-variant/10 last:border-b-0 px-4 py-3 hover:bg-surface-container-low transition-colors cursor-pointer ${unreadBgClass}">
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-primary text-base mt-0.5 shrink-0">${icon}</span>
+            <div class="flex-1 min-w-0">
+              <p class="notification-message text-sm leading-snug ${msgClasses}">${escapeHtml(n.message || '')}</p>
+              ${timeStr ? `<p class="text-[10px] text-on-surface-variant/70 mt-0.5">${escapeHtml(timeStr)}</p>` : ''}
+              ${actionsHtml}
+            </div>
+            ${unread ? '<span class="unread-dot w-2 h-2 rounded-full bg-error mt-1.5 shrink-0"></span>' : ''}
+          </div>
+        </li>
+      `;
+    }
+
+    // ── Render the notification list from cachedNotifications ──
+    function renderNotifications() {
+      if (cachedNotifications.length === 0) {
+        notificationListEl.innerHTML = `
+          <li class="px-4 py-10 text-xs text-center text-on-surface-variant italic">
+            No notifications yet
+          </li>
+        `;
+        notificationSummary.textContent = '';
+        updateNotificationBadge(0);
+        return;
+      }
+
+      notificationListEl.innerHTML = cachedNotifications.map(renderNotificationItem).join('');
+
+      const unread = cachedNotifications.filter(n => !n.is_read).length;
+      updateNotificationBadge(unread);
+      notificationSummary.textContent = unread > 0 ? `${unread} unread` : 'All read';
+
+      // Wire: click a notification → mark as read
+      notificationListEl.querySelectorAll('.notification-item').forEach(item => {
+        item.addEventListener('click', () => handleNotificationClick(item));
+      });
+      // Wire: Accept / Reject on a pending invite
+      notificationListEl.querySelectorAll('.invite-respond-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation(); // don't also fire notification-item click
+          handleInviteRespond(btn);
+        });
+      });
+    }
+
+    // ── Click on a notification row → PUT /notifications/:id/read ──
+    async function handleNotificationClick(item) {
+      const id     = item.dataset.notificationId;
+      const isRead = item.dataset.isRead === 'true';
+      if (!id || isRead) return;
+
+      try {
+        await api(`/notifications/${id}/read`, { method: 'PUT' });
+
+        // Optimistic DOM update — match the "read" styling
+        item.dataset.isRead = 'true';
+        item.classList.remove('bg-indigo-50/40', 'dark:bg-indigo-900/10');
+        const msg = item.querySelector('.notification-message');
+        if (msg) {
+          msg.classList.remove('font-semibold', 'text-on-surface');
+          msg.classList.add('text-on-surface-variant');
+        }
+        const dot = item.querySelector('.unread-dot');
+        if (dot) dot.remove();
+
+        // Update cache + badge
+        const cached = cachedNotifications.find(n => String(n.id) === String(id));
+        if (cached) cached.is_read = true;
+        updateNotificationBadge(unreadCount - 1);
+        const stillUnread = Math.max(0, unreadCount);
+        notificationSummary.textContent = stillUnread > 0 ? `${stillUnread} unread` : 'All read';
+      } catch (err) {
+        if (err.message === 'Unauthorized') return;
+        console.error('Failed to mark notification as read:', err);
+      }
+    }
+
+    // ── Accept / Reject invite → PUT /boards/:refId/invite/respond ──
+    async function handleInviteRespond(btn) {
+      const action  = btn.dataset.action;   // 'accepted' | 'rejected'
+      const boardId = btn.dataset.boardId;
+      if (!boardId || !['accepted', 'rejected'].includes(action)) return;
+
+      // Disable both Accept and Reject for this notification while in flight
+      const parent  = btn.closest('.notification-item');
+      const buttons = parent ? parent.querySelectorAll('.invite-respond-btn') : [btn];
+      buttons.forEach(b => b.disabled = true);
+
+      try {
+        await api(`/boards/${boardId}/invite/respond`, {
+          method: 'PUT',
+          body: { status: action },
+        });
+        // Refresh sidebar (newly accepted board appears) and notifications
+        await loadBoards();
+        await fetchNotifications();
+      } catch (err) {
+        if (err.message === 'Unauthorized') return;
+        console.error('Failed to respond to invite:', err);
+        alert('Could not respond to invite: ' + (err.message || 'Unknown error'));
+        buttons.forEach(b => b.disabled = false);
+      }
+    }
+
+    // ── Fetch notifications from the API and render ──
+    async function fetchNotifications() {
+      try {
+        const data = await api('/notifications');
+        cachedNotifications = (data && data.notifications) || [];
+        renderNotifications();
+      } catch (err) {
+        if (err.message === 'Unauthorized') return;
+        console.error('Failed to fetch notifications:', err);
+        notificationListEl.innerHTML = `
+          <li class="px-4 py-6 text-xs text-center text-error italic">
+            Could not load notifications
+          </li>
+        `;
+        notificationSummary.textContent = '';
+        updateNotificationBadge(0);
+      }
+    }
+
+    // ── Toggle the bell popup, and close on outside click ──
+    notificationBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      notificationPopup.classList.toggle('hidden');
+    });
+    document.addEventListener('click', (e) => {
+      if (notificationPopup.classList.contains('hidden')) return;
+      if (notificationPopup.contains(e.target) || notificationBtn.contains(e.target)) return;
+      notificationPopup.classList.add('hidden');
+    });
+
+    // ═══════════════════════════════════════════
+    //  Real-time (socket.io) — listeners + toast
+    // ═══════════════════════════════════════════
+
+    // ── Lightweight toast (auto-dismiss after 3s) ──
+    const toastContainerEl = document.getElementById('toast-container');
+    function showToast(message, icon = 'notifications') {
+      if (!toastContainerEl) return;
+      const toast = document.createElement('div');
+      toast.className = 'pointer-events-auto flex items-center gap-2 bg-on-surface text-surface-container-lowest px-4 py-3 rounded-xl shadow-2xl text-sm font-medium max-w-xs animate-[fadeIn_0.2s_ease-out]';
+      toast.innerHTML = `
+        <span class="material-symbols-outlined text-base shrink-0">${escapeHtml(icon)}</span>
+        <span class="flex-1">${escapeHtml(message)}</span>
+      `;
+      toastContainerEl.appendChild(toast);
+      setTimeout(() => {
+        toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(24px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3000);
+    }
+
+    if (socket) {
+      // Re-join rooms on every (re)connect — handles initial connect AND
+      // automatic reconnects after the server/network drops briefly.
+      socket.on('connect', () => {
+        console.log('[socket] connected', socket.id);
+        if (currentUserId) socket.emit('join_user_room', currentUserId);
+        if (activeBoardId) socket.emit('join_board_room', activeBoardId);
+      });
+
+      socket.on('disconnect', (reason) => {
+        console.log('[socket] disconnected:', reason);
+      });
+
+      // Auth failures (missing/invalid/expired token) surface here as the
+      // server rejects the handshake in its io.use middleware.
+      socket.on('connect_error', (err) => {
+        console.error('[socket] connect_error:', err && err.message);
+        if (err && err.message === 'Authentication error') {
+          alert('Your session has expired. Please log in again.');
+          localStorage.removeItem('token');
+          window.location.replace(LOGIN_PAGE);
+        }
+      });
+
+      // Invitee's private room → refresh notifications + show toast
+      socket.on('new_notification', () => {
+        fetchNotifications();
+        showToast('You have a new notification', 'notifications_active');
+      });
+
+      // Board room → refetch the active board so columns/tasks stay in sync.
+      // Debounce to coalesce rapid bursts (e.g. multi-card drag from another user).
+      socket.on('board_updated', (payload) => {
+        if (!activeBoardId) return;
+        // Guard: ignore events for a different board (edge case if room
+        // membership hasn't been updated yet after a switch).
+        if (payload && payload.board_id && String(payload.board_id) !== String(activeBoardId)) return;
+        clearTimeout(boardUpdateDebounce);
+        boardUpdateDebounce = setTimeout(() => {
+          loadBoardData(activeBoardId);
+        }, 200);
+      });
+    }
 
     // ── 4. Logout ──
     userMenuBtn.addEventListener('click', () => {

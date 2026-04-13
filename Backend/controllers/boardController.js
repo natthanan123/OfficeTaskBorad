@@ -44,11 +44,25 @@ exports.createBoard = async (req, res) => {
   }
 };
 
-// ─── GET / ── Fetch boards the logged-in user owns or is a member of ───
+// ─── GET / ── Fetch boards visible to the logged-in user ───
+// • admin      → sees every board in the system
+// • otherwise  → sees boards they created OR have an accepted membership for
 exports.getBoards = async (req, res) => {
   try {
-    const boards = await Board.findAll({
-      where: {
+    // Options shared by both branches (include + order stay identical)
+    const findOptions = {
+      include: {
+        model: User,
+        as: 'creator',
+        attributes: ['id', 'full_name', 'email'],
+      },
+      order: [['created_at', 'DESC']],
+    };
+
+    // Non-admin users get the per-user visibility filter.
+    // Admins fall through with no `where`, so findAll returns everything.
+    if (req.user.role !== 'admin') {
+      findOptions.where = {
         [Op.or]: [
           // 1) Boards I created (covers legacy boards with no membership row)
           { creator_id: req.user.id },
@@ -62,16 +76,11 @@ exports.getBoards = async (req, res) => {
             },
           },
         ],
-      },
-      include: {
-        model: User,
-        as: 'creator',
-        attributes: ['id', 'full_name', 'email'],
-      },
-      order: [['created_at', 'DESC']],
-      replacements: { userId: req.user.id },
-    });
+      };
+      findOptions.replacements = { userId: req.user.id };
+    }
 
+    const boards = await Board.findAll(findOptions);
     return res.json({ status: 'success', data: { boards } });
   } catch (err) {
     console.error('getBoards error:', err);

@@ -1,5 +1,15 @@
 const { Task, Column } = require('../models');
 
+// ─── Helper: broadcast a real-time refresh hint to a board's room ───
+function emitBoardUpdate(req, boardId, type) {
+  if (!boardId) return;
+  try {
+    req.app.get('io').to(`board_${boardId}`).emit('board_updated', { type, board_id: boardId });
+  } catch (socketErr) {
+    console.error(`socket emit (${type}) failed:`, socketErr);
+  }
+}
+
 // ─── POST / ── Create a task in a column ───
 exports.createTask = async (req, res) => {
   try {
@@ -29,8 +39,8 @@ exports.createTask = async (req, res) => {
       position: finalPosition,
     });
 
-    // Real-time: notify all connected clients
-    req.app.get('io').emit('task_created', task);
+    // board_id is already on the column we fetched above — no extra query
+    emitBoardUpdate(req, column.board_id, 'task_created');
 
     return res.status(201).json({ status: 'success', data: { task } });
   } catch (err) {
@@ -49,9 +59,14 @@ exports.updateTask = async (req, res) => {
 
     const { title, description, due_date, column_id, position } = req.body;
 
+    // Remember the ORIGINAL column so we can emit to the source board too
+    // if this turns out to be a cross-board move (rare, but correct).
+    const originalColumnId = task.column_id;
+    let targetColumn = null;
+
     // If moving to a different column, verify it exists
     if (column_id !== undefined && column_id !== task.column_id) {
-      const targetColumn = await Column.findByPk(column_id);
+      targetColumn = await Column.findByPk(column_id);
       if (!targetColumn) {
         return res.status(404).json({ status: 'error', message: 'Target column not found' });
       }
@@ -65,8 +80,22 @@ exports.updateTask = async (req, res) => {
 
     await task.save();
 
-    // Real-time: notify all connected clients
-    req.app.get('io').emit('task_updated', task);
+    // Resolve the board id for the emit. If we already have targetColumn
+    // from the move branch, reuse it; otherwise look up the current column.
+    const currentColumn =
+      targetColumn || (await Column.findByPk(task.column_id));
+    if (currentColumn) {
+      emitBoardUpdate(req, currentColumn.board_id, 'task_updated');
+
+      // Cross-board move: also ping the source board so users viewing the
+      // old board see the task disappear without a manual refresh.
+      if (originalColumnId && originalColumnId !== task.column_id) {
+        const sourceColumn = await Column.findByPk(originalColumnId);
+        if (sourceColumn && sourceColumn.board_id !== currentColumn.board_id) {
+          emitBoardUpdate(req, sourceColumn.board_id, 'task_updated');
+        }
+      }
+    }
 
     return res.json({ status: 'success', data: { task } });
   } catch (err) {
@@ -83,12 +112,13 @@ exports.deleteTask = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Task not found' });
     }
 
-    const taskId = task.id;
-    const columnId = task.column_id;
+    // Resolve board_id BEFORE destroy, while the task + column still exist.
+    const column = await Column.findByPk(task.column_id);
+    const boardId = column ? column.board_id : null;
+
     await task.destroy();
 
-    // Real-time: notify all connected clients
-    req.app.get('io').emit('task_deleted', { id: taskId, column_id: columnId });
+    emitBoardUpdate(req, boardId, 'task_deleted');
 
     return res.json({ status: 'success', message: 'Task deleted' });
   } catch (err) {

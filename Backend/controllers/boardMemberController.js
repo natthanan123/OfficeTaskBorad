@@ -71,6 +71,16 @@ exports.inviteUserToBoard = async (req, res) => {
 
     await t.commit();
 
+    // Real-time: ping the invitee's private room. Wrapped in try/catch so
+    // a socket hiccup never breaks the HTTP success path.
+    try {
+      req.app.get('io')
+        .to(`user_${targetUser.id}`)
+        .emit('new_notification', { notification });
+    } catch (socketErr) {
+      console.error('socket emit (new_notification) failed:', socketErr);
+    }
+
     return res.status(201).json({
       status: 'success',
       data: { membership, notification },
