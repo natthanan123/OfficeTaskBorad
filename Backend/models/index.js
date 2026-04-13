@@ -7,6 +7,9 @@ const Column       = require('./Column')(sequelize);
 const Task         = require('./Task')(sequelize);
 const BoardMember  = require('./BoardMember')(sequelize);
 const Notification = require('./Notification')(sequelize);
+const Label        = require('./Label')(sequelize);
+const TaskLabel    = require('./TaskLabel')(sequelize);
+const TaskComment  = require('./TaskComment')(sequelize);
 
 // ═══════════════════════════════════════════
 //  Associations
@@ -40,10 +43,50 @@ User.belongsToMany(Task, {
   as: 'assignedTasks',
 });
 
-// ── Task (1) ──> Comment (N)  [placeholder FK — model coming later] ──
-// ── Task (1) ──> Attachment (N)
-// ── Task (M) <──> Label (N)
-// These will be added when we create the Comment, Attachment, and Label models.
+// ── Board (1) ──> Label (N) ──
+// Labels live inside a single board's palette and are removed with the board.
+Board.hasMany(Label,  { foreignKey: { name: 'board_id', allowNull: false }, as: 'labels', onDelete: 'CASCADE' });
+Label.belongsTo(Board, { foreignKey: { name: 'board_id', allowNull: false }, as: 'board' });
+
+// ── Task (M) <──> Label (N)  [via TaskLabel junction] ──
+Task.belongsToMany(Label, {
+  through: TaskLabel,
+  foreignKey: 'task_id',
+  otherKey: 'label_id',
+  as: 'labels',
+  onDelete: 'CASCADE',
+});
+Label.belongsToMany(Task, {
+  through: TaskLabel,
+  foreignKey: 'label_id',
+  otherKey: 'task_id',
+  as: 'tasks',
+  onDelete: 'CASCADE',
+});
+
+// ── Task (1) ──> TaskComment (N) ──
+Task.hasMany(TaskComment, {
+  foreignKey: { name: 'task_id', allowNull: false },
+  as: 'comments',
+  onDelete: 'CASCADE',
+});
+TaskComment.belongsTo(Task, {
+  foreignKey: { name: 'task_id', allowNull: false },
+  as: 'task',
+});
+
+// ── User (1) ──> TaskComment (N) ──
+User.hasMany(TaskComment, {
+  foreignKey: { name: 'user_id', allowNull: false },
+  as: 'taskComments',
+  onDelete: 'CASCADE',
+});
+TaskComment.belongsTo(User, {
+  foreignKey: { name: 'user_id', allowNull: false },
+  as: 'author',
+});
+
+// ── Task (1) ──> Attachment (N)  [model coming later] ──
 
 // ── User (1) ──> BoardMember (N) ──
 // A user can have many board memberships (across different boards).
@@ -90,4 +133,7 @@ module.exports = {
   Task,
   BoardMember,
   Notification,
+  Label,
+  TaskLabel,
+  TaskComment,
 };

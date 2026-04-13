@@ -1,5 +1,14 @@
 const { Op } = require('sequelize');
-const { Board, User, Column, Task, BoardMember, sequelize } = require('../models');
+const {
+  Board,
+  User,
+  Column,
+  Task,
+  BoardMember,
+  Label,
+  TaskComment,
+  sequelize,
+} = require('../models');
 
 // ─── POST / ── Create a new board ───
 exports.createBoard = async (req, res) => {
@@ -108,12 +117,30 @@ exports.getBoardById = async (req, res) => {
             as: 'tasks',
             separate: true,
             order: [['position', 'ASC']],
-            include: {
-              model: User,
-              as: 'assignees',
-              attributes: ['id', 'full_name', 'email'],
-              through: { attributes: [] },
-            },
+            include: [
+              {
+                model: User,
+                as: 'assignees',
+                attributes: ['id', 'full_name', 'email'],
+                through: { attributes: [] },
+              },
+              {
+                model: Label,
+                as: 'labels',
+                through: { attributes: [] },
+              },
+              {
+                model: TaskComment,
+                as: 'comments',
+                separate: true,
+                order: [['created_at', 'ASC']],
+                include: {
+                  model: User,
+                  as: 'author',
+                  attributes: ['id', 'full_name', 'email'],
+                },
+              },
+            ],
           },
         },
       ],
@@ -123,9 +150,107 @@ exports.getBoardById = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Board not found' });
     }
 
-    return res.json({ status: 'success', data: { board } });
+    // Flatten into a plain JSON shape and normalise every nested relation.
+    // Optional chaining + `|| []` fallbacks cover:
+    //   • alias mismatches (`tasks` vs default pluralised `Tasks`)
+    //   • Sequelize edge cases where a `separate: true` include returns
+    //     undefined instead of an empty array on zero-row relations
+    //   • missing association instances for rows created before a migration
+    const raw = typeof board.toJSON === 'function' ? board.toJSON() : board;
+
+    const safeColumns = (raw?.columns || raw?.Columns || []).map((column) => {
+      const tasks = (column?.tasks || column?.Tasks || []).map((task) => ({
+        ...task,
+        assignees: task?.assignees || task?.Assignees || [],
+        labels:    task?.labels    || task?.Labels    || [],
+        comments:  (task?.comments || task?.Comments || []).map((c) => ({
+          ...c,
+          author: c?.author || c?.Author || null,
+        })),
+      }));
+      return { ...column, tasks };
+    });
+
+    const safeBoard = { ...raw, columns: safeColumns };
+
+    return res.json({ status: 'success', data: { board: safeBoard } });
   } catch (err) {
     console.error('getBoardById error:', err);
     return res.status(500).json({ status: 'error', message: 'Could not fetch board' });
+  }
+};
+
+// ─── GET /:id/labels ── List labels that belong to a board ───
+exports.listBoardLabels = async (req, res) => {
+  try {
+    const labels = await Label.findAll({
+      where: { board_id: req.params.id },
+      order: [['created_at', 'ASC']],
+    });
+    return res.json({ status: 'success', data: { labels } });
+  } catch (err) {
+    console.error('listBoardLabels error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not fetch labels' });
+  }
+};
+
+// ─── POST /:id/labels ── Create a new label under a board ───
+exports.createBoardLabel = async (req, res) => {
+  try {
+    const { title, color } = req.body;
+    if (!color) {
+      return res.status(400).json({ status: 'error', message: 'color is required' });
+    }
+
+    const board = await Board.findByPk(req.params.id);
+    if (!board) {
+      return res.status(404).json({ status: 'error', message: 'Board not found' });
+    }
+
+    const label = await Label.create({
+      board_id: board.id,
+      title: title || null,
+      color,
+    });
+
+    // Let everyone looking at this board refetch and pick up the new palette
+    // entry — the Labels popup renders from the fresh board data.
+    try {
+      req.app.get('io')
+        .to(`board_${board.id}`)
+        .emit('board_updated', { type: 'label_created', board_id: board.id });
+    } catch (socketErr) {
+      console.error('socket emit (label_created) failed:', socketErr);
+    }
+
+    return res.status(201).json({ status: 'success', data: { label } });
+  } catch (err) {
+    console.error('createBoardLabel error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not create label' });
+  }
+};
+
+// ─── GET /:id/members ── List accepted members of a board ───
+exports.listBoardMembers = async (req, res) => {
+  try {
+    const memberships = await BoardMember.findAll({
+      where: { board_id: req.params.id, status: 'accepted' },
+      include: {
+        model: User,
+        as: 'user',
+        attributes: ['id', 'full_name', 'email'],
+      },
+      order: [['created_at', 'ASC']],
+    });
+
+    // Flatten to a simple user list — that's all the Members popup needs.
+    const members = memberships
+      .map(m => m.user)
+      .filter(Boolean);
+
+    return res.json({ status: 'success', data: { members } });
+  } catch (err) {
+    console.error('listBoardMembers error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not fetch members' });
   }
 };

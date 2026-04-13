@@ -237,59 +237,184 @@
 </button>
 <!-- ─── Toast container (real-time notifications drop in here) ─── -->
 <div id="toast-container" class="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 items-end pointer-events-none"></div>
-<!-- ─── Task Detail Modal ─── -->
+<!-- ─── Task Detail Modal (Trello-style) ─── -->
 <div id="task-modal" class="fixed inset-0 z-[100] hidden">
   <!-- Backdrop -->
-  <div id="modal-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm"></div>
-  <!-- Panel -->
-  <div class="absolute inset-0 flex items-center justify-center p-4">
-    <div id="modal-panel" class="relative bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-lg p-8 animate-[fadeIn_0.15s_ease-out]">
+  <div id="modal-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
+
+  <!-- Panel wrapper (scrolls on small screens) -->
+  <div class="absolute inset-0 flex items-start justify-center p-4 overflow-y-auto">
+    <div id="modal-panel" class="relative bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-4xl my-8 animate-[fadeIn_0.15s_ease-out]">
+
       <!-- Close button -->
-      <button id="modal-close" class="absolute top-4 right-4 text-on-surface-variant/60 hover:text-on-surface transition-colors">
+      <button id="modal-close" class="absolute top-4 right-4 z-10 text-on-surface-variant/60 hover:text-on-surface transition-colors">
         <span class="material-symbols-outlined">close</span>
       </button>
-      <!-- Content -->
-      <div class="space-y-4">
-        <!-- Editable Title -->
-        <div>
-          <label for="modal-title" class="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">Title</label>
-          <input id="modal-title" type="text" class="w-full mt-1 bg-surface-container-low border border-outline-variant/40 rounded-lg px-3 py-2 text-on-surface font-bold text-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all" placeholder="Task title"/>
-        </div>
-        <!-- Editable Description -->
-        <div>
-          <label for="modal-desc" class="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">Description</label>
-          <textarea id="modal-desc" rows="3" class="w-full mt-1 bg-surface-container-low border border-outline-variant/40 rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all resize-none" placeholder="Add a description..."></textarea>
-        </div>
-        <!-- Info row -->
-        <div class="flex gap-6">
-          <div>
-            <span class="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">Due Date</span>
-            <p id="modal-due" class="text-sm text-on-surface mt-1 flex items-center gap-1">
-              <span class="material-symbols-outlined text-xs">calendar_today</span>
-              <span id="modal-due-text"></span>
+
+      <!-- ── Header ── -->
+      <header class="px-8 pt-8 pb-5 border-b border-outline-variant/20 pr-14">
+        <div class="flex items-start gap-3">
+          <span class="material-symbols-outlined text-on-surface-variant mt-2">credit_card</span>
+          <div class="flex-1 min-w-0">
+            <input id="modal-title" type="text" placeholder="Task title"
+                   class="w-full bg-transparent text-2xl font-bold text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:bg-surface-container-low rounded-lg px-2 py-1 -ml-2 transition-colors"/>
+            <p class="mt-1 pl-2 text-sm text-on-surface-variant">
+              in list <span id="modal-status" class="font-semibold text-on-surface underline underline-offset-2">—</span>
             </p>
           </div>
-          <div>
-            <span class="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">Status</span>
-            <p id="modal-status" class="text-sm text-on-surface mt-1"></p>
+        </div>
+      </header>
+
+      <!-- ── Body: two-column layout ── -->
+      <div class="flex flex-col md:flex-row gap-8 px-8 py-6">
+
+        <!-- ─────────── LEFT / Main Content ─────────── -->
+        <div class="flex-1 min-w-0 space-y-6">
+
+          <!-- Members (assignees) display -->
+          <section id="modal-members-section">
+            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Members</h4>
+            <div id="modal-assignees" class="flex flex-wrap items-center gap-2"></div>
+          </section>
+
+          <!-- Labels display -->
+          <section id="modal-labels-section">
+            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Labels</h4>
+            <div id="modal-labels-display" class="flex flex-wrap items-center gap-1.5"></div>
+          </section>
+
+          <!-- Due date + Complete checkbox -->
+          <section id="modal-due-section">
+            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Due date</h4>
+            <label id="modal-due" class="inline-flex items-center gap-2.5 bg-surface-container-high hover:bg-surface-container-highest rounded-lg px-3 py-2 cursor-pointer transition-colors">
+              <input id="modal-complete-checkbox" type="checkbox" class="w-4 h-4 rounded accent-primary cursor-pointer"/>
+              <span class="material-symbols-outlined text-base text-on-surface-variant">calendar_today</span>
+              <span id="modal-due-text" class="text-sm text-on-surface"></span>
+              <span id="modal-complete-badge" class="hidden text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-green-500/20 text-green-700">Complete</span>
+            </label>
+          </section>
+
+          <!-- Description -->
+          <section>
+            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2 flex items-center gap-2">
+              <span class="material-symbols-outlined text-base">notes</span>
+              Description
+            </h4>
+            <textarea id="modal-desc" rows="4" placeholder="Add a more detailed description..."
+                      class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-y transition-all"></textarea>
+          </section>
+
+          <!-- Activity / Comments -->
+          <section id="modal-activity-section">
+            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-3 flex items-center gap-2">
+              <span class="material-symbols-outlined text-base">forum</span>
+              Activity
+            </h4>
+
+            <!-- New comment form -->
+            <div class="flex gap-3 mb-5">
+              <div id="modal-comment-avatar" class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-[11px] font-bold text-on-primary flex-shrink-0">U</div>
+              <div class="flex-1 min-w-0">
+                <textarea id="modal-comment-input" rows="2" placeholder="Write a comment..."
+                          class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-none transition-all"></textarea>
+                <button id="modal-comment-submit" type="button"
+                        class="mt-2 bg-primary-container text-on-primary font-semibold px-4 py-1.5 rounded-lg text-xs hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50">
+                  Save
+                </button>
+              </div>
+            </div>
+
+            <!-- Comments list -->
+            <ul id="modal-comments-list" class="space-y-4"></ul>
+          </section>
+        </div>
+
+        <!-- ─────────── RIGHT / Sidebar Actions ─────────── -->
+        <aside id="modal-sidebar" class="w-full md:w-52 flex-shrink-0">
+          <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Add to card</h4>
+          <div class="space-y-2">
+
+            <!-- Members -->
+            <div class="relative">
+              <button type="button" data-popup="popup-members"
+                      class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
+                <span class="material-symbols-outlined text-base">person</span>
+                Members
+              </button>
+              <div id="popup-members" class="mini-popup hidden absolute right-0 md:left-0 md:right-auto top-full mt-2 w-64 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
+                <div class="flex items-center justify-between mb-3">
+                  <h5 class="text-sm font-semibold text-on-surface">Members</h5>
+                  <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
+                    <span class="material-symbols-outlined text-base">close</span>
+                  </button>
+                </div>
+                <input id="popup-members-search" type="text" placeholder="Search members..."
+                       class="w-full mb-2 bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
+                <ul id="popup-members-list" class="space-y-1 max-h-48 overflow-y-auto"></ul>
+              </div>
+            </div>
+
+            <!-- Labels -->
+            <div class="relative">
+              <button type="button" data-popup="popup-labels"
+                      class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
+                <span class="material-symbols-outlined text-base">label</span>
+                Labels
+              </button>
+              <div id="popup-labels" class="mini-popup hidden absolute right-0 md:left-0 md:right-auto top-full mt-2 w-64 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
+                <div class="flex items-center justify-between mb-3">
+                  <h5 class="text-sm font-semibold text-on-surface">Labels</h5>
+                  <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
+                    <span class="material-symbols-outlined text-base">close</span>
+                  </button>
+                </div>
+                <ul id="popup-labels-list" class="space-y-2"></ul>
+                <button id="modal-create-label-btn" type="button" class="mt-3 w-full bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-opacity">
+                  Create new label
+                </button>
+              </div>
+            </div>
+
+            <!-- Dates -->
+            <div class="relative">
+              <button type="button" data-popup="popup-dates"
+                      class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
+                <span class="material-symbols-outlined text-base">schedule</span>
+                Dates
+              </button>
+              <div id="popup-dates" class="mini-popup hidden absolute right-0 md:left-0 md:right-auto top-full mt-2 w-64 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
+                <div class="flex items-center justify-between mb-3">
+                  <h5 class="text-sm font-semibold text-on-surface">Dates</h5>
+                  <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
+                    <span class="material-symbols-outlined text-base">close</span>
+                  </button>
+                </div>
+                <label class="block text-[11px] font-semibold text-on-surface-variant uppercase tracking-wide mb-1">Due date</label>
+                <input id="modal-due-input" type="datetime-local"
+                       class="w-full bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
+                <button id="modal-due-save" type="button" class="mt-3 w-full bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-opacity">
+                  Save
+                </button>
+                <button id="modal-due-clear" type="button" class="mt-2 w-full bg-surface-container-high text-on-surface font-medium px-3 py-1.5 rounded-md text-xs hover:bg-surface-container-highest transition-colors">
+                  Remove
+                </button>
+              </div>
+            </div>
+
           </div>
-        </div>
-        <!-- Assignees -->
-        <div>
-          <span class="text-xs font-semibold text-on-surface-variant uppercase tracking-wide">Assignees</span>
-          <div id="modal-assignees" class="flex flex-wrap gap-2 mt-2"></div>
-        </div>
-        <!-- Action Buttons -->
-        <div class="flex gap-3 pt-2 border-t border-outline-variant/20">
-          <button id="modal-save" type="button" class="flex-1 flex items-center justify-center gap-2 bg-primary-container text-on-primary font-semibold py-2.5 rounded-xl shadow-lg shadow-primary-container/20 hover:opacity-90 active:scale-[0.98] transition-all text-sm">
-            <span class="material-symbols-outlined text-base">save</span>
-            Save Changes
-          </button>
-          <button id="modal-delete" type="button" class="flex items-center justify-center gap-2 bg-error-container text-on-error-container font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all text-sm">
-            <span class="material-symbols-outlined text-base">delete</span>
-            Delete
-          </button>
-        </div>
+        </aside>
+      </div>
+
+      <!-- ── Footer actions ── -->
+      <div class="px-8 pb-8 pt-4 border-t border-outline-variant/20 flex gap-3">
+        <button id="modal-save" type="button" class="flex-1 flex items-center justify-center gap-2 bg-primary-container text-on-primary font-semibold py-2.5 rounded-xl shadow-lg shadow-primary-container/20 hover:opacity-90 active:scale-[0.98] transition-all text-sm">
+          <span class="material-symbols-outlined text-base">save</span>
+          Save Changes
+        </button>
+        <button id="modal-delete" type="button" class="flex items-center justify-center gap-2 bg-error-container text-on-error-container font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all text-sm">
+          <span class="material-symbols-outlined text-base">delete</span>
+          Delete
+        </button>
       </div>
     </div>
   </div>
@@ -329,6 +454,12 @@
     // ── Boards state ──
     let activeBoardId = null;
     let cachedBoards  = [];
+
+    // ── Board meta caches (labels + members for the Task Detail Modal popups) ──
+    // These are refetched whenever loadBoardData runs, so switching boards
+    // always renders the correct palette and member list in the sidebar popups.
+    let boardLabelsCache  = [];
+    let boardMembersCache = [];
 
     // ── Notifications state ──
     let cachedNotifications = [];
@@ -530,25 +661,399 @@
     }
 
     // ── Task Detail Modal logic ──
-    const modalEl        = document.getElementById('task-modal');
-    const modalBackdrop  = document.getElementById('modal-backdrop');
-    const modalCloseBtn  = document.getElementById('modal-close');
-    const modalTitle     = document.getElementById('modal-title');
-    const modalDesc      = document.getElementById('modal-desc');
-    const modalDue       = document.getElementById('modal-due');
-    const modalDueText   = document.getElementById('modal-due-text');
-    const modalStatus    = document.getElementById('modal-status');
-    const modalAssignees = document.getElementById('modal-assignees');
-    const modalSaveBtn   = document.getElementById('modal-save');
-    const modalDeleteBtn = document.getElementById('modal-delete');
+    const modalEl               = document.getElementById('task-modal');
+    const modalBackdrop         = document.getElementById('modal-backdrop');
+    const modalPanel            = document.getElementById('modal-panel');
+    const modalCloseBtn         = document.getElementById('modal-close');
+    const modalTitle            = document.getElementById('modal-title');
+    const modalDesc             = document.getElementById('modal-desc');
+    const modalDue              = document.getElementById('modal-due');
+    const modalDueText          = document.getElementById('modal-due-text');
+    const modalStatus           = document.getElementById('modal-status');
+    const modalAssignees        = document.getElementById('modal-assignees');
+    const modalSaveBtn          = document.getElementById('modal-save');
+    const modalDeleteBtn        = document.getElementById('modal-delete');
 
-    let activeTaskId  = null;
+    // New Trello-style pieces
+    const modalMembersSection   = document.getElementById('modal-members-section');
+    const modalLabelsSection    = document.getElementById('modal-labels-section');
+    const modalLabelsDisplay    = document.getElementById('modal-labels-display');
+    const modalDueSection       = document.getElementById('modal-due-section');
+    const modalCompleteCheckbox = document.getElementById('modal-complete-checkbox');
+    const modalCompleteBadge    = document.getElementById('modal-complete-badge');
+    const modalActivitySection  = document.getElementById('modal-activity-section');
+    const modalCommentsList     = document.getElementById('modal-comments-list');
+    const modalCommentInput     = document.getElementById('modal-comment-input');
+    const modalCommentSubmit    = document.getElementById('modal-comment-submit');
+    const modalCommentAvatar    = document.getElementById('modal-comment-avatar');
+    const modalSidebar          = document.getElementById('modal-sidebar');
+    const modalDueInput         = document.getElementById('modal-due-input');
+    const modalDueSaveBtn       = document.getElementById('modal-due-save');
+    const modalDueClearBtn      = document.getElementById('modal-due-clear');
+    const modalCreateLabelBtn   = document.getElementById('modal-create-label-btn');
+
+    let activeTaskId   = null;
     let activeColumnId = null;
     let modalMode      = 'edit'; // 'edit' | 'create'
 
-    // ── Shared: sections that hide in create mode ──
-    const modalInfoRow      = modalDue.closest('.flex.gap-6');
-    const modalAssigneesRow = modalAssignees.closest('div');
+    // Sections that only make sense when viewing an existing task
+    const modalEditOnlySections = [
+      modalMembersSection,
+      modalLabelsSection,
+      modalDueSection,
+      modalActivitySection,
+      modalSidebar,
+    ];
+
+    // ── Mini-popup toggle logic (right sidebar) ──
+    function closeAllPopups() {
+      modalPanel.querySelectorAll('.mini-popup').forEach(p => p.classList.add('hidden'));
+    }
+
+    modalPanel.querySelectorAll('.sidebar-action-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const popupId = btn.dataset.popup;
+        const popup   = document.getElementById(popupId);
+        if (!popup) return;
+        const wasOpen = !popup.classList.contains('hidden');
+        closeAllPopups();
+        if (!wasOpen) popup.classList.remove('hidden');
+      });
+    });
+
+    // Close buttons inside each popup
+    modalPanel.querySelectorAll('.mini-popup-close').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const popup = btn.closest('.mini-popup');
+        if (popup) popup.classList.add('hidden');
+      });
+    });
+
+    // Clicking anywhere outside a popup/sidebar-button closes them all
+    modalPanel.addEventListener('click', (e) => {
+      if (e.target.closest('.mini-popup') || e.target.closest('.sidebar-action-btn')) return;
+      closeAllPopups();
+    });
+
+    // ── Popup renderers (rebuilt every time the modal opens) ──
+    const popupLabelsList  = document.getElementById('popup-labels-list');
+    const popupMembersList = document.getElementById('popup-members-list');
+
+    function renderLabelsPopup(task) {
+      const selected = new Set((task.labels || []).map(l => String(l.id)));
+      if (!boardLabelsCache.length) {
+        popupLabelsList.innerHTML = '<li class="italic text-xs text-on-surface-variant/60 px-1 py-2">No labels yet — create one below.</li>';
+        return;
+      }
+      popupLabelsList.innerHTML = boardLabelsCache.map(l => {
+        const isOn = selected.has(String(l.id));
+        const title = l.title ? escapeHtml(l.title) : '';
+        return `
+          <li>
+            <button type="button" data-label-id="${escapeHtml(String(l.id))}"
+                    class="group relative w-full h-8 rounded-md flex items-center justify-between px-2 text-[11px] font-bold text-white uppercase tracking-wide hover:opacity-90 transition-opacity"
+                    style="background:${escapeHtml(l.color || '#6b7280')}">
+              <span class="truncate">${title}</span>
+              <span class="material-symbols-outlined text-sm ${isOn ? '' : 'invisible'}">check</span>
+            </button>
+          </li>
+        `;
+      }).join('');
+    }
+
+    function renderMembersPopup(task) {
+      const selected = new Set((task.assignees || []).map(u => String(u.id)));
+      if (!boardMembersCache.length) {
+        popupMembersList.innerHTML = '<li class="italic text-xs text-on-surface-variant/60 px-1 py-2">No members in this board yet.</li>';
+        return;
+      }
+      popupMembersList.innerHTML = boardMembersCache.map(u => {
+        const isOn = selected.has(String(u.id));
+        const label = escapeHtml(u.full_name || u.email || 'Unknown');
+        return `
+          <li>
+            <button type="button" data-user-id="${escapeHtml(String(u.id))}"
+                    class="w-full flex items-center gap-2 px-2 py-1.5 rounded-md hover:bg-surface-container-high transition-colors text-left">
+              <span class="w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold text-white flex-shrink-0" style="background:${colorFor(u.email || u.id || u.full_name)}">${escapeHtml(initials(u.full_name || u.email))}</span>
+              <span class="flex-1 min-w-0 text-xs text-on-surface truncate">${label}</span>
+              ${isOn ? '<span class="material-symbols-outlined text-sm text-primary">check</span>' : ''}
+            </button>
+          </li>
+        `;
+      }).join('');
+    }
+
+    // ── Update the Due Date pill's visual state when is_completed flips ──
+    function paintDueComplete(isComplete) {
+      modalCompleteBadge.classList.toggle('hidden', !isComplete);
+      // Green tint when complete, default surface when not
+      modalDue.classList.toggle('bg-green-500/15', isComplete);
+      modalDue.classList.toggle('bg-surface-container-high', !isComplete);
+      modalDueText.classList.toggle('line-through', isComplete);
+      modalDueText.classList.toggle('text-green-700', isComplete);
+    }
+
+    // ── Phase 3: API wiring for the Task Detail Modal ──
+
+    // Complete checkbox → PUT /tasks/:id/complete
+    modalCompleteCheckbox.addEventListener('change', async () => {
+      if (!activeTaskId) return;
+      const next = modalCompleteCheckbox.checked;
+
+      // Optimistic UI: flip visuals immediately.
+      paintDueComplete(next);
+      const cached = taskCache.get(activeTaskId);
+      if (cached) cached.is_completed = next;
+
+      try {
+        await api(`/tasks/${activeTaskId}/complete`, {
+          method: 'PUT',
+          body: { is_completed: next },
+        });
+      } catch (err) {
+        console.error('toggle complete failed:', err);
+        alert('Could not update status: ' + (err.message || 'Unknown error'));
+        // Revert
+        modalCompleteCheckbox.checked = !next;
+        paintDueComplete(!next);
+        if (cached) cached.is_completed = !next;
+      }
+    });
+
+    // Due date popup Save → PUT /tasks/:id/due_date
+    modalDueSaveBtn.addEventListener('click', async () => {
+      if (!activeTaskId) return;
+      const raw = modalDueInput.value;
+      if (!raw) {
+        alert('Please pick a date first.');
+        return;
+      }
+      // Server model is DATEONLY — strip the time portion for storage.
+      const dateOnly = raw.slice(0, 10);
+
+      modalDueSaveBtn.disabled = true;
+      try {
+        const data = await api(`/tasks/${activeTaskId}/due_date`, {
+          method: 'PUT',
+          body: { due_date: dateOnly },
+        });
+        const updated = data.task;
+        const cached  = taskCache.get(activeTaskId);
+        if (cached) cached.due_date = updated.due_date;
+
+        const formatted = formatDueDate(updated.due_date);
+        modalDueText.textContent = formatted || 'No due date set';
+        modalDueSection.classList.remove('hidden');
+        closeAllPopups();
+      } catch (err) {
+        console.error('set due_date failed:', err);
+        alert('Could not update due date: ' + (err.message || 'Unknown error'));
+      } finally {
+        modalDueSaveBtn.disabled = false;
+      }
+    });
+
+    modalDueClearBtn.addEventListener('click', async () => {
+      if (!activeTaskId) return;
+      modalDueClearBtn.disabled = true;
+      try {
+        await api(`/tasks/${activeTaskId}/due_date`, {
+          method: 'PUT',
+          body: { due_date: null },
+        });
+        const cached = taskCache.get(activeTaskId);
+        if (cached) cached.due_date = null;
+
+        modalDueInput.value = '';
+        modalDueSection.classList.add('hidden');
+        closeAllPopups();
+      } catch (err) {
+        console.error('clear due_date failed:', err);
+        alert('Could not clear due date: ' + (err.message || 'Unknown error'));
+      } finally {
+        modalDueClearBtn.disabled = false;
+      }
+    });
+
+    // Comment submit → POST /tasks/:id/comments
+    modalCommentSubmit.addEventListener('click', async () => {
+      if (!activeTaskId) return;
+      const content = modalCommentInput.value.trim();
+      if (!content) return;
+
+      modalCommentSubmit.disabled = true;
+      try {
+        const data = await api(`/tasks/${activeTaskId}/comments`, {
+          method: 'POST',
+          body: { content },
+        });
+        const comment = data.comment;
+
+        // Append to the list (replacing the "No comments yet" placeholder if present)
+        const empty = modalCommentsList.querySelector('li.italic');
+        if (empty) empty.remove();
+
+        const author = (comment.author && (comment.author.full_name || comment.author.email)) || 'You';
+        const when   = comment.created_at ? new Date(comment.created_at).toLocaleString() : '';
+        const li = document.createElement('li');
+        li.className = 'flex gap-3';
+        li.innerHTML = `
+          <div class="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0" style="background:${colorFor(author)}">
+            ${escapeHtml(initials(author))}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="flex items-baseline gap-2">
+              <span class="text-sm font-semibold text-on-surface">${escapeHtml(author)}</span>
+              <span class="text-[11px] text-on-surface-variant/70">${escapeHtml(when)}</span>
+            </div>
+            <div class="mt-1 bg-surface-container-low border border-outline-variant/30 rounded-lg px-3 py-2 text-sm text-on-surface whitespace-pre-wrap break-words">${escapeHtml(comment.content || '')}</div>
+          </div>
+        `;
+        modalCommentsList.appendChild(li);
+
+        // Persist into cache so reopening the modal shows the comment too
+        const cached = taskCache.get(activeTaskId);
+        if (cached) {
+          cached.comments = Array.isArray(cached.comments) ? cached.comments : [];
+          cached.comments.push(comment);
+        }
+
+        modalCommentInput.value = '';
+      } catch (err) {
+        console.error('add comment failed:', err);
+        alert('Could not post comment: ' + (err.message || 'Unknown error'));
+      } finally {
+        modalCommentSubmit.disabled = false;
+      }
+    });
+
+    // Labels popup: delegated click → POST /tasks/:id/labels (toggle)
+    popupLabelsList.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-label-id]');
+      if (!btn || !activeTaskId) return;
+      const labelId = btn.dataset.labelId;
+      const label   = boardLabelsCache.find(l => String(l.id) === String(labelId));
+      if (!label) return;
+
+      btn.disabled = true;
+      try {
+        const data = await api(`/tasks/${activeTaskId}/labels`, {
+          method: 'POST',
+          body: { label_id: labelId },
+        });
+        const attached = !!data.attached;
+
+        // Sync cache
+        const cached = taskCache.get(activeTaskId);
+        if (cached) {
+          cached.labels = Array.isArray(cached.labels) ? cached.labels : [];
+          if (attached) {
+            if (!cached.labels.some(l => String(l.id) === String(labelId))) {
+              cached.labels.push(label);
+            }
+          } else {
+            cached.labels = cached.labels.filter(l => String(l.id) !== String(labelId));
+          }
+          // Repaint both the left-side display and the popup tick
+          renderLabelsPopup(cached);
+          refreshLabelsDisplay(cached);
+        }
+      } catch (err) {
+        console.error('toggle label failed:', err);
+        alert('Could not toggle label: ' + (err.message || 'Unknown error'));
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // Members popup: delegated click → POST /tasks/:id/assign (toggle)
+    popupMembersList.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-user-id]');
+      if (!btn || !activeTaskId) return;
+      const userId = btn.dataset.userId;
+      const user   = boardMembersCache.find(u => String(u.id) === String(userId));
+      if (!user) return;
+
+      btn.disabled = true;
+      try {
+        const data = await api(`/tasks/${activeTaskId}/assign`, {
+          method: 'POST',
+          body: { user_id: userId },
+        });
+        const assigned = !!data.assigned;
+
+        const cached = taskCache.get(activeTaskId);
+        if (cached) {
+          cached.assignees = Array.isArray(cached.assignees) ? cached.assignees : [];
+          if (assigned) {
+            if (!cached.assignees.some(u => String(u.id) === String(userId))) {
+              cached.assignees.push(user);
+            }
+          } else {
+            cached.assignees = cached.assignees.filter(u => String(u.id) !== String(userId));
+          }
+          renderMembersPopup(cached);
+          refreshAssigneesDisplay(cached);
+        }
+      } catch (err) {
+        console.error('toggle assignee failed:', err);
+        alert('Could not update members: ' + (err.message || 'Unknown error'));
+      } finally {
+        btn.disabled = false;
+      }
+    });
+
+    // Create new label → POST /boards/:id/labels
+    modalCreateLabelBtn.addEventListener('click', async () => {
+      if (!activeBoardId) return;
+      const title = prompt('Label name (optional):', '');
+      if (title === null) return;
+      const color = prompt('Hex color (e.g. #22c55e):', '#22c55e');
+      if (!color) return;
+
+      try {
+        const data = await api(`/boards/${activeBoardId}/labels`, {
+          method: 'POST',
+          body: { title: title.trim() || null, color: color.trim() },
+        });
+        boardLabelsCache.push(data.label);
+        const cached = activeTaskId ? taskCache.get(activeTaskId) : null;
+        renderLabelsPopup(cached || { labels: [] });
+      } catch (err) {
+        console.error('create label failed:', err);
+        alert('Could not create label: ' + (err.message || 'Unknown error'));
+      }
+    });
+
+    // ── Shared: repaint the left-side Labels/Members displays from cache ──
+    function refreshLabelsDisplay(task) {
+      const labels = Array.isArray(task.labels) ? task.labels : [];
+      if (labels.length) {
+        modalLabelsDisplay.innerHTML = labels.map(l => `
+          <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-bold text-white uppercase tracking-wide" style="background:${escapeHtml(l.color || '#6b7280')}">
+            ${escapeHtml(l.title || '')}
+          </span>
+        `).join('');
+        modalLabelsSection.classList.remove('hidden');
+      } else {
+        modalLabelsDisplay.innerHTML = '';
+        modalLabelsSection.classList.add('hidden');
+      }
+    }
+
+    function refreshAssigneesDisplay(task) {
+      const assignees = Array.isArray(task.assignees) ? task.assignees : [];
+      modalAssignees.innerHTML = assignees.length
+        ? assignees.map(u => `
+            <span class="inline-flex items-center gap-1.5 bg-surface-container-high px-2.5 py-1 rounded-full text-xs font-medium text-on-surface-variant" title="${escapeHtml(u.full_name || u.email || '')}">
+              <span class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style="background:${colorFor(u.email || u.id || u.full_name)}">${escapeHtml(initials(u.full_name))}</span>
+              ${escapeHtml(u.full_name || u.email)}
+            </span>
+          `).join('')
+        : '<span class="text-xs text-on-surface-variant/50 italic">No members yet</span>';
+    }
 
     function openTaskModal(taskId) {
       const task = taskCache.get(String(taskId));
@@ -558,44 +1063,89 @@
       activeTaskId   = String(taskId);
       activeColumnId = task.column_id;
 
+      // Show all edit-only sections up front; data-driven logic below may
+      // re-hide individual sections (e.g. Labels/Due) when their data is empty.
+      modalEditOnlySections.forEach(s => s && s.classList.remove('hidden'));
+
       // Populate editable fields
       modalTitle.value = task.title || '';
       modalDesc.value  = task.description || '';
 
-      // Due date
+      // Due date (display pill) — hide section entirely when no due date
       const due = formatDueDate(task.due_date);
       if (due) {
         modalDueText.textContent = due;
-        modalDue.classList.remove('hidden');
+        modalDueSection.classList.remove('hidden');
       } else {
-        modalDue.classList.add('hidden');
+        modalDueSection.classList.add('hidden');
       }
 
-      // Column name as status
-      const colEl = columnsEl.querySelector(`.kanban-column[data-column-id="${task.column_id}"]`);
+      // Sidebar "Dates" popup input — prefill from task.due_date if present
+      if (task.due_date) {
+        // task.due_date may be a DATEONLY like "2026-04-20"; datetime-local needs "YYYY-MM-DDTHH:mm"
+        const iso = String(task.due_date);
+        modalDueInput.value = iso.length === 10 ? `${iso}T09:00` : iso.slice(0, 16);
+      } else {
+        modalDueInput.value = '';
+      }
+
+      // Complete checkbox — paintDueComplete keeps the pill's visual state
+      // (bg color, strikethrough, "Complete" badge) in sync with the checkbox.
+      const isComplete = !!task.is_completed;
+      modalCompleteCheckbox.checked = isComplete;
+      paintDueComplete(isComplete);
+
+      // Column name shown in header ("in list X")
+      const colEl    = columnsEl.querySelector(`.kanban-column[data-column-id="${task.column_id}"]`);
       const colTitle = colEl ? colEl.querySelector('h3') : null;
-      modalStatus.textContent = colTitle ? colTitle.textContent : '—';
+      modalStatus.textContent = colTitle ? colTitle.textContent.trim() : '—';
 
-      // Assignees
-      const assignees = Array.isArray(task.assignees) ? task.assignees : [];
-      modalAssignees.innerHTML = assignees.length
-        ? assignees.map(u => `
-            <span class="inline-flex items-center gap-1.5 bg-surface-container-high px-2.5 py-1 rounded-full text-xs font-medium text-on-surface-variant">
-              <span class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style="background:${colorFor(u.email || u.id || u.full_name)}">${escapeHtml(initials(u.full_name))}</span>
-              ${escapeHtml(u.full_name || u.email)}
-            </span>
-          `).join('')
-        : '<span class="text-xs text-on-surface-variant/50 italic">No assignees</span>';
+      // Left-side displays (members + labels) from shared helpers so any
+      // mutation handler below can repaint without duplicating markup.
+      refreshAssigneesDisplay(task);
+      refreshLabelsDisplay(task);
 
-      // Show edit-only sections
-      modalInfoRow.classList.remove('hidden');
-      modalAssigneesRow.classList.remove('hidden');
+      // Sidebar popups — rebuild from board-level caches + task's current selections
+      renderMembersPopup(task);
+      renderLabelsPopup(task);
+
+      // Comments (Phase 2 backend pending — render if present, else empty state)
+      const comments = Array.isArray(task.comments) ? task.comments : [];
+      modalCommentsList.innerHTML = comments.length
+        ? comments.map(c => {
+            const author = (c.author && (c.author.full_name || c.author.email)) || 'Unknown';
+            const when   = c.created_at ? new Date(c.created_at).toLocaleString() : '';
+            return `
+              <li class="flex gap-3">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0" style="background:${colorFor(author)}">
+                  ${escapeHtml(initials(author))}
+                </div>
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-baseline gap-2">
+                    <span class="text-sm font-semibold text-on-surface">${escapeHtml(author)}</span>
+                    <span class="text-[11px] text-on-surface-variant/70">${escapeHtml(when)}</span>
+                  </div>
+                  <div class="mt-1 bg-surface-container-low border border-outline-variant/30 rounded-lg px-3 py-2 text-sm text-on-surface whitespace-pre-wrap break-words">${escapeHtml(c.content || '')}</div>
+                </div>
+              </li>
+            `;
+          }).join('')
+        : '<li class="text-xs text-on-surface-variant/50 italic pl-11">No comments yet</li>';
+
+      // Comment avatar: use current user initial if we know it
+      modalCommentAvatar.textContent = (userNameEl && userNameEl.textContent.trim()[0]) || 'U';
+
+      // Reset comment input
+      modalCommentInput.value = '';
+
+      // Reveal delete button
       modalDeleteBtn.classList.remove('hidden');
       modalSaveBtn.innerHTML = '<span class="material-symbols-outlined text-base">save</span> Save Changes';
 
-      // Reset button states
-      modalSaveBtn.disabled = false;
+      // Reset button states + popup state
+      modalSaveBtn.disabled   = false;
       modalDeleteBtn.disabled = false;
+      closeAllPopups();
 
       modalEl.classList.remove('hidden');
     }
@@ -609,14 +1159,19 @@
       modalTitle.value = '';
       modalDesc.value  = '';
 
-      // Hide edit-only sections
-      modalInfoRow.classList.add('hidden');
-      modalAssigneesRow.classList.add('hidden');
+      // Header "in list X" — show target column so user knows where it's going
+      const colEl    = columnsEl.querySelector(`.kanban-column[data-column-id="${columnId}"]`);
+      const colTitle = colEl ? colEl.querySelector('h3') : null;
+      modalStatus.textContent = colTitle ? colTitle.textContent.trim() : '—';
+
+      // Hide edit-only sections (no task yet → no members/labels/dates/comments)
+      modalEditOnlySections.forEach(s => s && s.classList.add('hidden'));
       modalDeleteBtn.classList.add('hidden');
       modalSaveBtn.innerHTML = '<span class="material-symbols-outlined text-base">add_task</span> Create Task';
 
-      // Reset button state
+      // Reset button + popups
       modalSaveBtn.disabled = false;
+      closeAllPopups();
 
       modalEl.classList.remove('hidden');
       modalTitle.focus();
@@ -624,6 +1179,7 @@
 
     function closeTaskModal() {
       modalEl.classList.add('hidden');
+      closeAllPopups();
       activeTaskId = null;
     }
 
@@ -987,7 +1543,16 @@
             </div>
           </div>
         `;
-        const detail = await api(`/boards/${boardId}`);
+        // Fetch board detail + labels + members in parallel. Labels/members
+        // are non-critical for the main canvas, so we swallow their errors
+        // and fall back to empty arrays — the board itself still renders.
+        const [detail, labelsData, membersData] = await Promise.all([
+          api(`/boards/${boardId}`),
+          api(`/boards/${boardId}/labels`).catch(() => ({ labels: [] })),
+          api(`/boards/${boardId}/members`).catch(() => ({ members: [] })),
+        ]);
+        boardLabelsCache  = Array.isArray(labelsData.labels)  ? labelsData.labels  : [];
+        boardMembersCache = Array.isArray(membersData.members) ? membersData.members : [];
         renderBoard(detail.board);
       } catch (err) {
         if (err.message === 'Unauthorized') return;
