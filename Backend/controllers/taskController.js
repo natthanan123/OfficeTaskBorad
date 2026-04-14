@@ -6,6 +6,7 @@ const {
   TaskComment,
   User,
   Notification,
+  ActivityLog,
   sequelize,
 } = require('../models');
 
@@ -16,6 +17,18 @@ function emitBoardUpdate(req, boardId, type) {
     req.app.get('io').to(`board_${boardId}`).emit('board_updated', { type, board_id: boardId });
   } catch (socketErr) {
     console.error(`socket emit (${type}) failed:`, socketErr);
+  }
+}
+
+// ─── Helper: append an audit-log row without ever breaking the main flow ───
+// Fire-and-forget: a failure here must NEVER surface to the client or roll
+// back the action that's already succeeded. Missing board_id is a hard skip.
+async function logActivity({ board_id, user_id, task_id = null, action_type, details = null }) {
+  if (!board_id || !action_type) return;
+  try {
+    await ActivityLog.create({ board_id, user_id, task_id, action_type, details });
+  } catch (logErr) {
+    console.error(`activityLog (${action_type}) failed:`, logErr);
   }
 }
 
@@ -58,6 +71,14 @@ exports.createTask = async (req, res) => {
     // board_id is already on the column we fetched above — no extra query
     emitBoardUpdate(req, column.board_id, 'task_created');
 
+    await logActivity({
+      board_id:    column.board_id,
+      user_id:     req.user.id,
+      task_id:     task.id,
+      action_type: 'CREATE_TASK',
+      details:     { title: task.title, column_id: column.id },
+    });
+
     return res.status(201).json({ status: 'success', data: { task } });
   } catch (err) {
     console.error('createTask error:', err);
@@ -77,7 +98,8 @@ exports.updateTask = async (req, res) => {
 
     // Remember the ORIGINAL column so we can emit to the source board too
     // if this turns out to be a cross-board move (rare, but correct).
-    const originalColumnId = task.column_id;
+    const originalColumnId  = task.column_id;
+    const originalDescription = task.description;
     let targetColumn = null;
 
     // If moving to a different column, verify it exists
@@ -113,6 +135,34 @@ exports.updateTask = async (req, res) => {
       }
     }
 
+    // Log cross-column moves per spec.
+    if (originalColumnId && originalColumnId !== task.column_id && currentColumn) {
+      await logActivity({
+        board_id:    currentColumn.board_id,
+        user_id:     req.user.id,
+        task_id:     task.id,
+        action_type: 'MOVE_TASK',
+        details:     { from_column: originalColumnId, to_column: task.column_id },
+      });
+    }
+
+    // Log description edits whenever the body included `description` AND
+    // its value actually changed. Normalise null/undefined/'' so flipping
+    // between them doesn't produce spurious log rows.
+    if (description !== undefined && currentColumn) {
+      const prev = originalDescription == null ? '' : String(originalDescription);
+      const next = task.description   == null ? '' : String(task.description);
+      if (prev !== next) {
+        await logActivity({
+          board_id:    currentColumn.board_id,
+          user_id:     req.user.id,
+          task_id:     task.id,
+          action_type: 'UPDATE_DESCRIPTION',
+          details:     { title: task.title },
+        });
+      }
+    }
+
     return res.json({ status: 'success', data: { task } });
   } catch (err) {
     console.error('updateTask error:', err);
@@ -138,6 +188,14 @@ exports.toggleTaskComplete = async (req, res) => {
 
     const boardId = await resolveBoardIdForTask(task);
     emitBoardUpdate(req, boardId, 'task_completed');
+
+    await logActivity({
+      board_id:    boardId,
+      user_id:     req.user.id,
+      task_id:     task.id,
+      action_type: 'UPDATE_STATUS',
+      details:     { is_completed: task.is_completed },
+    });
 
     return res.json({ status: 'success', data: { task } });
   } catch (err) {
@@ -198,6 +256,14 @@ exports.addTaskComment = async (req, res) => {
     const boardId = await resolveBoardIdForTask(task);
     emitBoardUpdate(req, boardId, 'task_comment_added');
 
+    await logActivity({
+      board_id:    boardId,
+      user_id:     req.user.id,
+      task_id:     task.id,
+      action_type: 'ADD_COMMENT',
+      details:     { comment_id: created.id },
+    });
+
     return res.status(201).json({ status: 'success', data: { comment } });
   } catch (err) {
     console.error('addTaskComment error:', err);
@@ -239,6 +305,14 @@ exports.toggleTaskLabel = async (req, res) => {
 
     const boardId = await resolveBoardIdForTask(task);
     emitBoardUpdate(req, boardId, 'task_label_toggled');
+
+    await logActivity({
+      board_id:    boardId,
+      user_id:     req.user.id,
+      task_id:     task.id,
+      action_type: 'TOGGLE_LABEL',
+      details:     { label_id: label.id, attached },
+    });
 
     return res.json({
       status: 'success',
@@ -315,6 +389,14 @@ exports.assignTaskUser = async (req, res) => {
       }
     }
 
+    await logActivity({
+      board_id:    boardId,
+      user_id:     req.user.id,
+      task_id:     task.id,
+      action_type: 'ASSIGN_MEMBER',
+      details:     { target_user_id: user.id, assigned },
+    });
+
     return res.json({
       status: 'success',
       data: { task_id: task.id, user_id: user.id, assigned },
@@ -338,9 +420,24 @@ exports.deleteTask = async (req, res) => {
     const column = await Column.findByPk(task.column_id);
     const boardId = column ? column.board_id : null;
 
+    // Snapshot the title too — we need it for the audit row AFTER destroy.
+    const deletedTitle = task.title;
+    const deletedTaskId = task.id;
+
     await task.destroy();
 
     emitBoardUpdate(req, boardId, 'task_deleted');
+
+    // The Task FK on ActivityLog is onDelete: SET NULL, so we pass null for
+    // task_id here — the deleted task no longer exists to reference. The
+    // title is preserved in `details` so the timeline can still render it.
+    await logActivity({
+      board_id:    boardId,
+      user_id:     req.user.id,
+      task_id:     null,
+      action_type: 'DELETE_TASK',
+      details:     { title: deletedTitle, task_id: deletedTaskId },
+    });
 
     return res.json({ status: 'success', message: 'Task deleted' });
   } catch (err) {

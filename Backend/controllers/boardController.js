@@ -180,6 +180,77 @@ exports.getBoardById = async (req, res) => {
   }
 };
 
+// ─── DELETE /:id ── Remove a board (creator or admin only) ───
+// All related columns/tasks/labels/members cascade via the FK associations
+// defined in models/index.js, so we only need to destroy the Board row.
+exports.deleteBoard = async (req, res) => {
+  try {
+    const board = await Board.findByPk(req.params.id);
+    if (!board) {
+      return res.status(404).json({ status: 'error', message: 'Board not found' });
+    }
+
+    // Only the original creator (or an admin) is allowed to nuke the board.
+    if (req.user.role !== 'admin' && board.creator_id !== req.user.id) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'Only the board creator can delete this board',
+      });
+    }
+
+    const boardId = board.id;
+    await board.destroy();
+
+    // Broadcast so other viewers can drop the board from their sidebar.
+    try {
+      req.app.get('io')
+        .to(`board_${boardId}`)
+        .emit('board_updated', { type: 'board_deleted', board_id: boardId });
+    } catch (socketErr) {
+      console.error('socket emit (board_deleted) failed:', socketErr);
+    }
+
+    return res.json({ status: 'success', data: { board_id: boardId } });
+  } catch (err) {
+    console.error('deleteBoard error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not delete board' });
+  }
+};
+
+// ─── DELETE /:id/leave ── Current user leaves a board they're a member of ───
+// Creators cannot "leave" their own board — they must delete it instead, so
+// we block that case with a clear 400 rather than silently no-oping.
+exports.leaveBoard = async (req, res) => {
+  try {
+    const board = await Board.findByPk(req.params.id);
+    if (!board) {
+      return res.status(404).json({ status: 'error', message: 'Board not found' });
+    }
+
+    if (board.creator_id === req.user.id) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'Board creator cannot leave their own board. Delete it instead.',
+      });
+    }
+
+    const membership = await BoardMember.findOne({
+      where: { user_id: req.user.id, board_id: board.id },
+    });
+
+    if (!membership) {
+      return res.status(404).json({ status: 'error', message: 'You are not a member of this board' });
+    }
+
+    await membership.destroy();
+
+    return res.json({ status: 'success', data: { board_id: board.id } });
+  } catch (err) {
+    console.error('leaveBoard error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not leave board' });
+  }
+};
+
 // ─── GET /:id/labels ── List labels that belong to a board ───
 exports.listBoardLabels = async (req, res) => {
   try {

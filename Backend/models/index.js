@@ -10,6 +10,7 @@ const Notification = require('./Notification')(sequelize);
 const Label        = require('./Label')(sequelize);
 const TaskLabel    = require('./TaskLabel')(sequelize);
 const TaskComment  = require('./TaskComment')(sequelize);
+const ActivityLog  = require('./ActivityLog')(sequelize);
 
 // ═══════════════════════════════════════════
 //  Associations
@@ -124,6 +125,46 @@ Notification.belongsTo(User, {
   as: 'user',
 });
 
+// ── Board (1) ──> ActivityLog (N) ──
+// Logs belong to a board; wiping the board wipes its audit trail too.
+Board.hasMany(ActivityLog, {
+  foreignKey: { name: 'board_id', allowNull: false },
+  as: 'activityLogs',
+  onDelete: 'CASCADE',
+});
+ActivityLog.belongsTo(Board, {
+  foreignKey: { name: 'board_id', allowNull: false },
+  as: 'board',
+});
+
+// ── User (1) ──> ActivityLog (N) ──
+// The actor (whoever performed the action). If the user is deleted we keep
+// the log row but null the reference — the audit trail should survive the
+// departure of the user who triggered it.
+User.hasMany(ActivityLog, {
+  foreignKey: { name: 'user_id', allowNull: true },
+  as: 'activityLogs',
+  onDelete: 'SET NULL',
+});
+ActivityLog.belongsTo(User, {
+  foreignKey: { name: 'user_id', allowNull: true },
+  as: 'user',
+});
+
+// ── Task (1) ──> ActivityLog (N) ──
+// Optional: only task-scoped actions (CREATE_TASK, MOVE_TASK, ADD_COMMENT…)
+// fill this in. Task deletion nulls the pointer so the "task X was deleted"
+// entry itself survives and remains readable in the board's history.
+Task.hasMany(ActivityLog, {
+  foreignKey: { name: 'task_id', allowNull: true },
+  as: 'activityLogs',
+  onDelete: 'SET NULL',
+});
+ActivityLog.belongsTo(Task, {
+  foreignKey: { name: 'task_id', allowNull: true },
+  as: 'task',
+});
+
 // ─── Export everything the rest of the app needs ───
 module.exports = {
   sequelize,
@@ -136,4 +177,5 @@ module.exports = {
   Label,
   TaskLabel,
   TaskComment,
+  ActivityLog,
 };

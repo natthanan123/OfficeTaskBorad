@@ -147,9 +147,9 @@
 <input class="w-full bg-surface-container-low border-none rounded-full py-1.5 pl-10 pr-4 text-sm focus:ring-1 focus:ring-primary" placeholder="Search tasks, docs, or people..." type="text"/>
 </div>
 <nav class="hidden md:flex ml-10 space-x-6 h-full items-center font-inter title-lg text-sm font-medium">
-<a class="text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 h-16 flex items-center mt-[2px]" href="#">Overview</a>
+<button id="tab-overview" type="button" class="text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 h-16 flex items-center mt-[2px] bg-transparent">Overview</button>
 <a class="text-slate-500 dark:text-slate-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-opacity" href="#">Team</a>
-<a class="text-slate-500 dark:text-slate-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-opacity" href="#">Timeline</a>
+<button id="tab-timeline" type="button" class="text-slate-500 dark:text-slate-400 hover:text-indigo-700 dark:hover:text-indigo-300 transition-opacity h-16 flex items-center bg-transparent">Timeline</button>
 </nav>
 </div>
 <div class="flex items-center space-x-4 ml-4">
@@ -229,22 +229,36 @@
 </div>
 </div>
 </div>
+<!-- Activity Log timeline view (hidden until the Timeline tab is clicked) -->
+<div id="timeline-view" class="hidden w-full h-full overflow-y-auto px-6 py-4"></div>
 </main>
 </div>
-<!-- Floating Action Button: Suppressed contextually as per instructions unless specified, but for a Kanban, a specialized task FAB is standard -->
-<button class="fixed bottom-8 right-8 w-14 h-14 bg-primary text-on-primary rounded-full shadow-2xl flex items-center justify-center hover:scale-105 active:scale-95 transition-transform">
-<span class="material-symbols-outlined text-2xl" data-weight="fill">add_task</span>
-</button>
 <!-- ─── Toast container (real-time notifications drop in here) ─── -->
 <div id="toast-container" class="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 items-end pointer-events-none"></div>
+
+<!-- ─── Sidebar board right-click Context Menu (hidden by default) ─── -->
+<div id="board-context-menu"
+     class="hidden fixed z-[150] min-w-[180px] bg-surface-container-highest border border-outline/20 rounded-xl shadow-2xl py-1 text-sm">
+  <button id="ctx-delete-board"
+          class="hidden w-full text-left px-4 py-2 text-error hover:bg-error/10 flex items-center gap-2 transition-colors">
+    <span class="material-symbols-outlined text-base">delete</span>
+    <span>Delete Board</span>
+  </button>
+  <button id="ctx-leave-board"
+          class="hidden w-full text-left px-4 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2 transition-colors">
+    <span class="material-symbols-outlined text-base">logout</span>
+    <span>Leave Board</span>
+  </button>
+</div>
 <!-- ─── Task Detail Modal (Trello-style) ─── -->
 <div id="task-modal" class="fixed inset-0 z-[100] hidden">
   <!-- Backdrop -->
   <div id="modal-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
 
-  <!-- Panel wrapper (scrolls on small screens) -->
-  <div class="absolute inset-0 flex items-start justify-center p-4 overflow-y-auto">
-    <div id="modal-panel" class="relative bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-4xl my-8 animate-[fadeIn_0.15s_ease-out]">
+  <!-- Panel wrapper (scrolls on small screens). Clicking empty space here
+       dismisses the modal — only the inner #modal-panel stops propagation. -->
+  <div id="modal-scroll" class="absolute inset-0 flex items-start justify-center p-4 overflow-y-auto">
+    <div id="modal-panel" class="relative bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-5xl my-8 animate-[fadeIn_0.15s_ease-out]">
 
       <!-- Close button -->
       <button id="modal-close" class="absolute top-4 right-4 z-10 text-on-surface-variant/60 hover:text-on-surface transition-colors">
@@ -268,14 +282,8 @@
       <!-- ── Body: two-column layout ── -->
       <div class="flex flex-col md:flex-row gap-8 px-8 py-6">
 
-        <!-- ─────────── LEFT / Main Content ─────────── -->
+        <!-- ─────────── LEFT / Main Content (labels + due + description) ─────────── -->
         <div class="flex-1 min-w-0 space-y-6">
-
-          <!-- Members (assignees) display -->
-          <section id="modal-members-section">
-            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Members</h4>
-            <div id="modal-assignees" class="flex flex-wrap items-center gap-2"></div>
-          </section>
 
           <!-- Labels display -->
           <section id="modal-labels-section">
@@ -300,11 +308,142 @@
               <span class="material-symbols-outlined text-base">notes</span>
               Description
             </h4>
-            <textarea id="modal-desc" rows="4" placeholder="Add a more detailed description..."
+            <textarea id="modal-desc" rows="8" placeholder="Add a more detailed description..."
                       class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-y transition-all"></textarea>
           </section>
 
-          <!-- Activity / Comments -->
+        </div>
+
+        <!-- ─────────── RIGHT / Sidebar (members + actions + activity) ─────────── -->
+        <div class="w-full md:w-80 flex-shrink-0 space-y-6">
+
+          <!-- Members (compact avatar row) -->
+          <section id="modal-members-section">
+            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Members</h4>
+            <div id="modal-assignees" class="flex flex-wrap items-center gap-2"></div>
+          </section>
+
+          <!-- Sidebar action buttons (Members / Labels / Dates) -->
+          <aside id="modal-sidebar">
+            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Add to card</h4>
+            <div class="space-y-2">
+
+              <!-- Members -->
+              <div class="relative">
+                <button type="button" data-popup="popup-members"
+                        class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
+                  <span class="material-symbols-outlined text-base">person</span>
+                  Members
+                </button>
+                <div id="popup-members" class="mini-popup hidden absolute right-0 top-full mt-2 w-64 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
+                  <div class="flex items-center justify-between mb-3">
+                    <h5 class="text-sm font-semibold text-on-surface">Members</h5>
+                    <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
+                      <span class="material-symbols-outlined text-base">close</span>
+                    </button>
+                  </div>
+                  <input id="popup-members-search" type="text" placeholder="Search members..."
+                         class="w-full mb-2 bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
+                  <ul id="popup-members-list" class="space-y-1 max-h-48 overflow-y-auto"></ul>
+                </div>
+              </div>
+
+              <!-- Labels -->
+              <div class="relative">
+                <button type="button" data-popup="popup-labels"
+                        class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
+                  <span class="material-symbols-outlined text-base">label</span>
+                  Labels
+                </button>
+                <div id="popup-labels" class="mini-popup hidden absolute right-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
+                  <div class="flex items-center justify-between mb-3">
+                    <h5 class="text-sm font-semibold text-on-surface">Labels</h5>
+                    <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
+                      <span class="material-symbols-outlined text-base">close</span>
+                    </button>
+                  </div>
+
+                  <!-- Existing labels list -->
+                  <ul id="popup-labels-list" class="space-y-2"></ul>
+
+                  <!-- "Create new label" toggle (shown when create form is collapsed) -->
+                  <button id="modal-create-label-btn" type="button"
+                          class="mt-3 w-full bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-opacity">
+                    Create new label
+                  </button>
+
+                  <!-- Inline create form (hidden until "Create new label" clicked) -->
+                  <div id="popup-labels-create" class="hidden mt-3 pt-3 border-t border-outline-variant/20 space-y-2">
+                    <div>
+                      <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Title (optional)</label>
+                      <input id="popup-labels-create-title" type="text" placeholder="Label name..."
+                             class="w-full bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
+                    </div>
+                    <div>
+                      <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Pick a color</label>
+                      <div id="popup-labels-create-colors" class="grid grid-cols-7 gap-1.5">
+                        <button type="button" data-color="#ef4444" aria-label="Red"    class="color-swatch h-7 rounded-md bg-red-500    transition-all hover:scale-105"></button>
+                        <button type="button" data-color="#f97316" aria-label="Orange" class="color-swatch h-7 rounded-md bg-orange-500 transition-all hover:scale-105"></button>
+                        <button type="button" data-color="#eab308" aria-label="Yellow" class="color-swatch h-7 rounded-md bg-yellow-500 transition-all hover:scale-105"></button>
+                        <button type="button" data-color="#22c55e" aria-label="Green"  class="color-swatch h-7 rounded-md bg-green-500  transition-all hover:scale-105"></button>
+                        <button type="button" data-color="#0ea5e9" aria-label="Blue"   class="color-swatch h-7 rounded-md bg-sky-500    transition-all hover:scale-105"></button>
+                        <button type="button" data-color="#8b5cf6" aria-label="Purple" class="color-swatch h-7 rounded-md bg-violet-500 transition-all hover:scale-105"></button>
+                        <button type="button" data-color="#ec4899" aria-label="Pink"   class="color-swatch h-7 rounded-md bg-pink-500   transition-all hover:scale-105"></button>
+                      </div>
+                    </div>
+                    <div class="flex gap-2 pt-1">
+                      <button id="popup-labels-create-submit" type="button"
+                              class="flex-1 bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 disabled:opacity-50 transition-opacity">
+                        Create
+                      </button>
+                      <button id="popup-labels-create-cancel" type="button"
+                              class="bg-surface-container-high text-on-surface font-medium px-3 py-1.5 rounded-md text-xs hover:bg-surface-container-highest transition-colors">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Dates -->
+              <div class="relative">
+                <button type="button" data-popup="popup-dates"
+                        class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
+                  <span class="material-symbols-outlined text-base">schedule</span>
+                  Dates
+                </button>
+                <div id="popup-dates" class="mini-popup hidden absolute right-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
+                  <div class="flex items-center justify-between mb-3">
+                    <h5 class="text-sm font-semibold text-on-surface">Dates</h5>
+                    <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
+                      <span class="material-symbols-outlined text-base">close</span>
+                    </button>
+                  </div>
+                  <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Due date</label>
+                  <!-- Input + Save on the same row -->
+                  <div class="flex items-center gap-2">
+                    <input id="modal-due-input" type="datetime-local"
+                           class="flex-1 min-w-0 bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
+                    <button id="modal-due-save" type="button"
+                            class="bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-opacity">
+                      Save
+                    </button>
+                  </div>
+                  <!-- Remove sits below with a divider so it feels like a distinct action -->
+                  <div class="mt-4 pt-3 border-t border-outline-variant/20">
+                    <button id="modal-due-clear" type="button"
+                            class="w-full flex items-center justify-center gap-1.5 bg-surface-container-high text-on-surface font-medium px-3 py-1.5 rounded-md text-xs hover:bg-surface-container-highest transition-colors">
+                      <span class="material-symbols-outlined text-sm">delete_outline</span>
+                      Remove date
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </aside>
+
+          <!-- Activity / Comments (moved into the right column, below sidebar actions) -->
           <section id="modal-activity-section">
             <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-3 flex items-center gap-2">
               <span class="material-symbols-outlined text-base">forum</span>
@@ -312,7 +451,7 @@
             </h4>
 
             <!-- New comment form -->
-            <div class="flex gap-3 mb-5">
+            <div class="flex gap-2 mb-4">
               <div id="modal-comment-avatar" class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-[11px] font-bold text-on-primary flex-shrink-0">U</div>
               <div class="flex-1 min-w-0">
                 <textarea id="modal-comment-input" rows="2" placeholder="Write a comment..."
@@ -327,82 +466,8 @@
             <!-- Comments list -->
             <ul id="modal-comments-list" class="space-y-4"></ul>
           </section>
+
         </div>
-
-        <!-- ─────────── RIGHT / Sidebar Actions ─────────── -->
-        <aside id="modal-sidebar" class="w-full md:w-52 flex-shrink-0">
-          <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Add to card</h4>
-          <div class="space-y-2">
-
-            <!-- Members -->
-            <div class="relative">
-              <button type="button" data-popup="popup-members"
-                      class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
-                <span class="material-symbols-outlined text-base">person</span>
-                Members
-              </button>
-              <div id="popup-members" class="mini-popup hidden absolute right-0 md:left-0 md:right-auto top-full mt-2 w-64 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
-                <div class="flex items-center justify-between mb-3">
-                  <h5 class="text-sm font-semibold text-on-surface">Members</h5>
-                  <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
-                    <span class="material-symbols-outlined text-base">close</span>
-                  </button>
-                </div>
-                <input id="popup-members-search" type="text" placeholder="Search members..."
-                       class="w-full mb-2 bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
-                <ul id="popup-members-list" class="space-y-1 max-h-48 overflow-y-auto"></ul>
-              </div>
-            </div>
-
-            <!-- Labels -->
-            <div class="relative">
-              <button type="button" data-popup="popup-labels"
-                      class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
-                <span class="material-symbols-outlined text-base">label</span>
-                Labels
-              </button>
-              <div id="popup-labels" class="mini-popup hidden absolute right-0 md:left-0 md:right-auto top-full mt-2 w-64 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
-                <div class="flex items-center justify-between mb-3">
-                  <h5 class="text-sm font-semibold text-on-surface">Labels</h5>
-                  <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
-                    <span class="material-symbols-outlined text-base">close</span>
-                  </button>
-                </div>
-                <ul id="popup-labels-list" class="space-y-2"></ul>
-                <button id="modal-create-label-btn" type="button" class="mt-3 w-full bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-opacity">
-                  Create new label
-                </button>
-              </div>
-            </div>
-
-            <!-- Dates -->
-            <div class="relative">
-              <button type="button" data-popup="popup-dates"
-                      class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
-                <span class="material-symbols-outlined text-base">schedule</span>
-                Dates
-              </button>
-              <div id="popup-dates" class="mini-popup hidden absolute right-0 md:left-0 md:right-auto top-full mt-2 w-64 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
-                <div class="flex items-center justify-between mb-3">
-                  <h5 class="text-sm font-semibold text-on-surface">Dates</h5>
-                  <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
-                    <span class="material-symbols-outlined text-base">close</span>
-                  </button>
-                </div>
-                <label class="block text-[11px] font-semibold text-on-surface-variant uppercase tracking-wide mb-1">Due date</label>
-                <input id="modal-due-input" type="datetime-local"
-                       class="w-full bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
-                <button id="modal-due-save" type="button" class="mt-3 w-full bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-opacity">
-                  Save
-                </button>
-                <button id="modal-due-clear" type="button" class="mt-2 w-full bg-surface-container-high text-on-surface font-medium px-3 py-1.5 rounded-md text-xs hover:bg-surface-container-highest transition-colors">
-                  Remove
-                </button>
-              </div>
-            </div>
-
-          </div>
-        </aside>
       </div>
 
       <!-- ── Footer actions ── -->
@@ -450,6 +515,9 @@
 
     // ── Task data cache (for modal) ──
     const taskCache = new Map();
+    // ── Column data cache: id → { id, title, ... } for fast name lookups
+    //    from sibling scripts (activity log timeline, etc.). ──
+    const columnCache = new Map();
 
     // ── Boards state ──
     let activeBoardId = null;
@@ -553,13 +621,36 @@
         ? `<div class="w-6 h-6 rounded-full bg-primary-fixed flex items-center justify-center text-[10px] font-bold text-on-primary-fixed border border-surface">+${overflow}</div>`
         : '';
 
-      const dueLabel = formatDueDate(task.due_date);
-      const dueBlock = dueLabel
-        ? `<div class="flex items-center space-x-1 text-slate-400">
-             <span class="material-symbols-outlined text-xs">calendar_today</span>
-             <span class="text-[10px] font-medium uppercase">${escapeHtml(dueLabel)}</span>
+      // ── Labels strip (tiny colored bars at the top of the card, Trello-style) ──
+      const labels = Array.isArray(task.labels) ? task.labels : [];
+      const labelsStrip = labels.length
+        ? `<div class="flex flex-wrap gap-1 mb-2">
+             ${labels.map(l => `
+               <span class="h-2 w-10 rounded-sm" style="background:${escapeHtml(l.color || '#6b7280')}" title="${escapeHtml(l.title || '')}"></span>
+             `).join('')}
            </div>`
         : '';
+
+      // ── Due date / complete badge ──
+      // When is_completed → green pill with a check icon.
+      // When just has a due date → muted calendar pill.
+      const dueLabel = formatDueDate(task.due_date);
+      let dueBlock = '';
+      if (task.is_completed) {
+        dueBlock = `
+          <div class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-500/15 text-green-700">
+            <span class="material-symbols-outlined text-xs">check_circle</span>
+            <span class="text-[10px] font-bold uppercase">${escapeHtml(dueLabel || 'Done')}</span>
+          </div>
+        `;
+      } else if (dueLabel) {
+        dueBlock = `
+          <div class="inline-flex items-center gap-1 text-slate-400">
+            <span class="material-symbols-outlined text-xs">calendar_today</span>
+            <span class="text-[10px] font-medium uppercase">${escapeHtml(dueLabel)}</span>
+          </div>
+        `;
+      }
 
       const descBlock = task.description
         ? `<p class="text-xs text-on-surface-variant mb-3 line-clamp-2">${escapeHtml(task.description)}</p>`
@@ -570,9 +661,10 @@
              draggable="true"
              data-task-id="${escapeHtml(task.id)}"
              data-column-id="${escapeHtml(task.column_id)}">
+          ${labelsStrip}
           <h4 class="font-bold text-on-surface leading-tight mb-2">${escapeHtml(task.title)}</h4>
           ${descBlock}
-          <div class="flex justify-between items-center mt-3">
+          <div class="flex justify-between items-center mt-3 gap-2">
             <div class="flex -space-x-1">${assigneeAvatars}${overflowBadge}</div>
             ${dueBlock}
           </div>
@@ -592,10 +684,32 @@
         <div class="kanban-column flex flex-col h-full bg-surface-container-low rounded-xl p-3" data-column-id="${escapeHtml(column.id)}">
           <div class="flex justify-between items-center px-2 py-3 mb-2">
             <div class="flex items-center space-x-2">
-              <h3 class="font-bold text-on-surface-variant tracking-tight">${escapeHtml(column.title)}</h3>
+              <h3 class="column-title font-bold text-on-surface-variant tracking-tight">${escapeHtml(column.title)}</h3>
               <span class="bg-surface-container-highest px-2 py-0.5 rounded-full text-[10px] font-bold text-on-surface-variant">${tasks.length}</span>
             </div>
-            <button class="text-on-surface-variant/50 hover:text-primary"><span class="material-symbols-outlined">more_horiz</span></button>
+            <div class="relative">
+              <button type="button"
+                      class="column-options-btn text-on-surface-variant/50 hover:text-primary"
+                      data-column-id="${escapeHtml(column.id)}"
+                      aria-haspopup="menu"
+                      aria-expanded="false">
+                <span class="material-symbols-outlined">more_horiz</span>
+              </button>
+              <div class="column-options-menu hidden absolute right-0 top-full mt-1 z-40 min-w-[180px] bg-surface-container-highest border border-outline/20 rounded-xl shadow-2xl py-1 text-sm">
+                <button type="button"
+                        class="column-edit-btn w-full text-left px-4 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2 transition-colors"
+                        data-column-id="${escapeHtml(column.id)}">
+                  <span class="material-symbols-outlined text-base">edit</span>
+                  <span>Edit Column Name</span>
+                </button>
+                <button type="button"
+                        class="column-delete-btn w-full text-left px-4 py-2 text-error hover:bg-error/10 flex items-center gap-2 transition-colors"
+                        data-column-id="${escapeHtml(column.id)}">
+                  <span class="material-symbols-outlined text-base">delete</span>
+                  <span>Delete Column</span>
+                </button>
+              </div>
+            </div>
           </div>
           <div class="kanban-drop-zone space-y-4 flex-1 overflow-y-auto pr-1 transition-all duration-150">
             ${cardsHtml}
@@ -629,9 +743,12 @@
         return;
       }
 
-      // Cache all tasks for modal lookup
+      // Cache all tasks for modal lookup, plus columns for ID→name resolution
+      // from sibling scripts (e.g. log_page.js timeline).
       taskCache.clear();
+      columnCache.clear();
       columns.forEach(col => {
+        columnCache.set(String(col.id), col);
         (col.tasks || []).forEach(t => taskCache.set(String(t.id), t));
       });
 
@@ -639,7 +756,102 @@
       setupDragAndDrop();
       attachCardClickEvents();
       attachAddTaskEvents();
+      attachColumnOptionEvents();
+
+      // Let sibling scripts know the caches were just repopulated. The
+      // activity log timeline listens for this so it can refetch + re-render
+      // whenever the user switches boards in the sidebar.
+      window.dispatchEvent(new CustomEvent('dashboard:board-loaded', {
+        detail: { boardId: activeBoardId },
+      }));
     }
+
+    // ── Column 3-dots dropdown: toggle + Edit/Delete handlers ──
+    function closeAllColumnMenus() {
+      columnsEl.querySelectorAll('.column-options-menu').forEach(m => m.classList.add('hidden'));
+      columnsEl.querySelectorAll('.column-options-btn').forEach(b => b.setAttribute('aria-expanded', 'false'));
+    }
+
+    function attachColumnOptionEvents() {
+      // Toggle dropdown on ... button
+      columnsEl.querySelectorAll('.column-options-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const menu = btn.parentElement.querySelector('.column-options-menu');
+          if (!menu) return;
+          const willOpen = menu.classList.contains('hidden');
+          closeAllColumnMenus();
+          if (willOpen) {
+            menu.classList.remove('hidden');
+            btn.setAttribute('aria-expanded', 'true');
+          }
+        });
+      });
+
+      // Edit column name — reuses the existing prompt flow from Add Column
+      columnsEl.querySelectorAll('.column-edit-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          closeAllColumnMenus();
+          const columnId = btn.dataset.columnId;
+          if (!columnId) return;
+
+          const colEl = columnsEl.querySelector(`.kanban-column[data-column-id="${columnId}"]`);
+          const currentTitle = colEl?.querySelector('.column-title')?.textContent?.trim() || '';
+
+          const raw = prompt('Edit column name:', currentTitle);
+          if (raw === null) return;
+          const title = raw.trim();
+          if (!title || title === currentTitle) return;
+
+          try {
+            await api(`/columns/${columnId}`, {
+              method: 'PUT',
+              body: { title },
+            });
+            await loadBoardData(activeBoardId);
+            showToast('Column renamed', 'edit');
+          } catch (err) {
+            if (err.message === 'Unauthorized') return;
+            console.error('Failed to rename column:', err);
+            showToast(err.message || 'Could not rename column', 'error');
+          }
+        });
+      });
+
+      // Delete column — confirm then DELETE /api/columns/:id
+      columnsEl.querySelectorAll('.column-delete-btn').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          closeAllColumnMenus();
+          const columnId = btn.dataset.columnId;
+          if (!columnId) return;
+
+          const colEl = columnsEl.querySelector(`.kanban-column[data-column-id="${columnId}"]`);
+          const title = colEl?.querySelector('.column-title')?.textContent?.trim() || 'this column';
+          if (!confirm(`Delete column "${title}"?\n\nAll tasks inside it will be permanently removed.`)) return;
+
+          try {
+            await api(`/columns/${columnId}`, { method: 'DELETE' });
+            showToast('Column deleted', 'delete');
+            await loadBoardData(activeBoardId);
+          } catch (err) {
+            if (err.message === 'Unauthorized') return;
+            console.error('Failed to delete column:', err);
+            showToast(err.message || 'Could not delete column', 'error');
+          }
+        });
+      });
+    }
+
+    // Click outside any column dropdown closes them all
+    document.addEventListener('click', (e) => {
+      if (e.target.closest('.column-options-menu') || e.target.closest('.column-options-btn')) return;
+      closeAllColumnMenus();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllColumnMenus();
+    });
 
     // ── Helper: update task count badge in a column ──
     function updateColumnBadge(columnEl) {
@@ -692,6 +904,14 @@
     const modalDueClearBtn      = document.getElementById('modal-due-clear');
     const modalCreateLabelBtn   = document.getElementById('modal-create-label-btn');
 
+    // Label "create" mini-form (inline color grid) inside #popup-labels
+    const popupLabelsCreate        = document.getElementById('popup-labels-create');
+    const popupLabelsCreateTitle   = document.getElementById('popup-labels-create-title');
+    const popupLabelsCreateColors  = document.getElementById('popup-labels-create-colors');
+    const popupLabelsCreateSubmit  = document.getElementById('popup-labels-create-submit');
+    const popupLabelsCreateCancel  = document.getElementById('popup-labels-create-cancel');
+    let   popupLabelsSelectedColor = null;
+
     let activeTaskId   = null;
     let activeColumnId = null;
     let modalMode      = 'edit'; // 'edit' | 'create'
@@ -708,6 +928,12 @@
     // ── Mini-popup toggle logic (right sidebar) ──
     function closeAllPopups() {
       modalPanel.querySelectorAll('.mini-popup').forEach(p => p.classList.add('hidden'));
+      // Also collapse the Labels inline create form so it never lingers
+      // across popup reopens or task switches.
+      if (popupLabelsCreate && !popupLabelsCreate.classList.contains('hidden')) {
+        popupLabelsCreate.classList.add('hidden');
+        modalCreateLabelBtn.classList.remove('hidden');
+      }
     }
 
     modalPanel.querySelectorAll('.sidebar-action-btn').forEach(btn => {
@@ -1005,25 +1231,66 @@
       }
     });
 
-    // Create new label → POST /boards/:id/labels
-    modalCreateLabelBtn.addEventListener('click', async () => {
-      if (!activeBoardId) return;
-      const title = prompt('Label name (optional):', '');
-      if (title === null) return;
-      const color = prompt('Hex color (e.g. #22c55e):', '#22c55e');
-      if (!color) return;
+    // ── Inline "Create new label" form (replaces old prompt()-based flow) ──
+    function resetCreateLabelForm() {
+      popupLabelsCreateTitle.value = '';
+      popupLabelsSelectedColor     = null;
+      popupLabelsCreateColors.querySelectorAll('.color-swatch').forEach(btn => {
+        btn.classList.remove('ring-2', 'ring-offset-2', 'ring-on-surface');
+      });
+    }
 
+    function showCreateLabelForm() {
+      resetCreateLabelForm();
+      popupLabelsCreate.classList.remove('hidden');
+      modalCreateLabelBtn.classList.add('hidden');
+      popupLabelsCreateTitle.focus();
+    }
+
+    function hideCreateLabelForm() {
+      popupLabelsCreate.classList.add('hidden');
+      modalCreateLabelBtn.classList.remove('hidden');
+    }
+
+    modalCreateLabelBtn.addEventListener('click', showCreateLabelForm);
+    popupLabelsCreateCancel.addEventListener('click', hideCreateLabelForm);
+
+    // Color grid: single-select, visual ring on the picked swatch
+    popupLabelsCreateColors.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-color]');
+      if (!btn) return;
+      popupLabelsSelectedColor = btn.dataset.color;
+      popupLabelsCreateColors.querySelectorAll('.color-swatch').forEach(b => {
+        b.classList.toggle('ring-2', b === btn);
+        b.classList.toggle('ring-offset-2', b === btn);
+        b.classList.toggle('ring-on-surface', b === btn);
+      });
+    });
+
+    // Create button → POST /boards/:id/labels
+    popupLabelsCreateSubmit.addEventListener('click', async () => {
+      if (!activeBoardId) return;
+      if (!popupLabelsSelectedColor) {
+        alert('Please pick a color first.');
+        return;
+      }
+      const title = popupLabelsCreateTitle.value.trim();
+
+      popupLabelsCreateSubmit.disabled = true;
       try {
         const data = await api(`/boards/${activeBoardId}/labels`, {
           method: 'POST',
-          body: { title: title.trim() || null, color: color.trim() },
+          body: { title: title || null, color: popupLabelsSelectedColor },
         });
         boardLabelsCache.push(data.label);
         const cached = activeTaskId ? taskCache.get(activeTaskId) : null;
         renderLabelsPopup(cached || { labels: [] });
+        hideCreateLabelForm();
       } catch (err) {
         console.error('create label failed:', err);
         alert('Could not create label: ' + (err.message || 'Unknown error'));
+      } finally {
+        popupLabelsCreateSubmit.disabled = false;
       }
     });
 
@@ -1184,7 +1451,13 @@
     }
 
     modalCloseBtn.addEventListener('click', closeTaskModal);
-    modalBackdrop.addEventListener('click', closeTaskModal);
+    // Click outside the panel (backdrop OR scroll wrapper's empty gutter)
+    // dismisses the modal. Clicks inside #modal-panel are ignored so users
+    // can still interact with inputs, popups, etc.
+    modalEl.addEventListener('click', (e) => {
+      if (e.target.closest('#modal-panel')) return;
+      closeTaskModal();
+    });
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') closeTaskModal();
     });
@@ -1503,8 +1776,141 @@
           renderBoardList();         // refresh active highlight
           loadBoardData(activeBoardId);
         });
+
+        // Right-click → open per-board context menu (Delete or Leave)
+        btn.addEventListener('contextmenu', (e) => {
+          e.preventDefault();
+          openBoardContextMenu(e.clientX, e.clientY, btn.dataset.boardId);
+        });
       });
     }
+
+    // ═══════════════════════════════════════════
+    //  Sidebar board context menu
+    // ═══════════════════════════════════════════
+    const boardCtxMenuEl   = document.getElementById('board-context-menu');
+    const ctxDeleteBoardEl = document.getElementById('ctx-delete-board');
+    const ctxLeaveBoardEl  = document.getElementById('ctx-leave-board');
+    let   ctxMenuBoardId   = null;
+
+    function closeBoardContextMenu() {
+      if (!boardCtxMenuEl) return;
+      boardCtxMenuEl.classList.add('hidden');
+      ctxMenuBoardId = null;
+    }
+
+    function openBoardContextMenu(x, y, boardId) {
+      if (!boardCtxMenuEl || !boardId) return;
+      const board = cachedBoards.find(b => String(b.id) === String(boardId));
+      if (!board) return;
+
+      ctxMenuBoardId = boardId;
+
+      // Creator-only actions vs. member-only actions. Admins get Delete too,
+      // mirroring the backend's deleteBoard guard.
+      const isCreator = currentUserId != null && String(board.creator_id) === String(currentUserId);
+      ctxDeleteBoardEl.classList.toggle('hidden', !isCreator);
+      ctxLeaveBoardEl.classList.toggle('hidden',   isCreator);
+
+      // Position first off-screen so we can measure, then clamp to viewport.
+      boardCtxMenuEl.style.left = '0px';
+      boardCtxMenuEl.style.top  = '0px';
+      boardCtxMenuEl.classList.remove('hidden');
+
+      const rect  = boardCtxMenuEl.getBoundingClientRect();
+      const maxX  = window.innerWidth  - rect.width  - 8;
+      const maxY  = window.innerHeight - rect.height - 8;
+      boardCtxMenuEl.style.left = `${Math.min(x, maxX)}px`;
+      boardCtxMenuEl.style.top  = `${Math.min(y, maxY)}px`;
+    }
+
+    if (ctxDeleteBoardEl) {
+      ctxDeleteBoardEl.addEventListener('click', async () => {
+        const boardId = ctxMenuBoardId;
+        closeBoardContextMenu();
+        if (!boardId) return;
+
+        const board = cachedBoards.find(b => String(b.id) === String(boardId));
+        const title = (board && board.title) || 'this board';
+        if (!confirm(`Delete "${title}"?\n\nAll of its columns and tasks will be permanently removed. This cannot be undone.`)) return;
+
+        try {
+          await api(`/boards/${boardId}`, { method: 'DELETE' });
+          showToast('Board deleted', 'delete');
+
+          // If the deleted board was the one on screen, clear the canvas so
+          // the user doesn't keep interacting with a dead board.
+          if (String(activeBoardId) === String(boardId)) {
+            activeBoardId = null;
+            boardTitleEl.textContent = 'No board selected';
+            columnsEl.innerHTML = `
+              <div class="flex-1 flex items-center justify-center text-on-surface-variant">
+                <div class="flex flex-col items-center gap-2">
+                  <span class="material-symbols-outlined text-[32px] text-outline">dashboard_customize</span>
+                  <p class="text-sm font-medium">Select a board from the sidebar</p>
+                </div>
+              </div>
+            `;
+          }
+          await loadBoards();
+        } catch (err) {
+          console.error('deleteBoard failed:', err);
+          showToast(err.message || 'Could not delete board', 'error');
+        }
+      });
+    }
+
+    if (ctxLeaveBoardEl) {
+      ctxLeaveBoardEl.addEventListener('click', async () => {
+        const boardId = ctxMenuBoardId;
+        closeBoardContextMenu();
+        if (!boardId) return;
+
+        const board = cachedBoards.find(b => String(b.id) === String(boardId));
+        const title = (board && board.title) || 'this board';
+        if (!confirm(`Leave "${title}"?\n\nYou will no longer see this board in your sidebar.`)) return;
+
+        try {
+          await api(`/boards/${boardId}/leave`, { method: 'DELETE' });
+          showToast('Left board', 'logout');
+
+          if (String(activeBoardId) === String(boardId)) {
+            activeBoardId = null;
+            boardTitleEl.textContent = 'No board selected';
+            columnsEl.innerHTML = `
+              <div class="flex-1 flex items-center justify-center text-on-surface-variant">
+                <div class="flex flex-col items-center gap-2">
+                  <span class="material-symbols-outlined text-[32px] text-outline">dashboard_customize</span>
+                  <p class="text-sm font-medium">Select a board from the sidebar</p>
+                </div>
+              </div>
+            `;
+          }
+          await loadBoards();
+        } catch (err) {
+          console.error('leaveBoard failed:', err);
+          showToast(err.message || 'Could not leave board', 'error');
+        }
+      });
+    }
+
+    // Click outside / Escape closes the context menu
+    document.addEventListener('click', (e) => {
+      if (!boardCtxMenuEl || boardCtxMenuEl.classList.contains('hidden')) return;
+      if (e.target.closest('#board-context-menu')) return;
+      closeBoardContextMenu();
+    });
+    document.addEventListener('contextmenu', (e) => {
+      // If the user right-clicks anywhere that isn't a board item, close.
+      if (!boardCtxMenuEl || boardCtxMenuEl.classList.contains('hidden')) return;
+      if (e.target.closest('.board-list-item')) return;
+      closeBoardContextMenu();
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeBoardContextMenu();
+    });
+    window.addEventListener('resize',  closeBoardContextMenu);
+    window.addEventListener('scroll',  closeBoardContextMenu, true);
 
     // ── Fetch the user's boards and re-render the sidebar ──
     async function loadBoards() {
@@ -2049,7 +2455,24 @@
       columnsEl.addEventListener('mouseleave', endPan);
     })();
 
+    // Expose a minimal surface for sibling scripts (e.g. log_page.js) that
+    // live outside this IIFE. Keeping it narrow and named so nothing else
+    // starts reaching into internals.
+    window.Dashboard = {
+      api,
+      escapeHtml,
+      formatNotificationTime,
+      showToast,
+      getActiveBoardId: () => activeBoardId,
+      // Snapshot getters (never return live references the caller could mutate)
+      getColumnById: (id) => columnCache.get(String(id)) || null,
+      getTaskById:   (id) => taskCache.get(String(id)) || null,
+      getLabelById:  (id) => boardLabelsCache.find(l => String(l.id) === String(id)) || null,
+      getMemberById: (id) => boardMembersCache.find(u => String(u.id) === String(id)) || null,
+    };
+
     bootstrapDashboard();
   })();
 </script>
+<script src="log_page.js"></script>
 </body></html>

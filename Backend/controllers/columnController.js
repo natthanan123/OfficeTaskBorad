@@ -1,4 +1,4 @@
-const { Column, Board } = require('../models');
+const { Column, Board, ActivityLog } = require('../models');
 
 // ─── Helper: broadcast a real-time refresh hint to a board's room ───
 function emitBoardUpdate(req, boardId, type) {
@@ -7,6 +7,18 @@ function emitBoardUpdate(req, boardId, type) {
     req.app.get('io').to(`board_${boardId}`).emit('board_updated', { type, board_id: boardId });
   } catch (socketErr) {
     console.error(`socket emit (${type}) failed:`, socketErr);
+  }
+}
+
+// ─── Helper: append an audit-log row without ever breaking the main flow ───
+// Mirrors the taskController version — a failed write here must never
+// surface to the client or roll back a successful column operation.
+async function logActivity({ board_id, user_id, task_id = null, action_type, details = null }) {
+  if (!board_id || !action_type) return;
+  try {
+    await ActivityLog.create({ board_id, user_id, task_id, action_type, details });
+  } catch (logErr) {
+    console.error(`activityLog (${action_type}) failed:`, logErr);
   }
 }
 
@@ -74,14 +86,24 @@ exports.deleteColumn = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Column not found' });
     }
 
-    // Capture the board id BEFORE destroy — the instance still has it in
-    // memory after destroy, but it's safer to snapshot here to avoid edge
-    // cases with Sequelize hooks that could null the reference.
-    const boardId = column.board_id;
+    // Capture the board id + title BEFORE destroy — the instance still has
+    // them in memory after destroy, but it's safer to snapshot here to
+    // avoid edge cases with Sequelize hooks that could null the reference.
+    const boardId       = column.board_id;
+    const deletedTitle  = column.title;
+    const deletedColumnId = column.id;
 
     await column.destroy();
 
     emitBoardUpdate(req, boardId, 'column_deleted');
+
+    await logActivity({
+      board_id:    boardId,
+      user_id:     req.user ? req.user.id : null,
+      task_id:     null,
+      action_type: 'DELETE_COLUMN',
+      details:     { title: deletedTitle, column_id: deletedColumnId },
+    });
 
     return res.json({ status: 'success', message: 'Column deleted' });
   } catch (err) {
