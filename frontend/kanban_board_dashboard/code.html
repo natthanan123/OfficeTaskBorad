@@ -253,14 +253,9 @@
         </div>
       </header>
 
-      <div class="flex flex-col md:flex-row gap-6 px-8 py-6 pb-8">
+      <div class="flex flex-col md:flex-row gap-8 px-8 py-6">
 
         <div class="flex-1 min-w-0 space-y-6">
-
-          <section id="modal-members-section">
-            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Members</h4>
-            <div id="modal-assignees" class="flex flex-wrap items-center gap-2"></div>
-          </section>
 
           <section id="modal-labels-section">
             <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Labels</h4>
@@ -277,201 +272,207 @@
             </label>
           </section>
 
-          <aside id="modal-sidebar" class="flex flex-wrap gap-2">
-
-            <div class="relative">
-              <button type="button" data-popup="popup-members"
-                      class="sidebar-action-btn inline-flex items-center gap-1.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-medium px-2.5 py-1.5 rounded transition-colors">
-                <span class="material-symbols-outlined text-[16px] text-on-surface-variant">person</span>
-                Members
-              </button>
-              <div id="popup-members" class="mini-popup hidden absolute left-0 top-full mt-2 w-64 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
-                <div class="flex items-center justify-between mb-3">
-                  <h5 class="text-sm font-semibold text-on-surface">Members</h5>
-                  <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
-                    <span class="material-symbols-outlined text-base">close</span>
-                  </button>
-                </div>
-                <input id="popup-members-search" type="text" placeholder="Search members..."
-                       class="w-full mb-2 bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
-                <ul id="popup-members-list" class="space-y-1 max-h-48 overflow-y-auto"></ul>
-              </div>
-            </div>
-
-            <div class="relative">
-              <button type="button" data-popup="popup-labels"
-                      class="sidebar-action-btn inline-flex items-center gap-1.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-medium px-2.5 py-1.5 rounded transition-colors">
-                <span class="material-symbols-outlined text-[16px] text-on-surface-variant">label</span>
-                Labels
-              </button>
-              <div id="popup-labels" class="mini-popup hidden absolute left-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
-                <div class="flex items-center justify-between mb-3">
-                  <h5 class="text-sm font-semibold text-on-surface">Labels</h5>
-                  <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
-                    <span class="material-symbols-outlined text-base">close</span>
-                  </button>
-                </div>
-
-                <ul id="popup-labels-list" class="space-y-2"></ul>
-
-                <button id="modal-create-label-btn" type="button"
-                        class="mt-3 w-full bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-opacity">
-                  Create new label
-                </button>
-
-                <div id="popup-labels-create" class="hidden mt-3 pt-3 border-t border-outline-variant/20 space-y-2">
-                  <div>
-                    <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Title (optional)</label>
-                    <input id="popup-labels-create-title" type="text" placeholder="Label name..."
-                           class="w-full bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
-                  </div>
-                  <div>
-                    <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Pick a color</label>
-                    <div id="popup-labels-create-colors" class="grid grid-cols-7 gap-1.5">
-                      <button type="button" data-color="#ef4444" aria-label="Red"    class="color-swatch h-7 rounded-md bg-red-500    transition-all hover:scale-105"></button>
-                      <button type="button" data-color="#f97316" aria-label="Orange" class="color-swatch h-7 rounded-md bg-orange-500 transition-all hover:scale-105"></button>
-                      <button type="button" data-color="#eab308" aria-label="Yellow" class="color-swatch h-7 rounded-md bg-yellow-500 transition-all hover:scale-105"></button>
-                      <button type="button" data-color="#22c55e" aria-label="Green"  class="color-swatch h-7 rounded-md bg-green-500  transition-all hover:scale-105"></button>
-                      <button type="button" data-color="#0ea5e9" aria-label="Blue"   class="color-swatch h-7 rounded-md bg-sky-500    transition-all hover:scale-105"></button>
-                      <button type="button" data-color="#8b5cf6" aria-label="Purple" class="color-swatch h-7 rounded-md bg-violet-500 transition-all hover:scale-105"></button>
-                      <button type="button" data-color="#ec4899" aria-label="Pink"   class="color-swatch h-7 rounded-md bg-pink-500   transition-all hover:scale-105"></button>
-                    </div>
-                  </div>
-                  <div class="flex gap-2 pt-1">
-                    <button id="popup-labels-create-submit" type="button"
-                            class="flex-1 bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 disabled:opacity-50 transition-opacity">
-                      Create
-                    </button>
-                    <button id="popup-labels-create-cancel" type="button"
-                            class="bg-surface-container-high text-on-surface font-medium px-3 py-1.5 rounded-md text-xs hover:bg-surface-container-highest transition-colors">
-                      Cancel
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="relative">
-              <button type="button" data-popup="popup-dates"
-                      class="sidebar-action-btn inline-flex items-center gap-1.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-medium px-2.5 py-1.5 rounded transition-colors">
-                <span class="material-symbols-outlined text-[16px] text-on-surface-variant">schedule</span>
-                Dates
-              </button>
-              <div id="popup-dates" class="mini-popup hidden absolute left-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
-                <div class="flex items-center justify-between mb-3">
-                  <h5 class="text-sm font-semibold text-on-surface">Dates</h5>
-                  <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
-                    <span class="material-symbols-outlined text-base">close</span>
-                  </button>
-                </div>
-                <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Due date</label>
-                <div class="flex items-center gap-2">
-                  <input id="modal-due-input" type="datetime-local"
-                         class="flex-1 min-w-0 bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
-                  <button id="modal-due-save" type="button"
-                          class="bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-opacity">
-                    Save
-                  </button>
-                </div>
-                <div class="mt-4 pt-3 border-t border-outline-variant/20">
-                  <button id="modal-due-clear" type="button"
-                          class="w-full flex items-center justify-center gap-1.5 bg-surface-container-high text-on-surface font-medium px-3 py-1.5 rounded-md text-xs hover:bg-surface-container-highest transition-colors">
-                    <span class="material-symbols-outlined text-sm">delete_outline</span>
-                    Remove date
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div class="relative">
-              <button type="button" data-popup="popup-attachments"
-                      class="sidebar-action-btn inline-flex items-center gap-1.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-medium px-2.5 py-1.5 rounded transition-colors">
-                <span class="material-symbols-outlined text-[16px] text-on-surface-variant">attach_file</span>
-                Attachment
-              </button>
-              <div id="popup-attachments" class="mini-popup hidden absolute left-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
-                <div class="flex items-center justify-between mb-3">
-                  <h5 class="text-sm font-semibold text-on-surface">Attach</h5>
-                  <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
-                    <span class="material-symbols-outlined text-base">close</span>
-                  </button>
-                </div>
-                <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Upload a file</label>
-                <input id="popup-attachment-file" type="file"
-                       class="w-full text-xs text-on-surface file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary-container file:text-on-primary hover:file:opacity-90 cursor-pointer"/>
-                <div class="mt-4 pt-3 border-t border-outline-variant/20">
-                  <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Paste a link</label>
-                  <div class="flex items-center gap-2">
-                    <input id="popup-attachment-url" type="url" placeholder="https://..."
-                           class="flex-1 min-w-0 bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
-                    <button id="popup-attachment-link-submit" type="button"
-                            class="bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 disabled:opacity-50 transition-opacity">
-                      Attach
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-          </aside>
-
           <section>
-            <h4 class="text-base font-semibold text-on-surface mb-3 flex items-center gap-2">
-              <span class="material-symbols-outlined text-[20px]">notes</span>
+            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2 flex items-center gap-2">
+              <span class="material-symbols-outlined text-base">notes</span>
               Description
             </h4>
-            <textarea id="modal-desc" rows="6" placeholder="Add a more detailed description..."
-                      class="w-full bg-surface-container-low border border-outline-variant/40 rounded-md px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-y transition-all"></textarea>
+            <textarea id="modal-desc" rows="8" placeholder="Add a more detailed description..."
+                      class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-y transition-all"></textarea>
           </section>
 
           <section id="modal-attachments-section">
-            <h4 class="text-base font-semibold text-on-surface mb-3 flex items-center gap-2">
-              <span class="material-symbols-outlined text-[20px]">attachment</span>
+            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2 flex items-center gap-2">
+              <span class="material-symbols-outlined text-base">attachment</span>
               Attachments
             </h4>
             <ul id="modal-attachments-list" class="space-y-2"></ul>
-            <p id="modal-attachments-empty" class="text-xs text-on-surface-variant/60 italic hidden">No attachments yet. Click "Attachment" above to add one.</p>
+            <p id="modal-attachments-empty" class="text-xs text-on-surface-variant/50 italic hidden">No attachments yet. Click "+ Attachment" in the sidebar to add one.</p>
           </section>
-
-          <div class="pt-2 flex items-center gap-2">
-            <button id="modal-save" type="button"
-                    class="inline-flex items-center gap-2 bg-primary text-on-primary text-sm font-semibold px-4 py-2 rounded hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50">
-              <span class="material-symbols-outlined text-[18px]">save</span>
-              Save Changes
-            </button>
-            <button id="modal-delete" type="button"
-                    class="inline-flex items-center gap-2 bg-error-container text-error text-sm font-semibold px-4 py-2 rounded hover:bg-error/10 active:scale-[0.98] transition-all disabled:opacity-50">
-              <span class="material-symbols-outlined text-[18px]">delete</span>
-              Delete
-            </button>
-          </div>
 
         </div>
 
-        <div class="w-full md:w-96 flex-shrink-0">
-          <div class="bg-surface-container-low border border-outline-variant/20 rounded-xl p-5 shadow-sm">
-            <section id="modal-activity-section">
-              <h4 class="text-base font-semibold text-on-surface mb-4 flex items-center gap-2">
-                <span class="material-symbols-outlined text-[20px]">forum</span>
-                Comments &amp; Activity
-              </h4>
+        <div class="w-full md:w-80 flex-shrink-0 space-y-6">
 
-              <div class="flex gap-3 mb-5">
-                <div id="modal-comment-avatar" class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-[11px] font-bold text-on-primary flex-shrink-0">U</div>
-                <div class="flex-1 min-w-0 group">
-                  <textarea id="modal-comment-input" rows="1" placeholder="Write a comment..."
-                            class="w-full bg-surface-container-lowest hover:bg-surface-container-low border border-outline-variant/40 rounded-md px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary focus:bg-surface-container-lowest focus:min-h-[4.5rem] resize-none transition-all"></textarea>
-                  <button id="modal-comment-submit" type="button"
-                          class="mt-2 hidden group-focus-within:inline-flex items-center gap-1 bg-primary text-on-primary font-semibold px-4 py-1.5 rounded-md text-xs hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50">
-                    Save
-                  </button>
+          <section id="modal-members-section">
+            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Members</h4>
+            <div id="modal-assignees" class="flex flex-wrap items-center gap-2"></div>
+          </section>
+
+          <aside id="modal-sidebar">
+            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Add to card</h4>
+            <div class="space-y-2">
+
+              <div class="relative">
+                <button type="button" data-popup="popup-members"
+                        class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
+                  <span class="material-symbols-outlined text-base">person</span>
+                  Members
+                </button>
+                <div id="popup-members" class="mini-popup hidden absolute right-0 top-full mt-2 w-64 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
+                  <div class="flex items-center justify-between mb-3">
+                    <h5 class="text-sm font-semibold text-on-surface">Members</h5>
+                    <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
+                      <span class="material-symbols-outlined text-base">close</span>
+                    </button>
+                  </div>
+                  <input id="popup-members-search" type="text" placeholder="Search members..."
+                         class="w-full mb-2 bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
+                  <ul id="popup-members-list" class="space-y-1 max-h-48 overflow-y-auto"></ul>
                 </div>
               </div>
 
-              <ul id="modal-comments-list" class="space-y-4"></ul>
-            </section>
-          </div>
+              <div class="relative">
+                <button type="button" data-popup="popup-labels"
+                        class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
+                  <span class="material-symbols-outlined text-base">label</span>
+                  Labels
+                </button>
+                <div id="popup-labels" class="mini-popup hidden absolute right-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
+                  <div class="flex items-center justify-between mb-3">
+                    <h5 class="text-sm font-semibold text-on-surface">Labels</h5>
+                    <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
+                      <span class="material-symbols-outlined text-base">close</span>
+                    </button>
+                  </div>
+
+                  <ul id="popup-labels-list" class="space-y-2"></ul>
+
+                  <button id="modal-create-label-btn" type="button"
+                          class="mt-3 w-full bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-opacity">
+                    Create new label
+                  </button>
+
+                  <div id="popup-labels-create" class="hidden mt-3 pt-3 border-t border-outline-variant/20 space-y-2">
+                    <div>
+                      <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Title (optional)</label>
+                      <input id="popup-labels-create-title" type="text" placeholder="Label name..."
+                             class="w-full bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
+                    </div>
+                    <div>
+                      <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Pick a color</label>
+                      <div id="popup-labels-create-colors" class="grid grid-cols-7 gap-1.5">
+                        <button type="button" data-color="#ef4444" aria-label="Red"    class="color-swatch h-7 rounded-md bg-red-500    transition-all hover:scale-105"></button>
+                        <button type="button" data-color="#f97316" aria-label="Orange" class="color-swatch h-7 rounded-md bg-orange-500 transition-all hover:scale-105"></button>
+                        <button type="button" data-color="#eab308" aria-label="Yellow" class="color-swatch h-7 rounded-md bg-yellow-500 transition-all hover:scale-105"></button>
+                        <button type="button" data-color="#22c55e" aria-label="Green"  class="color-swatch h-7 rounded-md bg-green-500  transition-all hover:scale-105"></button>
+                        <button type="button" data-color="#0ea5e9" aria-label="Blue"   class="color-swatch h-7 rounded-md bg-sky-500    transition-all hover:scale-105"></button>
+                        <button type="button" data-color="#8b5cf6" aria-label="Purple" class="color-swatch h-7 rounded-md bg-violet-500 transition-all hover:scale-105"></button>
+                        <button type="button" data-color="#ec4899" aria-label="Pink"   class="color-swatch h-7 rounded-md bg-pink-500   transition-all hover:scale-105"></button>
+                      </div>
+                    </div>
+                    <div class="flex gap-2 pt-1">
+                      <button id="popup-labels-create-submit" type="button"
+                              class="flex-1 bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 disabled:opacity-50 transition-opacity">
+                        Create
+                      </button>
+                      <button id="popup-labels-create-cancel" type="button"
+                              class="bg-surface-container-high text-on-surface font-medium px-3 py-1.5 rounded-md text-xs hover:bg-surface-container-highest transition-colors">
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div class="relative">
+                <button type="button" data-popup="popup-dates"
+                        class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
+                  <span class="material-symbols-outlined text-base">schedule</span>
+                  Dates
+                </button>
+                <div id="popup-dates" class="mini-popup hidden absolute right-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
+                  <div class="flex items-center justify-between mb-3">
+                    <h5 class="text-sm font-semibold text-on-surface">Dates</h5>
+                    <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
+                      <span class="material-symbols-outlined text-base">close</span>
+                    </button>
+                  </div>
+                  <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Due date</label>
+                  <div class="flex items-center gap-2">
+                    <input id="modal-due-input" type="datetime-local"
+                           class="flex-1 min-w-0 bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
+                    <button id="modal-due-save" type="button"
+                            class="bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-opacity">
+                      Save
+                    </button>
+                  </div>
+                  <div class="mt-4 pt-3 border-t border-outline-variant/20">
+                    <button id="modal-due-clear" type="button"
+                            class="w-full flex items-center justify-center gap-1.5 bg-surface-container-high text-on-surface font-medium px-3 py-1.5 rounded-md text-xs hover:bg-surface-container-highest transition-colors">
+                      <span class="material-symbols-outlined text-sm">delete_outline</span>
+                      Remove date
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div class="relative">
+                <button type="button" data-popup="popup-attachments"
+                        class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
+                  <span class="material-symbols-outlined text-base">attach_file</span>
+                  Attachment
+                </button>
+                <div id="popup-attachments" class="mini-popup hidden absolute right-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
+                  <div class="flex items-center justify-between mb-3">
+                    <h5 class="text-sm font-semibold text-on-surface">Attach</h5>
+                    <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
+                      <span class="material-symbols-outlined text-base">close</span>
+                    </button>
+                  </div>
+                  <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Upload a file</label>
+                  <input id="popup-attachment-file" type="file"
+                         class="w-full text-xs text-on-surface file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary-container file:text-on-primary hover:file:opacity-90 cursor-pointer"/>
+                  <div class="mt-4 pt-3 border-t border-outline-variant/20">
+                    <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Paste a link</label>
+                    <div class="flex items-center gap-2">
+                      <input id="popup-attachment-url" type="url" placeholder="https://..."
+                             class="flex-1 min-w-0 bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
+                      <button id="popup-attachment-link-submit" type="button"
+                              class="bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 disabled:opacity-50 transition-opacity">
+                        Attach
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </aside>
+
+          <section id="modal-activity-section">
+            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-3 flex items-center gap-2">
+              <span class="material-symbols-outlined text-base">forum</span>
+              Activity
+            </h4>
+
+            <div class="flex gap-2 mb-4">
+              <div id="modal-comment-avatar" class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-[11px] font-bold text-on-primary flex-shrink-0">U</div>
+              <div class="flex-1 min-w-0">
+                <textarea id="modal-comment-input" rows="2" placeholder="Write a comment..."
+                          class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-none transition-all"></textarea>
+                <button id="modal-comment-submit" type="button"
+                        class="mt-2 bg-primary-container text-on-primary font-semibold px-4 py-1.5 rounded-lg text-xs hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50">
+                  Save
+                </button>
+              </div>
+            </div>
+
+            <ul id="modal-comments-list" class="space-y-4"></ul>
+          </section>
+
         </div>
+      </div>
+
+      <div class="px-8 pb-8 pt-4 border-t border-outline-variant/20 flex gap-3">
+        <button id="modal-save" type="button" class="flex-1 flex items-center justify-center gap-2 bg-primary-container text-on-primary font-semibold py-2.5 rounded-xl shadow-lg shadow-primary-container/20 hover:opacity-90 active:scale-[0.98] transition-all text-sm">
+          <span class="material-symbols-outlined text-base">save</span>
+          Save Changes
+        </button>
+        <button id="modal-delete" type="button" class="flex items-center justify-center gap-2 bg-error-container text-on-error-container font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all text-sm">
+          <span class="material-symbols-outlined text-base">delete</span>
+          Delete
+        </button>
       </div>
     </div>
   </div>
@@ -481,8 +482,6 @@
   (function () {
     const API_BASE   = 'http://localhost:3000/api';
     const LOGIN_PAGE = '../login_page_with_pawtry_logo/code.html';
-
-    // Auth guard — boot straight to login if no token.
     const token = localStorage.getItem('token');
     if (!token) {
       window.location.replace(LOGIN_PAGE);
@@ -607,9 +606,7 @@
         ? `<p class="text-xs text-on-surface-variant mb-3 line-clamp-2">${escapeHtml(task.description)}</p>`
         : '';
 
-      // Cover image: the first attachment with is_cover === true wins. We
-      // only render image mimetypes — non-image covers are never set by
-      // the backend, but we guard here anyway to survive dirty data.
+
       const attachments = Array.isArray(task.attachments) ? task.attachments : [];
       const cover = attachments.find(a =>
         a && a.is_cover && a.mimetype && a.mimetype.startsWith('image/')
@@ -637,9 +634,7 @@
       `;
     }
 
-    // Stored attachments come in as "/uploads/attachments/xxx"; prefix with
-    // the backend origin so they resolve when the frontend is served from
-    // a different port. External URLs (https://…) pass through untouched.
+
     function coverSrc(pathOrUrl) {
       if (!pathOrUrl) return '';
       if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
@@ -1420,9 +1415,6 @@
       updateColumnBadge,
     };
 
-    // Defer bootstrap to the next macrotask so every component script
-    // below (NotificationManager, SocketManager, TaskModal, log_page)
-    // has loaded and registered its helpers on window.Dashboard first.
     setTimeout(bootstrapDashboard, 0);
   })();
 </script>
