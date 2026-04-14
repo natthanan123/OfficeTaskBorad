@@ -8,7 +8,7 @@ const signToken = (id) =>
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   });
 
-// ─── POST /register ───
+// POST /register
 exports.register = async (req, res) => {
   try {
     const { email, password, full_name, avatar_url, role } = req.body;
@@ -22,7 +22,7 @@ exports.register = async (req, res) => {
       return res.status(409).json({ status: 'error', message: 'Email already in use' });
     }
 
-    // password is stored in password_hash; the beforeCreate hook hashes it automatically
+    // Plain password goes into password_hash; the beforeCreate hook hashes it.
     const user = await User.create({
       email,
       password_hash: password,
@@ -31,7 +31,6 @@ exports.register = async (req, res) => {
       role,
     });
 
-    // Re-fetch without password_hash (default scope excludes it)
     const safeUser = await User.findByPk(user.id);
 
     return res.status(201).json({ status: 'success', data: { user: safeUser } });
@@ -41,7 +40,7 @@ exports.register = async (req, res) => {
   }
 };
 
-// ─── POST /login ───
+// POST /login
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -50,15 +49,12 @@ exports.login = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'email and password are required' });
     }
 
-    // Need the hash to validate — use withPassword scope
     const user = await User.scope('withPassword').findOne({ where: { email } });
     if (!user || !(await user.validatePassword(password))) {
       return res.status(401).json({ status: 'error', message: 'Invalid email or password' });
     }
 
     const token = signToken(user.id);
-
-    // Return user without password_hash
     const safeUser = await User.findByPk(user.id);
 
     return res.json({ status: 'success', data: { token, user: safeUser } });
@@ -68,14 +64,13 @@ exports.login = async (req, res) => {
   }
 };
 
-// ─── POST /avatar ── Upload profile picture ───
+// POST /avatar — multipart upload handled by multer middleware.
 exports.uploadAvatar = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ status: 'error', message: 'No image file provided' });
     }
 
-    // Build a public URL path for the uploaded file
     const avatar_url = `/uploads/avatars/${req.file.filename}`;
 
     await req.user.update({ avatar_url });
@@ -87,7 +82,7 @@ exports.uploadAvatar = async (req, res) => {
   }
 };
 
-// ─── POST /forgot-password ───
+// POST /forgot-password
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -96,7 +91,7 @@ exports.forgotPassword = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'email is required' });
     }
 
-    // Always respond with success to prevent email enumeration
+    // Always return success to avoid email enumeration.
     const successResponse = {
       status: 'success',
       message: 'If this email is registered, a reset link has been sent.',
@@ -107,26 +102,22 @@ exports.forgotPassword = async (req, res) => {
       return res.json(successResponse);
     }
 
-    // Generate a secure reset token
     const resetToken = crypto.randomBytes(20).toString('hex');
-    const resetExpiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
+    const resetExpiry = new Date(Date.now() + 60 * 60 * 1000);
 
     await user.update({
       reset_token: resetToken,
       reset_token_expiry: resetExpiry,
     });
 
-    // Build the reset link
     const frontendBase = process.env.FRONTEND_URL || 'http://127.0.0.1:5500';
     const resetLink = `${frontendBase}/frontend/ResetPassword_Page/code.html?token=${resetToken}`;
 
-    // Log for developer testing
     console.log('─────────────────────────────────────────');
     console.log('🔑 Password Reset Link (dev):');
     console.log(resetLink);
     console.log('─────────────────────────────────────────');
 
-    // Send email via Nodemailer (Ethereal test account)
     try {
       const testAccount = await nodemailer.createTestAccount();
 
@@ -157,7 +148,7 @@ exports.forgotPassword = async (req, res) => {
 
       console.log('📧 Preview URL: %s', nodemailer.getTestMessageUrl(info));
     } catch (mailErr) {
-      // Email sending failure should not block the response
+      // Non-blocking: reset row is already written, user can still use the dev log.
       console.error('Nodemailer error (non-blocking):', mailErr.message);
     }
 
@@ -168,7 +159,7 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-// ─── POST /reset-password ───
+// POST /reset-password
 exports.resetPassword = async (req, res) => {
   try {
     const { token, new_password } = req.body;
@@ -181,7 +172,6 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'Password must be at least 6 characters' });
     }
 
-    // Find user with matching token that hasn't expired
     const { Op } = require('sequelize');
     const user = await User.scope('withPassword').findOne({
       where: {
@@ -194,7 +184,7 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'Invalid or expired reset token' });
     }
 
-    // Update password (beforeUpdate hook will hash it automatically)
+    // beforeUpdate hook rehashes password_hash on save.
     user.password_hash = new_password;
     user.reset_token = null;
     user.reset_token_expiry = null;
@@ -207,7 +197,7 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
-// ─── GET /me ───
+// GET /me
 exports.getMe = async (req, res) => {
   try {
     return res.json({ status: 'success', data: { user: req.user } });

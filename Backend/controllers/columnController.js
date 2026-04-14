@@ -1,6 +1,5 @@
 const { Column, Board, ActivityLog } = require('../models');
 
-// ─── Helper: broadcast a real-time refresh hint to a board's room ───
 function emitBoardUpdate(req, boardId, type) {
   if (!boardId) return;
   try {
@@ -10,9 +9,7 @@ function emitBoardUpdate(req, boardId, type) {
   }
 }
 
-// ─── Helper: append an audit-log row without ever breaking the main flow ───
-// Mirrors the taskController version — a failed write here must never
-// surface to the client or roll back a successful column operation.
+// Fire-and-forget audit write — a failed log must never break the main flow.
 async function logActivity({ board_id, user_id, task_id = null, action_type, details = null }) {
   if (!board_id || !action_type) return;
   try {
@@ -22,7 +19,7 @@ async function logActivity({ board_id, user_id, task_id = null, action_type, det
   }
 }
 
-// ─── POST / ── Create a column for a board ───
+// POST / — Create a column for a board.
 exports.createColumn = async (req, res) => {
   try {
     const { board_id, title, position } = req.body;
@@ -36,7 +33,6 @@ exports.createColumn = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Board not found' });
     }
 
-    // If no position provided, append to the end
     let finalPosition = position;
     if (finalPosition === undefined || finalPosition === null) {
       const maxPos = await Column.max('position', { where: { board_id } });
@@ -54,7 +50,7 @@ exports.createColumn = async (req, res) => {
   }
 };
 
-// ─── PUT /:id ── Update column title / position ───
+// PUT /:id — Update title and/or position.
 exports.updateColumn = async (req, res) => {
   try {
     const column = await Column.findByPk(req.params.id);
@@ -78,7 +74,7 @@ exports.updateColumn = async (req, res) => {
   }
 };
 
-// ─── DELETE /:id ── Remove a column (tasks cascade-delete via DB) ───
+// DELETE /:id — Tasks cascade via the FK association in models/index.js.
 exports.deleteColumn = async (req, res) => {
   try {
     const column = await Column.findByPk(req.params.id);
@@ -86,11 +82,10 @@ exports.deleteColumn = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Column not found' });
     }
 
-    // Capture the board id + title BEFORE destroy — the instance still has
-    // them in memory after destroy, but it's safer to snapshot here to
-    // avoid edge cases with Sequelize hooks that could null the reference.
-    const boardId       = column.board_id;
-    const deletedTitle  = column.title;
+    // Snapshot before destroy so we can still reference these in the
+    // emit + audit-log writes below.
+    const boardId         = column.board_id;
+    const deletedTitle    = column.title;
     const deletedColumnId = column.id;
 
     await column.destroy();

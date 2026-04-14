@@ -4,12 +4,9 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Pawtry | Workspace</title>
-<!-- Google Fonts: Inter & Material Symbols -->
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<!-- Socket.io client is served by the backend automatically at this path,
-     so its version always matches the server. No CDN dependency needed. -->
 <script src="http://localhost:3000/socket.io/socket.io.js"></script>
 <script id="tailwind-config">
       tailwind.config = {
@@ -89,11 +86,9 @@
         .kanban-scroll::-webkit-scrollbar-track { background: #f3f4f5; }
         .kanban-scroll::-webkit-scrollbar-thumb { background: #c7c4d8; border-radius: 10px; }
         .kanban-column { min-width: 320px; max-width: 320px; }
-        /* Drag-to-scroll (Pan) on the board background */
         #kanban-columns { cursor: grab; }
         #kanban-columns.is-panning { cursor: grabbing; user-select: none; }
         #kanban-columns.is-panning * { cursor: grabbing !important; }
-        /* Drag & Drop effects */
         .task-card-dragging { opacity: 0.4; transform: scale(0.96); }
         .column-drag-over > .kanban-drop-zone {
           background-color: rgba(53,37,205,0.06);
@@ -107,7 +102,6 @@
     </style>
 </head>
 <body class="bg-surface text-on-surface flex overflow-hidden h-screen">
-<!-- Shared SideNavBar -->
 <aside class="bg-slate-50 dark:bg-slate-900 h-screen w-64 border-r-0 flex flex-col py-6 font-inter body-md tracking-tight">
 <div class="px-6 mb-8 flex items-center space-x-3">
 <div class="w-8 h-8 rounded-lg flex items-center justify-center overflow-hidden">
@@ -118,7 +112,6 @@
 <p class="text-[10px] uppercase tracking-widest text-slate-500">Workspace</p>
 </div>
 </div>
-<!-- Dynamic board list (populated by loadBoards()) -->
 <div class="flex-1 px-4 overflow-y-auto min-h-0">
 <h3 class="text-[10px] font-bold uppercase tracking-widest text-slate-400 dark:text-slate-500 px-3 mb-2">Your Boards</h3>
 <ul id="board-list-container" class="space-y-1">
@@ -139,7 +132,6 @@
 </div>
 </aside>
 <div class="flex-1 flex flex-col min-w-0">
-<!-- Shared TopNavBar -->
 <header class="flex justify-between items-center px-8 h-16 w-full sticky top-0 z-50 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-indigo-100/20 dark:border-indigo-900/20 shadow-sm dark:shadow-none">
 <div class="flex items-center flex-1">
 <div class="relative w-full max-w-md">
@@ -153,13 +145,11 @@
 </nav>
 </div>
 <div class="flex items-center space-x-4 ml-4">
-<!-- Notification bell (with badge + dropdown popup) -->
 <div class="relative">
 <button id="notification-btn" type="button" class="relative text-slate-500 hover:text-primary transition-colors">
 <span class="material-symbols-outlined" data-icon="notifications">notifications</span>
 <span id="notification-badge" class="hidden absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-error text-white text-[10px] font-bold flex items-center justify-center border-2 border-white dark:border-slate-950 leading-none"></span>
 </button>
-<!-- Notification popup -->
 <div id="notification-popup" class="hidden absolute right-0 mt-2 w-96 bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant/20 z-50 overflow-hidden">
 <div class="px-4 py-3 border-b border-outline-variant/20 flex items-center justify-between">
 <h4 class="text-sm font-bold text-on-surface">Notifications</h4>
@@ -180,22 +170,18 @@
 </button>
 </div>
 </header>
-<!-- Main Canvas -->
 <main class="flex-1 bg-surface p-8 overflow-hidden flex flex-col">
 <div class="flex justify-between items-end mb-8">
 <div>
 <h1 id="board-title" class="text-3xl font-extrabold tracking-tight text-on-surface">Loading board...</h1>
-<!-- Board members area: reserved for upcoming "fetch real board members" feature -->
 <div id="board-members" class="mt-2 min-h-[24px]"></div>
 </div>
 <div class="flex space-x-3">
-<!-- Invite (with popup dropdown) -->
 <div class="relative">
 <button id="invite-btn" type="button" class="bg-surface-container-high px-4 py-2 rounded-xl text-sm font-semibold text-on-surface flex items-center space-x-2 hover:opacity-90 transition-opacity">
 <span class="material-symbols-outlined text-sm">person_add</span>
 <span>Invite</span>
 </button>
-<!-- Invite popup (real API wired — POST /api/boards/:id/invite) -->
 <div id="invite-popup" class="hidden absolute right-0 mt-2 w-80 bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant/20 z-50 overflow-hidden">
 <div class="px-4 py-3 border-b border-outline-variant/20">
 <h4 class="text-sm font-bold text-on-surface">Invite to this board</h4>
@@ -207,21 +193,17 @@
 </div>
 </div>
 </div>
-<!-- Filter (mockup, unchanged) -->
 <button class="bg-surface-container-high px-4 py-2 rounded-xl text-sm font-semibold text-on-surface flex items-center space-x-2">
 <span class="material-symbols-outlined text-sm">filter_list</span>
 <span>Filter</span>
 </button>
-<!-- Add Column (typo fixed + wired up in JS) -->
 <button id="add-column-btn" type="button" class="bg-primary text-on-primary px-4 py-2 rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-lg shadow-primary/20 disabled:opacity-60 disabled:cursor-not-allowed">
 <span class="material-symbols-outlined text-sm">add</span>
 <span>Add Column</span>
 </button>
 </div>
 </div>
-<!-- Kanban Board (rendered dynamically from API) -->
 <div id="kanban-columns" class="flex-1 flex space-x-6 overflow-x-auto pb-6 kanban-scroll">
-<!-- Loading state -->
 <div id="kanban-loading" class="flex-1 flex items-center justify-center text-on-surface-variant">
 <div class="flex flex-col items-center gap-3">
 <span class="material-symbols-outlined text-primary animate-spin text-[32px]">progress_activity</span>
@@ -229,14 +211,11 @@
 </div>
 </div>
 </div>
-<!-- Activity Log timeline view (hidden until the Timeline tab is clicked) -->
 <div id="timeline-view" class="hidden w-full h-full overflow-y-auto px-6 py-4"></div>
 </main>
 </div>
-<!-- ─── Toast container (real-time notifications drop in here) ─── -->
 <div id="toast-container" class="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 items-end pointer-events-none"></div>
 
-<!-- ─── Sidebar board right-click Context Menu (hidden by default) ─── -->
 <div id="board-context-menu"
      class="hidden fixed z-[150] min-w-[180px] bg-surface-container-highest border border-outline/20 rounded-xl shadow-2xl py-1 text-sm">
   <button id="ctx-delete-board"
@@ -250,22 +229,17 @@
     <span>Leave Board</span>
   </button>
 </div>
-<!-- ─── Task Detail Modal (Trello-style) ─── -->
+<!-- Task Detail Modal — logic lives in components/TaskModal.js -->
 <div id="task-modal" class="fixed inset-0 z-[100] hidden">
-  <!-- Backdrop -->
   <div id="modal-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
 
-  <!-- Panel wrapper (scrolls on small screens). Clicking empty space here
-       dismisses the modal — only the inner #modal-panel stops propagation. -->
   <div id="modal-scroll" class="absolute inset-0 flex items-start justify-center p-4 overflow-y-auto">
     <div id="modal-panel" class="relative bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-5xl my-8 animate-[fadeIn_0.15s_ease-out]">
 
-      <!-- Close button -->
       <button id="modal-close" class="absolute top-4 right-4 z-10 text-on-surface-variant/60 hover:text-on-surface transition-colors">
         <span class="material-symbols-outlined">close</span>
       </button>
 
-      <!-- ── Header ── -->
       <header class="px-8 pt-8 pb-5 border-b border-outline-variant/20 pr-14">
         <div class="flex items-start gap-3">
           <span class="material-symbols-outlined text-on-surface-variant mt-2">credit_card</span>
@@ -279,19 +253,20 @@
         </div>
       </header>
 
-      <!-- ── Body: two-column layout ── -->
-      <div class="flex flex-col md:flex-row gap-8 px-8 py-6">
+      <div class="flex flex-col md:flex-row gap-6 px-8 py-6 pb-8">
 
-        <!-- ─────────── LEFT / Main Content (labels + due + description) ─────────── -->
         <div class="flex-1 min-w-0 space-y-6">
 
-          <!-- Labels display -->
+          <section id="modal-members-section">
+            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Members</h4>
+            <div id="modal-assignees" class="flex flex-wrap items-center gap-2"></div>
+          </section>
+
           <section id="modal-labels-section">
             <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Labels</h4>
             <div id="modal-labels-display" class="flex flex-wrap items-center gap-1.5"></div>
           </section>
 
-          <!-- Due date + Complete checkbox -->
           <section id="modal-due-section">
             <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Due date</h4>
             <label id="modal-due" class="inline-flex items-center gap-2.5 bg-surface-container-high hover:bg-surface-container-highest rounded-lg px-3 py-2 cursor-pointer transition-colors">
@@ -302,196 +277,212 @@
             </label>
           </section>
 
-          <!-- Description -->
-          <section>
-            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2 flex items-center gap-2">
-              <span class="material-symbols-outlined text-base">notes</span>
-              Description
-            </h4>
-            <textarea id="modal-desc" rows="8" placeholder="Add a more detailed description..."
-                      class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-y transition-all"></textarea>
-          </section>
+          <aside id="modal-sidebar" class="flex flex-wrap gap-2">
 
-        </div>
-
-        <!-- ─────────── RIGHT / Sidebar (members + actions + activity) ─────────── -->
-        <div class="w-full md:w-80 flex-shrink-0 space-y-6">
-
-          <!-- Members (compact avatar row) -->
-          <section id="modal-members-section">
-            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Members</h4>
-            <div id="modal-assignees" class="flex flex-wrap items-center gap-2"></div>
-          </section>
-
-          <!-- Sidebar action buttons (Members / Labels / Dates) -->
-          <aside id="modal-sidebar">
-            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Add to card</h4>
-            <div class="space-y-2">
-
-              <!-- Members -->
-              <div class="relative">
-                <button type="button" data-popup="popup-members"
-                        class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
-                  <span class="material-symbols-outlined text-base">person</span>
-                  Members
-                </button>
-                <div id="popup-members" class="mini-popup hidden absolute right-0 top-full mt-2 w-64 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
-                  <div class="flex items-center justify-between mb-3">
-                    <h5 class="text-sm font-semibold text-on-surface">Members</h5>
-                    <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
-                      <span class="material-symbols-outlined text-base">close</span>
-                    </button>
-                  </div>
-                  <input id="popup-members-search" type="text" placeholder="Search members..."
-                         class="w-full mb-2 bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
-                  <ul id="popup-members-list" class="space-y-1 max-h-48 overflow-y-auto"></ul>
-                </div>
-              </div>
-
-              <!-- Labels -->
-              <div class="relative">
-                <button type="button" data-popup="popup-labels"
-                        class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
-                  <span class="material-symbols-outlined text-base">label</span>
-                  Labels
-                </button>
-                <div id="popup-labels" class="mini-popup hidden absolute right-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
-                  <div class="flex items-center justify-between mb-3">
-                    <h5 class="text-sm font-semibold text-on-surface">Labels</h5>
-                    <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
-                      <span class="material-symbols-outlined text-base">close</span>
-                    </button>
-                  </div>
-
-                  <!-- Existing labels list -->
-                  <ul id="popup-labels-list" class="space-y-2"></ul>
-
-                  <!-- "Create new label" toggle (shown when create form is collapsed) -->
-                  <button id="modal-create-label-btn" type="button"
-                          class="mt-3 w-full bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-opacity">
-                    Create new label
+            <div class="relative">
+              <button type="button" data-popup="popup-members"
+                      class="sidebar-action-btn inline-flex items-center gap-1.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-medium px-2.5 py-1.5 rounded transition-colors">
+                <span class="material-symbols-outlined text-[16px] text-on-surface-variant">person</span>
+                Members
+              </button>
+              <div id="popup-members" class="mini-popup hidden absolute left-0 top-full mt-2 w-64 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
+                <div class="flex items-center justify-between mb-3">
+                  <h5 class="text-sm font-semibold text-on-surface">Members</h5>
+                  <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
+                    <span class="material-symbols-outlined text-base">close</span>
                   </button>
-
-                  <!-- Inline create form (hidden until "Create new label" clicked) -->
-                  <div id="popup-labels-create" class="hidden mt-3 pt-3 border-t border-outline-variant/20 space-y-2">
-                    <div>
-                      <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Title (optional)</label>
-                      <input id="popup-labels-create-title" type="text" placeholder="Label name..."
-                             class="w-full bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
-                    </div>
-                    <div>
-                      <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Pick a color</label>
-                      <div id="popup-labels-create-colors" class="grid grid-cols-7 gap-1.5">
-                        <button type="button" data-color="#ef4444" aria-label="Red"    class="color-swatch h-7 rounded-md bg-red-500    transition-all hover:scale-105"></button>
-                        <button type="button" data-color="#f97316" aria-label="Orange" class="color-swatch h-7 rounded-md bg-orange-500 transition-all hover:scale-105"></button>
-                        <button type="button" data-color="#eab308" aria-label="Yellow" class="color-swatch h-7 rounded-md bg-yellow-500 transition-all hover:scale-105"></button>
-                        <button type="button" data-color="#22c55e" aria-label="Green"  class="color-swatch h-7 rounded-md bg-green-500  transition-all hover:scale-105"></button>
-                        <button type="button" data-color="#0ea5e9" aria-label="Blue"   class="color-swatch h-7 rounded-md bg-sky-500    transition-all hover:scale-105"></button>
-                        <button type="button" data-color="#8b5cf6" aria-label="Purple" class="color-swatch h-7 rounded-md bg-violet-500 transition-all hover:scale-105"></button>
-                        <button type="button" data-color="#ec4899" aria-label="Pink"   class="color-swatch h-7 rounded-md bg-pink-500   transition-all hover:scale-105"></button>
-                      </div>
-                    </div>
-                    <div class="flex gap-2 pt-1">
-                      <button id="popup-labels-create-submit" type="button"
-                              class="flex-1 bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 disabled:opacity-50 transition-opacity">
-                        Create
-                      </button>
-                      <button id="popup-labels-create-cancel" type="button"
-                              class="bg-surface-container-high text-on-surface font-medium px-3 py-1.5 rounded-md text-xs hover:bg-surface-container-highest transition-colors">
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
                 </div>
+                <input id="popup-members-search" type="text" placeholder="Search members..."
+                       class="w-full mb-2 bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
+                <ul id="popup-members-list" class="space-y-1 max-h-48 overflow-y-auto"></ul>
               </div>
-
-              <!-- Dates -->
-              <div class="relative">
-                <button type="button" data-popup="popup-dates"
-                        class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
-                  <span class="material-symbols-outlined text-base">schedule</span>
-                  Dates
-                </button>
-                <div id="popup-dates" class="mini-popup hidden absolute right-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
-                  <div class="flex items-center justify-between mb-3">
-                    <h5 class="text-sm font-semibold text-on-surface">Dates</h5>
-                    <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
-                      <span class="material-symbols-outlined text-base">close</span>
-                    </button>
-                  </div>
-                  <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Due date</label>
-                  <!-- Input + Save on the same row -->
-                  <div class="flex items-center gap-2">
-                    <input id="modal-due-input" type="datetime-local"
-                           class="flex-1 min-w-0 bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
-                    <button id="modal-due-save" type="button"
-                            class="bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-opacity">
-                      Save
-                    </button>
-                  </div>
-                  <!-- Remove sits below with a divider so it feels like a distinct action -->
-                  <div class="mt-4 pt-3 border-t border-outline-variant/20">
-                    <button id="modal-due-clear" type="button"
-                            class="w-full flex items-center justify-center gap-1.5 bg-surface-container-high text-on-surface font-medium px-3 py-1.5 rounded-md text-xs hover:bg-surface-container-highest transition-colors">
-                      <span class="material-symbols-outlined text-sm">delete_outline</span>
-                      Remove date
-                    </button>
-                  </div>
-                </div>
-              </div>
-
             </div>
+
+            <div class="relative">
+              <button type="button" data-popup="popup-labels"
+                      class="sidebar-action-btn inline-flex items-center gap-1.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-medium px-2.5 py-1.5 rounded transition-colors">
+                <span class="material-symbols-outlined text-[16px] text-on-surface-variant">label</span>
+                Labels
+              </button>
+              <div id="popup-labels" class="mini-popup hidden absolute left-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
+                <div class="flex items-center justify-between mb-3">
+                  <h5 class="text-sm font-semibold text-on-surface">Labels</h5>
+                  <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
+                    <span class="material-symbols-outlined text-base">close</span>
+                  </button>
+                </div>
+
+                <ul id="popup-labels-list" class="space-y-2"></ul>
+
+                <button id="modal-create-label-btn" type="button"
+                        class="mt-3 w-full bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-opacity">
+                  Create new label
+                </button>
+
+                <div id="popup-labels-create" class="hidden mt-3 pt-3 border-t border-outline-variant/20 space-y-2">
+                  <div>
+                    <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Title (optional)</label>
+                    <input id="popup-labels-create-title" type="text" placeholder="Label name..."
+                           class="w-full bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
+                  </div>
+                  <div>
+                    <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Pick a color</label>
+                    <div id="popup-labels-create-colors" class="grid grid-cols-7 gap-1.5">
+                      <button type="button" data-color="#ef4444" aria-label="Red"    class="color-swatch h-7 rounded-md bg-red-500    transition-all hover:scale-105"></button>
+                      <button type="button" data-color="#f97316" aria-label="Orange" class="color-swatch h-7 rounded-md bg-orange-500 transition-all hover:scale-105"></button>
+                      <button type="button" data-color="#eab308" aria-label="Yellow" class="color-swatch h-7 rounded-md bg-yellow-500 transition-all hover:scale-105"></button>
+                      <button type="button" data-color="#22c55e" aria-label="Green"  class="color-swatch h-7 rounded-md bg-green-500  transition-all hover:scale-105"></button>
+                      <button type="button" data-color="#0ea5e9" aria-label="Blue"   class="color-swatch h-7 rounded-md bg-sky-500    transition-all hover:scale-105"></button>
+                      <button type="button" data-color="#8b5cf6" aria-label="Purple" class="color-swatch h-7 rounded-md bg-violet-500 transition-all hover:scale-105"></button>
+                      <button type="button" data-color="#ec4899" aria-label="Pink"   class="color-swatch h-7 rounded-md bg-pink-500   transition-all hover:scale-105"></button>
+                    </div>
+                  </div>
+                  <div class="flex gap-2 pt-1">
+                    <button id="popup-labels-create-submit" type="button"
+                            class="flex-1 bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 disabled:opacity-50 transition-opacity">
+                      Create
+                    </button>
+                    <button id="popup-labels-create-cancel" type="button"
+                            class="bg-surface-container-high text-on-surface font-medium px-3 py-1.5 rounded-md text-xs hover:bg-surface-container-highest transition-colors">
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="relative">
+              <button type="button" data-popup="popup-dates"
+                      class="sidebar-action-btn inline-flex items-center gap-1.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-medium px-2.5 py-1.5 rounded transition-colors">
+                <span class="material-symbols-outlined text-[16px] text-on-surface-variant">schedule</span>
+                Dates
+              </button>
+              <div id="popup-dates" class="mini-popup hidden absolute left-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
+                <div class="flex items-center justify-between mb-3">
+                  <h5 class="text-sm font-semibold text-on-surface">Dates</h5>
+                  <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
+                    <span class="material-symbols-outlined text-base">close</span>
+                  </button>
+                </div>
+                <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Due date</label>
+                <div class="flex items-center gap-2">
+                  <input id="modal-due-input" type="datetime-local"
+                         class="flex-1 min-w-0 bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
+                  <button id="modal-due-save" type="button"
+                          class="bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-opacity">
+                    Save
+                  </button>
+                </div>
+                <div class="mt-4 pt-3 border-t border-outline-variant/20">
+                  <button id="modal-due-clear" type="button"
+                          class="w-full flex items-center justify-center gap-1.5 bg-surface-container-high text-on-surface font-medium px-3 py-1.5 rounded-md text-xs hover:bg-surface-container-highest transition-colors">
+                    <span class="material-symbols-outlined text-sm">delete_outline</span>
+                    Remove date
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="relative">
+              <button type="button" data-popup="popup-attachments"
+                      class="sidebar-action-btn inline-flex items-center gap-1.5 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-medium px-2.5 py-1.5 rounded transition-colors">
+                <span class="material-symbols-outlined text-[16px] text-on-surface-variant">attach_file</span>
+                Attachment
+              </button>
+              <div id="popup-attachments" class="mini-popup hidden absolute left-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
+                <div class="flex items-center justify-between mb-3">
+                  <h5 class="text-sm font-semibold text-on-surface">Attach</h5>
+                  <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
+                    <span class="material-symbols-outlined text-base">close</span>
+                  </button>
+                </div>
+                <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Upload a file</label>
+                <input id="popup-attachment-file" type="file"
+                       class="w-full text-xs text-on-surface file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary-container file:text-on-primary hover:file:opacity-90 cursor-pointer"/>
+                <div class="mt-4 pt-3 border-t border-outline-variant/20">
+                  <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Paste a link</label>
+                  <div class="flex items-center gap-2">
+                    <input id="popup-attachment-url" type="url" placeholder="https://..."
+                           class="flex-1 min-w-0 bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
+                    <button id="popup-attachment-link-submit" type="button"
+                            class="bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 disabled:opacity-50 transition-opacity">
+                      Attach
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
           </aside>
 
-          <!-- Activity / Comments (moved into the right column, below sidebar actions) -->
-          <section id="modal-activity-section">
-            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-3 flex items-center gap-2">
-              <span class="material-symbols-outlined text-base">forum</span>
-              Activity
+          <section>
+            <h4 class="text-base font-semibold text-on-surface mb-3 flex items-center gap-2">
+              <span class="material-symbols-outlined text-[20px]">notes</span>
+              Description
             </h4>
-
-            <!-- New comment form -->
-            <div class="flex gap-2 mb-4">
-              <div id="modal-comment-avatar" class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-[11px] font-bold text-on-primary flex-shrink-0">U</div>
-              <div class="flex-1 min-w-0">
-                <textarea id="modal-comment-input" rows="2" placeholder="Write a comment..."
-                          class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-none transition-all"></textarea>
-                <button id="modal-comment-submit" type="button"
-                        class="mt-2 bg-primary-container text-on-primary font-semibold px-4 py-1.5 rounded-lg text-xs hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50">
-                  Save
-                </button>
-              </div>
-            </div>
-
-            <!-- Comments list -->
-            <ul id="modal-comments-list" class="space-y-4"></ul>
+            <textarea id="modal-desc" rows="6" placeholder="Add a more detailed description..."
+                      class="w-full bg-surface-container-low border border-outline-variant/40 rounded-md px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-y transition-all"></textarea>
           </section>
 
-        </div>
-      </div>
+          <section id="modal-attachments-section">
+            <h4 class="text-base font-semibold text-on-surface mb-3 flex items-center gap-2">
+              <span class="material-symbols-outlined text-[20px]">attachment</span>
+              Attachments
+            </h4>
+            <ul id="modal-attachments-list" class="space-y-2"></ul>
+            <p id="modal-attachments-empty" class="text-xs text-on-surface-variant/60 italic hidden">No attachments yet. Click "Attachment" above to add one.</p>
+          </section>
 
-      <!-- ── Footer actions ── -->
-      <div class="px-8 pb-8 pt-4 border-t border-outline-variant/20 flex gap-3">
-        <button id="modal-save" type="button" class="flex-1 flex items-center justify-center gap-2 bg-primary-container text-on-primary font-semibold py-2.5 rounded-xl shadow-lg shadow-primary-container/20 hover:opacity-90 active:scale-[0.98] transition-all text-sm">
-          <span class="material-symbols-outlined text-base">save</span>
-          Save Changes
-        </button>
-        <button id="modal-delete" type="button" class="flex items-center justify-center gap-2 bg-error-container text-on-error-container font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all text-sm">
-          <span class="material-symbols-outlined text-base">delete</span>
-          Delete
-        </button>
+          <div class="pt-2 flex items-center gap-2">
+            <button id="modal-save" type="button"
+                    class="inline-flex items-center gap-2 bg-primary text-on-primary text-sm font-semibold px-4 py-2 rounded hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50">
+              <span class="material-symbols-outlined text-[18px]">save</span>
+              Save Changes
+            </button>
+            <button id="modal-delete" type="button"
+                    class="inline-flex items-center gap-2 bg-error-container text-error text-sm font-semibold px-4 py-2 rounded hover:bg-error/10 active:scale-[0.98] transition-all disabled:opacity-50">
+              <span class="material-symbols-outlined text-[18px]">delete</span>
+              Delete
+            </button>
+          </div>
+
+        </div>
+
+        <div class="w-full md:w-96 flex-shrink-0">
+          <div class="bg-surface-container-low border border-outline-variant/20 rounded-xl p-5 shadow-sm">
+            <section id="modal-activity-section">
+              <h4 class="text-base font-semibold text-on-surface mb-4 flex items-center gap-2">
+                <span class="material-symbols-outlined text-[20px]">forum</span>
+                Comments &amp; Activity
+              </h4>
+
+              <div class="flex gap-3 mb-5">
+                <div id="modal-comment-avatar" class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-[11px] font-bold text-on-primary flex-shrink-0">U</div>
+                <div class="flex-1 min-w-0 group">
+                  <textarea id="modal-comment-input" rows="1" placeholder="Write a comment..."
+                            class="w-full bg-surface-container-lowest hover:bg-surface-container-low border border-outline-variant/40 rounded-md px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/60 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary focus:bg-surface-container-lowest focus:min-h-[4.5rem] resize-none transition-all"></textarea>
+                  <button id="modal-comment-submit" type="button"
+                          class="mt-2 hidden group-focus-within:inline-flex items-center gap-1 bg-primary text-on-primary font-semibold px-4 py-1.5 rounded-md text-xs hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50">
+                    Save
+                  </button>
+                </div>
+              </div>
+
+              <ul id="modal-comments-list" class="space-y-4"></ul>
+            </section>
+          </div>
+        </div>
       </div>
     </div>
   </div>
 </div>
 
-<!-- ─── Kanban Board API wiring ─── -->
 <script>
   (function () {
     const API_BASE   = 'http://localhost:3000/api';
     const LOGIN_PAGE = '../login_page_with_pawtry_logo/code.html';
 
-    // ── 1. Authorization guard ──
+    // Auth guard — boot straight to login if no token.
     const token = localStorage.getItem('token');
     if (!token) {
       window.location.replace(LOGIN_PAGE);
@@ -507,46 +498,15 @@
     const addColumnBtn = document.getElementById('add-column-btn');
     const inviteBtn    = document.getElementById('invite-btn');
     const invitePopup  = document.getElementById('invite-popup');
-    const notificationBtn     = document.getElementById('notification-btn');
-    const notificationPopup   = document.getElementById('notification-popup');
-    const notificationBadge   = document.getElementById('notification-badge');
-    const notificationListEl  = document.getElementById('notification-list');
-    const notificationSummary = document.getElementById('notification-summary');
-
-    // ── Task data cache (for modal) ──
     const taskCache = new Map();
-    // ── Column data cache: id → { id, title, ... } for fast name lookups
-    //    from sibling scripts (activity log timeline, etc.). ──
     const columnCache = new Map();
 
-    // ── Boards state ──
     let activeBoardId = null;
     let cachedBoards  = [];
-
-    // ── Board meta caches (labels + members for the Task Detail Modal popups) ──
-    // These are refetched whenever loadBoardData runs, so switching boards
-    // always renders the correct palette and member list in the sidebar popups.
     let boardLabelsCache  = [];
     let boardMembersCache = [];
-
-    // ── Notifications state ──
-    let cachedNotifications = [];
-    let unreadCount         = 0;
-
-    // ── Real-time (socket.io) state ──
-    // `io` is the global function exposed by the socket.io client script
-    // loaded from the backend in <head>. We connect lazily and re-join rooms
-    // on every (re)connect so reconnects don't silently drop subscriptions.
-    const socket = (typeof io === 'function')
-      ? io('http://localhost:3000', {
-          auth: { token },
-          transports: ['websocket', 'polling'],
-        })
-      : null;
     let currentUserId = null;
-    let boardUpdateDebounce = null;
 
-    // ── Helper: authed fetch ──
     async function api(path, { method = 'GET', body } = {}) {
       const opts = {
         method,
@@ -570,7 +530,6 @@
       return payload.data;
     }
 
-    // ── Helper: HTML escape (prevents XSS from user-entered titles) ──
     function escapeHtml(str) {
       if (str == null) return '';
       return String(str)
@@ -581,7 +540,6 @@
         .replace(/'/g, '&#039;');
     }
 
-    // ── Helper: format date as "MMM DD" (e.g. "Apr 09") ──
     function formatDueDate(isoDate) {
       if (!isoDate) return '';
       const d = new Date(isoDate);
@@ -589,13 +547,11 @@
       return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
     }
 
-    // ── Helper: get initials from full name ──
     function initials(name) {
       if (!name) return '?';
       return name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
     }
 
-    // ── Helper: deterministic color from a string (for assignee avatars) ──
     function colorFor(str) {
       const palette = ['#3525cd', '#58579b', '#7e3000', '#a44100', '#4f46e5', '#454386'];
       let hash = 0;
@@ -603,7 +559,6 @@
       return palette[hash % palette.length];
     }
 
-    // ── Render a single task card ──
     function renderTaskCard(task) {
       const assignees = Array.isArray(task.assignees) ? task.assignees : [];
       const visibleAssignees = assignees.slice(0, 3);
@@ -621,7 +576,6 @@
         ? `<div class="w-6 h-6 rounded-full bg-primary-fixed flex items-center justify-center text-[10px] font-bold text-on-primary-fixed border border-surface">+${overflow}</div>`
         : '';
 
-      // ── Labels strip (tiny colored bars at the top of the card, Trello-style) ──
       const labels = Array.isArray(task.labels) ? task.labels : [];
       const labelsStrip = labels.length
         ? `<div class="flex flex-wrap gap-1 mb-2">
@@ -631,9 +585,6 @@
            </div>`
         : '';
 
-      // ── Due date / complete badge ──
-      // When is_completed → green pill with a check icon.
-      // When just has a due date → muted calendar pill.
       const dueLabel = formatDueDate(task.due_date);
       let dueBlock = '';
       if (task.is_completed) {
@@ -656,11 +607,25 @@
         ? `<p class="text-xs text-on-surface-variant mb-3 line-clamp-2">${escapeHtml(task.description)}</p>`
         : '';
 
+      // Cover image: the first attachment with is_cover === true wins. We
+      // only render image mimetypes — non-image covers are never set by
+      // the backend, but we guard here anyway to survive dirty data.
+      const attachments = Array.isArray(task.attachments) ? task.attachments : [];
+      const cover = attachments.find(a =>
+        a && a.is_cover && a.mimetype && a.mimetype.startsWith('image/')
+      );
+      const coverBlock = cover
+        ? `<div class="-mx-4 -mt-4 mb-3 h-32 rounded-t-xl overflow-hidden bg-surface-container-high">
+             <img src="${escapeHtml(coverSrc(cover.filename_or_url))}" alt="" class="w-full h-full object-cover pointer-events-none"/>
+           </div>`
+        : '';
+
       return `
-        <div class="task-card bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-transparent hover:border-primary/20 transition-all cursor-grab active:cursor-grabbing"
+        <div class="task-card bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-transparent hover:border-primary/20 transition-all cursor-grab active:cursor-grabbing overflow-hidden"
              draggable="true"
              data-task-id="${escapeHtml(task.id)}"
              data-column-id="${escapeHtml(task.column_id)}">
+          ${coverBlock}
           ${labelsStrip}
           <h4 class="font-bold text-on-surface leading-tight mb-2">${escapeHtml(task.title)}</h4>
           ${descBlock}
@@ -672,7 +637,16 @@
       `;
     }
 
-    // ── Render a single column ──
+    // Stored attachments come in as "/uploads/attachments/xxx"; prefix with
+    // the backend origin so they resolve when the frontend is served from
+    // a different port. External URLs (https://…) pass through untouched.
+    function coverSrc(pathOrUrl) {
+      if (!pathOrUrl) return '';
+      if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
+      if (pathOrUrl.startsWith('/uploads/')) return `http://localhost:3000${pathOrUrl}`;
+      return pathOrUrl;
+    }
+
     function renderColumn(column) {
       const tasks = Array.isArray(column.tasks) ? [...column.tasks] : [];
       tasks.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
@@ -723,7 +697,6 @@
       `;
     }
 
-    // ── Render the entire board ──
     function renderBoard(board) {
       boardTitleEl.textContent = board.title || 'Untitled Board';
       document.title = `${board.title || 'Board'} | Pawtry`;
@@ -743,8 +716,6 @@
         return;
       }
 
-      // Cache all tasks for modal lookup, plus columns for ID→name resolution
-      // from sibling scripts (e.g. log_page.js timeline).
       taskCache.clear();
       columnCache.clear();
       columns.forEach(col => {
@@ -758,22 +729,17 @@
       attachAddTaskEvents();
       attachColumnOptionEvents();
 
-      // Let sibling scripts know the caches were just repopulated. The
-      // activity log timeline listens for this so it can refetch + re-render
-      // whenever the user switches boards in the sidebar.
       window.dispatchEvent(new CustomEvent('dashboard:board-loaded', {
         detail: { boardId: activeBoardId },
       }));
     }
 
-    // ── Column 3-dots dropdown: toggle + Edit/Delete handlers ──
     function closeAllColumnMenus() {
       columnsEl.querySelectorAll('.column-options-menu').forEach(m => m.classList.add('hidden'));
       columnsEl.querySelectorAll('.column-options-btn').forEach(b => b.setAttribute('aria-expanded', 'false'));
     }
 
     function attachColumnOptionEvents() {
-      // Toggle dropdown on ... button
       columnsEl.querySelectorAll('.column-options-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
           e.stopPropagation();
@@ -788,7 +754,6 @@
         });
       });
 
-      // Edit column name — reuses the existing prompt flow from Add Column
       columnsEl.querySelectorAll('.column-edit-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           e.stopPropagation();
@@ -819,7 +784,6 @@
         });
       });
 
-      // Delete column — confirm then DELETE /api/columns/:id
       columnsEl.querySelectorAll('.column-delete-btn').forEach(btn => {
         btn.addEventListener('click', async (e) => {
           e.stopPropagation();
@@ -844,7 +808,6 @@
       });
     }
 
-    // Click outside any column dropdown closes them all
     document.addEventListener('click', (e) => {
       if (e.target.closest('.column-options-menu') || e.target.closest('.column-options-btn')) return;
       closeAllColumnMenus();
@@ -853,14 +816,12 @@
       if (e.key === 'Escape') closeAllColumnMenus();
     });
 
-    // ── Helper: update task count badge in a column ──
     function updateColumnBadge(columnEl) {
       const dropZone = columnEl.querySelector('.kanban-drop-zone');
       const badge = columnEl.querySelector('.bg-surface-container-highest');
       if (!dropZone || !badge) return;
       const count = dropZone.querySelectorAll('.task-card').length;
       badge.textContent = count;
-      // Show / hide empty placeholder
       const placeholder = dropZone.querySelector('.empty-placeholder');
       if (count === 0 && !placeholder) {
         const p = document.createElement('p');
@@ -872,14 +833,6 @@
       }
     }
 
-    // ── Task Detail Modal logic ──────────────────────────────────────────
-    //   Moved to components/TaskModal.js (Refactor Step 1). That file is
-    //   loaded after this IIFE finishes and wires up openTaskModal /
-    //   openCreateModal / closeTaskModal onto window.Dashboard. The card-
-    //   click and add-task handlers below delegate to those functions.
-    // ──────────────────────────────────────────────────────────────────────
-
-    // ── Bind click (modal open) on a single card element ──
     function attachSingleCardEvents(card) {
       let didDrag = false;
 
@@ -897,7 +850,6 @@
       });
     }
 
-    // ── Bind drag events on a single card element ──
     function attachSingleCardDrag(card) {
       card.addEventListener('dragstart', (e) => {
         e.dataTransfer.effectAllowed = 'move';
@@ -914,14 +866,12 @@
       });
     }
 
-    // ── Attach click events to all task cards (click vs drag aware) ──
     function attachCardClickEvents() {
       columnsEl.querySelectorAll('.task-card').forEach(card => {
         attachSingleCardEvents(card);
       });
     }
 
-    // ── Attach click events to all "+ Add Task" buttons ──
     function attachAddTaskEvents() {
       columnsEl.querySelectorAll('.add-task-btn').forEach(btn => {
         btn.addEventListener('click', () => {
@@ -932,9 +882,7 @@
       });
     }
 
-    // ── Setup Drag & Drop on all rendered columns ──
     function setupDragAndDrop() {
-      // --- Draggable cards ---
       columnsEl.querySelectorAll('.task-card').forEach(card => {
         card.addEventListener('dragstart', (e) => {
           e.dataTransfer.effectAllowed = 'move';
@@ -947,12 +895,10 @@
 
         card.addEventListener('dragend', () => {
           card.classList.remove('task-card-dragging');
-          // Clean up any lingering column highlights
           columnsEl.querySelectorAll('.column-drag-over').forEach(c => c.classList.remove('column-drag-over'));
         });
       });
 
-      // --- Drop zones (columns) ---
       columnsEl.querySelectorAll('.kanban-column').forEach(colEl => {
         const dropZone = colEl.querySelector('.kanban-drop-zone');
         if (!dropZone) return;
@@ -964,7 +910,6 @@
         });
 
         colEl.addEventListener('dragleave', (e) => {
-          // Only remove highlight when truly leaving the column (not entering a child)
           if (!colEl.contains(e.relatedTarget)) {
             colEl.classList.remove('column-drag-over');
           }
@@ -979,27 +924,21 @@
           const { taskId, sourceColumnId } = data;
           const targetColumnId = colEl.dataset.columnId;
 
-          // Same column → do nothing
           if (String(sourceColumnId) === String(targetColumnId)) return;
 
           const card = columnsEl.querySelector(`.task-card[data-task-id="${taskId}"]`);
           if (!card) return;
 
-          // ── Optimistic UI update ──
-          // Remove empty placeholder from target if present
           const targetPlaceholder = dropZone.querySelector('.empty-placeholder');
           if (targetPlaceholder) targetPlaceholder.remove();
 
-          // Move DOM element
           card.dataset.columnId = targetColumnId;
           dropZone.appendChild(card);
 
-          // Update badges on both columns
           const sourceColEl = columnsEl.querySelector(`.kanban-column[data-column-id="${sourceColumnId}"]`);
           if (sourceColEl) updateColumnBadge(sourceColEl);
           updateColumnBadge(colEl);
 
-          // ── Persist to backend ──
           try {
             await api(`/tasks/${taskId}`, {
               method: 'PUT',
@@ -1014,7 +953,6 @@
       });
     }
 
-    // ── Render error state ──
     function renderError(message) {
       boardTitleEl.textContent = 'Could not load board';
       columnsEl.innerHTML = `
@@ -1028,7 +966,6 @@
       `;
     }
 
-    // ── Render the sidebar board list from cachedBoards ──
     function renderBoardList() {
       if (!cachedBoards.length) {
         boardListEl.innerHTML = `
@@ -1057,17 +994,15 @@
         `;
       }).join('');
 
-      // Wire click → switch board
       boardListEl.querySelectorAll('.board-list-item').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = btn.dataset.boardId;
           if (!id || id === activeBoardId) return;
           activeBoardId = id;
-          renderBoardList();         // refresh active highlight
+          renderBoardList();
           loadBoardData(activeBoardId);
         });
 
-        // Right-click → open per-board context menu (Delete or Leave)
         btn.addEventListener('contextmenu', (e) => {
           e.preventDefault();
           openBoardContextMenu(e.clientX, e.clientY, btn.dataset.boardId);
@@ -1075,9 +1010,6 @@
       });
     }
 
-    // ═══════════════════════════════════════════
-    //  Sidebar board context menu
-    // ═══════════════════════════════════════════
     const boardCtxMenuEl   = document.getElementById('board-context-menu');
     const ctxDeleteBoardEl = document.getElementById('ctx-delete-board');
     const ctxLeaveBoardEl  = document.getElementById('ctx-leave-board');
@@ -1096,13 +1028,10 @@
 
       ctxMenuBoardId = boardId;
 
-      // Creator-only actions vs. member-only actions. Admins get Delete too,
-      // mirroring the backend's deleteBoard guard.
       const isCreator = currentUserId != null && String(board.creator_id) === String(currentUserId);
       ctxDeleteBoardEl.classList.toggle('hidden', !isCreator);
       ctxLeaveBoardEl.classList.toggle('hidden',   isCreator);
 
-      // Position first off-screen so we can measure, then clamp to viewport.
       boardCtxMenuEl.style.left = '0px';
       boardCtxMenuEl.style.top  = '0px';
       boardCtxMenuEl.classList.remove('hidden');
@@ -1128,8 +1057,6 @@
           await api(`/boards/${boardId}`, { method: 'DELETE' });
           showToast('Board deleted', 'delete');
 
-          // If the deleted board was the one on screen, clear the canvas so
-          // the user doesn't keep interacting with a dead board.
           if (String(activeBoardId) === String(boardId)) {
             activeBoardId = null;
             boardTitleEl.textContent = 'No board selected';
@@ -1184,14 +1111,12 @@
       });
     }
 
-    // Click outside / Escape closes the context menu
     document.addEventListener('click', (e) => {
       if (!boardCtxMenuEl || boardCtxMenuEl.classList.contains('hidden')) return;
       if (e.target.closest('#board-context-menu')) return;
       closeBoardContextMenu();
     });
     document.addEventListener('contextmenu', (e) => {
-      // If the user right-clicks anywhere that isn't a board item, close.
       if (!boardCtxMenuEl || boardCtxMenuEl.classList.contains('hidden')) return;
       if (e.target.closest('.board-list-item')) return;
       closeBoardContextMenu();
@@ -1202,7 +1127,6 @@
     window.addEventListener('resize',  closeBoardContextMenu);
     window.addEventListener('scroll',  closeBoardContextMenu, true);
 
-    // ── Fetch the user's boards and re-render the sidebar ──
     async function loadBoards() {
       try {
         const data = await api('/boards');
@@ -1219,18 +1143,14 @@
       }
     }
 
-    // ── Fetch a single board's details and render its columns/tasks ──
     async function loadBoardData(boardId) {
       if (!boardId) return;
 
-      // Real-time: subscribe to this board's room so we receive live updates
-      // from teammates. The server auto-leaves the previous board room.
-      if (socket && socket.connected) {
-        socket.emit('join_board_room', boardId);
+      if (window.Dashboard && window.Dashboard.SocketManager) {
+        window.Dashboard.SocketManager.joinBoardRoom(boardId);
       }
 
       try {
-        // Loading state in the canvas
         columnsEl.innerHTML = `
           <div class="flex-1 flex items-center justify-center text-on-surface-variant">
             <div class="flex flex-col items-center gap-3">
@@ -1239,9 +1159,6 @@
             </div>
           </div>
         `;
-        // Fetch board detail + labels + members in parallel. Labels/members
-        // are non-critical for the main canvas, so we swallow their errors
-        // and fall back to empty arrays — the board itself still renders.
         const [detail, labelsData, membersData] = await Promise.all([
           api(`/boards/${boardId}`),
           api(`/boards/${boardId}/labels`).catch(() => ({ labels: [] })),
@@ -1257,26 +1174,17 @@
       }
     }
 
-    // ── Page bootstrap: profile + board list + notifications + initial board render ──
     async function bootstrapDashboard() {
-      // Profile name (non-blocking) — also captures userId for the socket
-      // private room, so future 'new_notification' emits reach this tab.
       api('/users/me').then(d => {
         if (d && d.user) {
           userNameEl.textContent = d.user.full_name || d.user.email;
           currentUserId = d.user.id;
-          if (socket && socket.connected) {
-            socket.emit('join_user_room', currentUserId);
+          if (window.Dashboard && window.Dashboard.SocketManager) {
+            window.Dashboard.SocketManager.joinUserRoom(currentUserId);
           }
-          // If socket hasn't connected yet, the 'connect' handler below
-          // will pick up currentUserId and join on its own.
         }
       }).catch(() => { /* ignore */ });
-
-      // Notifications (non-blocking — badge should pop up asap, even if
-      // boards are slow to load). Still awaited below for correctness on
-      // the error path via its own try/catch.
-      fetchNotifications();
+      if (window.Dashboard.fetchNotifications) window.Dashboard.fetchNotifications();
 
       await loadBoards();
 
@@ -1293,16 +1201,14 @@
         return;
       }
 
-      // Auto-select the most recent board on first load
       activeBoardId = cachedBoards[0].id;
       renderBoardList();
       await loadBoardData(activeBoardId);
     }
 
-    // ── New Board button: prompt → POST /api/boards → refresh & switch ──
     newBoardBtn.addEventListener('click', async () => {
       const raw = prompt('Enter new board title:');
-      if (raw === null) return; // user cancelled
+      if (raw === null) return;
       const title = raw.trim();
       if (!title) {
         alert('Board title cannot be empty');
@@ -1315,10 +1221,9 @@
         const newBoard = data && data.board;
         if (!newBoard) throw new Error('Server did not return the new board');
 
-        // Switch to the new board immediately
         activeBoardId = newBoard.id;
-        await loadBoards();              // refresh sidebar list (highlights active)
-        await loadBoardData(newBoard.id); // render its (empty) canvas
+        await loadBoards();
+        await loadBoardData(newBoard.id);
       } catch (err) {
         if (err.message === 'Unauthorized') return;
         console.error('Failed to create board:', err);
@@ -1328,16 +1233,15 @@
       }
     });
 
-    // ── Add Column button: prompt → POST /api/columns → refresh canvas ──
     addColumnBtn.addEventListener('click', async () => {
       if (!activeBoardId) {
         alert('Please select or create a board first');
         return;
       }
       const raw = prompt('Enter new column name:');
-      if (raw === null) return; // user cancelled
+      if (raw === null) return;
       const title = raw.trim();
-      if (!title) return;       // empty / whitespace-only
+      if (!title) return;
 
       addColumnBtn.disabled = true;
       try {
@@ -1355,20 +1259,17 @@
       }
     });
 
-    // ── Invite popup: toggle on button click, close on outside click ──
     inviteBtn.addEventListener('click', (e) => {
-      e.stopPropagation(); // prevent the document handler below from instantly closing it
+      e.stopPropagation();
       invitePopup.classList.toggle('hidden');
     });
 
     document.addEventListener('click', (e) => {
       if (invitePopup.classList.contains('hidden')) return;
-      // Ignore clicks inside the popup or on the trigger button itself
       if (invitePopup.contains(e.target) || inviteBtn.contains(e.target)) return;
       invitePopup.classList.add('hidden');
     });
 
-    // ── Submit invite: POST /api/boards/:id/invite ──
     const inviteEmailInput = document.getElementById('invite-email-input');
     const submitInviteBtn  = document.getElementById('submit-invite-btn');
 
@@ -1406,7 +1307,6 @@
     }
 
     submitInviteBtn.addEventListener('click', submitInvite);
-    // Convenience: hitting Enter inside the input submits too
     inviteEmailInput.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
@@ -1414,211 +1314,6 @@
       }
     });
 
-    // ═══════════════════════════════════════════
-    //  Notifications system
-    // ═══════════════════════════════════════════
-
-    // ── Format an ISO timestamp into a short relative/absolute label ──
-    function formatNotificationTime(iso) {
-      if (!iso) return '';
-      const d = new Date(iso);
-      if (isNaN(d.getTime())) return '';
-      const diffMs = Date.now() - d.getTime();
-      const mins = Math.floor(diffMs / 60000);
-      if (mins < 1)   return 'Just now';
-      if (mins < 60)  return `${mins}m ago`;
-      const hours = Math.floor(mins / 60);
-      if (hours < 24) return `${hours}h ago`;
-      const days = Math.floor(hours / 24);
-      if (days < 7)   return `${days}d ago`;
-      return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
-    }
-
-    // ── Update the red badge on the bell ──
-    function updateNotificationBadge(count) {
-      unreadCount = Math.max(0, count);
-      if (unreadCount === 0) {
-        notificationBadge.classList.add('hidden');
-        notificationBadge.textContent = '';
-      } else {
-        notificationBadge.classList.remove('hidden');
-        notificationBadge.textContent = unreadCount > 9 ? '9+' : String(unreadCount);
-      }
-    }
-
-    // ── Build the HTML for a single notification row ──
-    function renderNotificationItem(n) {
-      const unread  = !n.is_read;
-      const icon    = n.type === 'board_invite' ? 'group_add' : 'notifications';
-      const timeStr = formatNotificationTime(n.created_at);
-
-      // Accept/Reject buttons only for pending board invites
-      let actionsHtml = '';
-      if (n.type === 'board_invite' && n.reference_id) {
-        const refId = escapeHtml(n.reference_id);
-        const notifId = escapeHtml(n.id);
-        actionsHtml = `
-          <div class="flex gap-2 mt-2">
-            <button type="button" class="invite-respond-btn px-3 py-1 bg-primary text-on-primary text-xs font-semibold rounded-full hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    data-action="accepted" data-board-id="${refId}" data-notification-id="${notifId}">
-              Accept
-            </button>
-            <button type="button" class="invite-respond-btn px-3 py-1 bg-surface-container-high text-on-surface text-xs font-semibold rounded-full hover:bg-error-container hover:text-on-error-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    data-action="rejected" data-board-id="${refId}" data-notification-id="${notifId}">
-              Reject
-            </button>
-          </div>
-        `;
-      }
-
-      const unreadBgClass = unread ? 'bg-indigo-50/40 dark:bg-indigo-900/10' : '';
-      const msgClasses    = unread
-        ? 'font-semibold text-on-surface'
-        : 'text-on-surface-variant';
-
-      return `
-        <li data-notification-id="${escapeHtml(n.id)}"
-            data-is-read="${unread ? 'false' : 'true'}"
-            class="notification-item border-b border-outline-variant/10 last:border-b-0 px-4 py-3 hover:bg-surface-container-low transition-colors cursor-pointer ${unreadBgClass}">
-          <div class="flex items-start gap-3">
-            <span class="material-symbols-outlined text-primary text-base mt-0.5 shrink-0">${icon}</span>
-            <div class="flex-1 min-w-0">
-              <p class="notification-message text-sm leading-snug ${msgClasses}">${escapeHtml(n.message || '')}</p>
-              ${timeStr ? `<p class="text-[10px] text-on-surface-variant/70 mt-0.5">${escapeHtml(timeStr)}</p>` : ''}
-              ${actionsHtml}
-            </div>
-            ${unread ? '<span class="unread-dot w-2 h-2 rounded-full bg-error mt-1.5 shrink-0"></span>' : ''}
-          </div>
-        </li>
-      `;
-    }
-
-    // ── Render the notification list from cachedNotifications ──
-    function renderNotifications() {
-      if (cachedNotifications.length === 0) {
-        notificationListEl.innerHTML = `
-          <li class="px-4 py-10 text-xs text-center text-on-surface-variant italic">
-            No notifications yet
-          </li>
-        `;
-        notificationSummary.textContent = '';
-        updateNotificationBadge(0);
-        return;
-      }
-
-      notificationListEl.innerHTML = cachedNotifications.map(renderNotificationItem).join('');
-
-      const unread = cachedNotifications.filter(n => !n.is_read).length;
-      updateNotificationBadge(unread);
-      notificationSummary.textContent = unread > 0 ? `${unread} unread` : 'All read';
-
-      // Wire: click a notification → mark as read
-      notificationListEl.querySelectorAll('.notification-item').forEach(item => {
-        item.addEventListener('click', () => handleNotificationClick(item));
-      });
-      // Wire: Accept / Reject on a pending invite
-      notificationListEl.querySelectorAll('.invite-respond-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => {
-          e.stopPropagation(); // don't also fire notification-item click
-          handleInviteRespond(btn);
-        });
-      });
-    }
-
-    // ── Click on a notification row → PUT /notifications/:id/read ──
-    async function handleNotificationClick(item) {
-      const id     = item.dataset.notificationId;
-      const isRead = item.dataset.isRead === 'true';
-      if (!id || isRead) return;
-
-      try {
-        await api(`/notifications/${id}/read`, { method: 'PUT' });
-
-        // Optimistic DOM update — match the "read" styling
-        item.dataset.isRead = 'true';
-        item.classList.remove('bg-indigo-50/40', 'dark:bg-indigo-900/10');
-        const msg = item.querySelector('.notification-message');
-        if (msg) {
-          msg.classList.remove('font-semibold', 'text-on-surface');
-          msg.classList.add('text-on-surface-variant');
-        }
-        const dot = item.querySelector('.unread-dot');
-        if (dot) dot.remove();
-
-        // Update cache + badge
-        const cached = cachedNotifications.find(n => String(n.id) === String(id));
-        if (cached) cached.is_read = true;
-        updateNotificationBadge(unreadCount - 1);
-        const stillUnread = Math.max(0, unreadCount);
-        notificationSummary.textContent = stillUnread > 0 ? `${stillUnread} unread` : 'All read';
-      } catch (err) {
-        if (err.message === 'Unauthorized') return;
-        console.error('Failed to mark notification as read:', err);
-      }
-    }
-
-    // ── Accept / Reject invite → PUT /boards/:refId/invite/respond ──
-    async function handleInviteRespond(btn) {
-      const action  = btn.dataset.action;   // 'accepted' | 'rejected'
-      const boardId = btn.dataset.boardId;
-      if (!boardId || !['accepted', 'rejected'].includes(action)) return;
-
-      // Disable both Accept and Reject for this notification while in flight
-      const parent  = btn.closest('.notification-item');
-      const buttons = parent ? parent.querySelectorAll('.invite-respond-btn') : [btn];
-      buttons.forEach(b => b.disabled = true);
-
-      try {
-        await api(`/boards/${boardId}/invite/respond`, {
-          method: 'PUT',
-          body: { status: action },
-        });
-        // Refresh sidebar (newly accepted board appears) and notifications
-        await loadBoards();
-        await fetchNotifications();
-      } catch (err) {
-        if (err.message === 'Unauthorized') return;
-        console.error('Failed to respond to invite:', err);
-        alert('Could not respond to invite: ' + (err.message || 'Unknown error'));
-        buttons.forEach(b => b.disabled = false);
-      }
-    }
-
-    // ── Fetch notifications from the API and render ──
-    async function fetchNotifications() {
-      try {
-        const data = await api('/notifications');
-        cachedNotifications = (data && data.notifications) || [];
-        renderNotifications();
-      } catch (err) {
-        if (err.message === 'Unauthorized') return;
-        console.error('Failed to fetch notifications:', err);
-        notificationListEl.innerHTML = `
-          <li class="px-4 py-6 text-xs text-center text-error italic">
-            Could not load notifications
-          </li>
-        `;
-        notificationSummary.textContent = '';
-        updateNotificationBadge(0);
-      }
-    }
-
-    // ── Toggle the bell popup, and close on outside click ──
-    notificationBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      notificationPopup.classList.toggle('hidden');
-    });
-    document.addEventListener('click', (e) => {
-      if (notificationPopup.classList.contains('hidden')) return;
-      if (notificationPopup.contains(e.target) || notificationBtn.contains(e.target)) return;
-      notificationPopup.classList.add('hidden');
-    });
-
-    // ═══════════════════════════════════════════
-    //  Real-time (socket.io) — listeners + toast
-    // ═══════════════════════════════════════════
-
-    // ── Lightweight toast (auto-dismiss after 3s) ──
     const toastContainerEl = document.getElementById('toast-container');
     function showToast(message, icon = 'notifications') {
       if (!toastContainerEl) return;
@@ -1637,51 +1332,7 @@
       }, 3000);
     }
 
-    if (socket) {
-      // Re-join rooms on every (re)connect — handles initial connect AND
-      // automatic reconnects after the server/network drops briefly.
-      socket.on('connect', () => {
-        console.log('[socket] connected', socket.id);
-        if (currentUserId) socket.emit('join_user_room', currentUserId);
-        if (activeBoardId) socket.emit('join_board_room', activeBoardId);
-      });
 
-      socket.on('disconnect', (reason) => {
-        console.log('[socket] disconnected:', reason);
-      });
-
-      // Auth failures (missing/invalid/expired token) surface here as the
-      // server rejects the handshake in its io.use middleware.
-      socket.on('connect_error', (err) => {
-        console.error('[socket] connect_error:', err && err.message);
-        if (err && err.message === 'Authentication error') {
-          alert('Your session has expired. Please log in again.');
-          localStorage.removeItem('token');
-          window.location.replace(LOGIN_PAGE);
-        }
-      });
-
-      // Invitee's private room → refresh notifications + show toast
-      socket.on('new_notification', () => {
-        fetchNotifications();
-        showToast('You have a new notification', 'notifications_active');
-      });
-
-      // Board room → refetch the active board so columns/tasks stay in sync.
-      // Debounce to coalesce rapid bursts (e.g. multi-card drag from another user).
-      socket.on('board_updated', (payload) => {
-        if (!activeBoardId) return;
-        // Guard: ignore events for a different board (edge case if room
-        // membership hasn't been updated yet after a switch).
-        if (payload && payload.board_id && String(payload.board_id) !== String(activeBoardId)) return;
-        clearTimeout(boardUpdateDebounce);
-        boardUpdateDebounce = setTimeout(() => {
-          loadBoardData(activeBoardId);
-        }, 200);
-      });
-    }
-
-    // ── 4. Logout ──
     userMenuBtn.addEventListener('click', () => {
       if (confirm('Logout from Pawtry?')) {
         localStorage.removeItem('token');
@@ -1689,13 +1340,8 @@
       }
     });
 
-    // ── 5. Drag-to-Scroll (Pan) on the board background ──
-    // Pans the kanban columns horizontally when the user click-drags on
-    // empty board space. Coexists with HTML5 card drag-and-drop because
-    // it bails out the moment the press starts on a card or interactive
-    // element — those keep their original behavior untouched.
     (function setupBoardPan() {
-      const PAN_THRESHOLD = 5; // px before a press is treated as a pan
+      const PAN_THRESHOLD = 5;
       const INTERACTIVE_SELECTOR = '.task-card, button, a, input, textarea, select, [draggable="true"]';
 
       let pointerDown    = false;
@@ -1704,9 +1350,7 @@
       let startScrollLeft = 0;
 
       columnsEl.addEventListener('mousedown', (e) => {
-        // Primary mouse button only
         if (e.button !== 0) return;
-        // Never hijack a press on a card or any interactive control
         if (e.target.closest(INTERACTIVE_SELECTOR)) return;
 
         pointerDown     = true;
@@ -1720,15 +1364,13 @@
 
         const dx = e.pageX - startPageX;
 
-        // Defer committing to a pan until movement clears the threshold,
-        // so a stationary click on the background still behaves normally.
         if (!isPanning) {
           if (Math.abs(dx) < PAN_THRESHOLD) return;
           isPanning = true;
           columnsEl.classList.add('is-panning');
         }
 
-        e.preventDefault(); // suppress text selection while panning
+        e.preventDefault();
         columnsEl.scrollLeft = startScrollLeft - dx;
       });
 
@@ -1745,36 +1387,31 @@
       columnsEl.addEventListener('mouseleave', endPan);
     })();
 
-    // Expose a surface for sibling scripts that live outside this IIFE
-    // (components/TaskModal.js, log_page.js). Helpers are exposed as
-    // direct references where safe; live `let`-bound caches are exposed
-    // via getter functions so reassigning them in loadBoardData doesn't
-    // leave components holding a stale reference.
     window.Dashboard = {
-      // ── Core helpers ──
       api,
       escapeHtml,
       showToast,
-      formatNotificationTime,
       formatDueDate,
       initials,
       colorFor,
+      coverSrc,
 
-      // ── Board state ──
+      LOGIN_PAGE,
+
+      loadBoards,
+      loadBoardData,
+
       getActiveBoardId: () => activeBoardId,
+      getCurrentUserId: () => currentUserId,
       getColumnById: (id) => columnCache.get(String(id)) || null,
       getTaskById:   (id) => taskCache.get(String(id)) || null,
       getLabelById:  (id) => boardLabelsCache.find(l => String(l.id) === String(id)) || null,
       getMemberById: (id) => boardMembersCache.find(u => String(u.id) === String(id)) || null,
-      // Live cache refs (the Map instances never get reassigned)
       taskCache,
       columnCache,
-      // Array caches ARE reassigned on each loadBoardData — expose getters
-      // so components always see the current array instance.
       getBoardLabelsCache:  () => boardLabelsCache,
       getBoardMembersCache: () => boardMembersCache,
 
-      // ── Board DOM helpers (used by TaskModal for optimistic card inserts) ──
       getColumnsEl:         () => columnsEl,
       getUserNameEl:        () => userNameEl,
       renderTaskCard,
@@ -1783,9 +1420,14 @@
       updateColumnBadge,
     };
 
-    bootstrapDashboard();
+    // Defer bootstrap to the next macrotask so every component script
+    // below (NotificationManager, SocketManager, TaskModal, log_page)
+    // has loaded and registered its helpers on window.Dashboard first.
+    setTimeout(bootstrapDashboard, 0);
   })();
 </script>
+<script src="../components/NotificationManager.js"></script>
+<script src="../components/SocketManager.js"></script>
 <script src="../components/TaskModal.js"></script>
 <script src="log_page.js"></script>
 </body></html>

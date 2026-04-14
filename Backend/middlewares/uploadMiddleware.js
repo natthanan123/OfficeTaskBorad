@@ -2,33 +2,47 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-// Ensure the upload directory exists
-const uploadDir = path.join(__dirname, '..', 'uploads', 'avatars');
-fs.mkdirSync(uploadDir, { recursive: true });
+const avatarDir     = path.join(__dirname, '..', 'uploads', 'avatars');
+const attachmentDir = path.join(__dirname, '..', 'uploads', 'attachments');
+fs.mkdirSync(avatarDir,     { recursive: true });
+fs.mkdirSync(attachmentDir, { recursive: true });
 
-const storage = multer.diskStorage({
-  destination: (_req, _file, cb) => {
-    cb(null, uploadDir);
-  },
-  filename: (_req, file, cb) => {
-    const ext = path.extname(file.originalname);
-    cb(null, `${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`);
-  },
+function buildFilename(file) {
+  const ext = path.extname(file.originalname);
+  return `${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
+}
+
+// Avatars: images only.
+const avatarStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, avatarDir),
+  filename:    (_req, file, cb) => cb(null, buildFilename(file)),
 });
 
-const fileFilter = (_req, file, cb) => {
+const avatarFilter = (_req, file, cb) => {
   const allowed = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif'];
-  if (allowed.includes(file.mimetype)) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only jpeg, jpg, png, and gif files are allowed'), false);
-  }
+  if (allowed.includes(file.mimetype)) return cb(null, true);
+  cb(new Error('Only jpeg, jpg, png, and gif files are allowed'), false);
 };
 
-const upload = multer({
-  storage,
-  fileFilter,
-  limits: { fileSize: 5 * 1024 * 1024 }, // 5 MB
+const avatarUpload = multer({
+  storage: avatarStorage,
+  fileFilter: avatarFilter,
+  limits: { fileSize: 5 * 1024 * 1024 },
 });
 
-module.exports = upload;
+// Attachments: any file type — validation is left to the client UI.
+const attachmentStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, attachmentDir),
+  filename:    (_req, file, cb) => cb(null, buildFilename(file)),
+});
+
+const attachmentUpload = multer({
+  storage: attachmentStorage,
+  limits: { fileSize: 25 * 1024 * 1024 },
+});
+
+// Default export stays the avatar uploader for backwards compatibility
+// with existing userRoutes.js. New consumers reach for the named exports.
+module.exports = avatarUpload;
+module.exports.avatarUpload     = avatarUpload;
+module.exports.attachmentUpload = attachmentUpload;

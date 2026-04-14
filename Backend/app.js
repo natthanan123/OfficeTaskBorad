@@ -92,6 +92,8 @@ app.use('/api/users',         require('./routes/userRoutes'));
 app.use('/api/boards',        require('./routes/boardRoutes'));
 app.use('/api/columns',       require('./routes/columnRoutes'));
 app.use('/api/tasks',         require('./routes/taskRoutes'));
+app.use('/api/attachments',   require('./routes/attachmentRoutes'));
+app.use('/api/comments',      require('./routes/commentRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 // ─── Global error handler (must be AFTER all routes) ───

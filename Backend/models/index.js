@@ -11,6 +11,7 @@ const Label        = require('./Label')(sequelize);
 const TaskLabel    = require('./TaskLabel')(sequelize);
 const TaskComment  = require('./TaskComment')(sequelize);
 const ActivityLog  = require('./ActivityLog')(sequelize);
+const Attachment   = require('./Attachment')(sequelize);
 
 // ═══════════════════════════════════════════
 //  Associations
@@ -165,6 +166,31 @@ ActivityLog.belongsTo(Task, {
   as: 'task',
 });
 
+// ── Task (1) ──> Attachment (N) ──
+// Files + link attachments live on a task and cascade with it.
+Task.hasMany(Attachment, {
+  foreignKey: { name: 'task_id', allowNull: false },
+  as: 'attachments',
+  onDelete: 'CASCADE',
+});
+Attachment.belongsTo(Task, {
+  foreignKey: { name: 'task_id', allowNull: false },
+  as: 'task',
+});
+
+// ── User (1) ──> Attachment (N) ──
+// Uploader survives user deletion with a null reference — we keep the
+// attachment itself (it might still be a valid link/file for the task).
+User.hasMany(Attachment, {
+  foreignKey: { name: 'user_id', allowNull: true },
+  as: 'attachments',
+  onDelete: 'SET NULL',
+});
+Attachment.belongsTo(User, {
+  foreignKey: { name: 'user_id', allowNull: true },
+  as: 'uploader',
+});
+
 // ─── Export everything the rest of the app needs ───
 module.exports = {
   sequelize,
@@ -178,4 +204,5 @@ module.exports = {
   TaskLabel,
   TaskComment,
   ActivityLog,
+  Attachment,
 };

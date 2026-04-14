@@ -1,22 +1,3 @@
-// ════════════════════════════════════════════════════════════════════
-//  log_page.js — Activity Log "Timeline" tab for the Kanban dashboard
-// --------------------------------------------------------------------
-//  Reads helpers + cached board state from window.Dashboard (exposed
-//  at the end of code.html's main IIFE) so the two files stay decoupled.
-//  Required surface:
-//    Dashboard.api(path, opts)
-//    Dashboard.escapeHtml(str)
-//    Dashboard.formatNotificationTime(iso)
-//    Dashboard.showToast(msg, icon)
-//    Dashboard.getActiveBoardId()
-//    Dashboard.getColumnById(id)  → { id, title, ... } | null
-//    Dashboard.getTaskById(id)    → { id, title, ... } | null
-//    Dashboard.getLabelById(id)   → { id, title, color } | null
-//    Dashboard.getMemberById(id)  → { id, full_name, email } | null
-//  The main script also dispatches a 'dashboard:board-loaded' window
-//  CustomEvent after every board switch — we listen for it so the
-//  timeline resets + refetches whenever the active board changes.
-// ════════════════════════════════════════════════════════════════════
 
 (function () {
   const D = window.Dashboard;
@@ -25,7 +6,6 @@
     return;
   }
 
-  // ── DOM refs (injected into code.html in Phase 3) ──
   const tabOverviewBtn = document.getElementById('tab-overview');
   const tabTimelineBtn = document.getElementById('tab-timeline');
   const timelineViewEl = document.getElementById('timeline-view');
@@ -36,18 +16,10 @@
     return;
   }
 
-  // Siblings of #kanban-columns inside <main> that should be hidden along
-  // with the board canvas when Timeline is active. Collected lazily.
   const kanbanLoadingEl = document.getElementById('kanban-loading');
 
-  // Which board the currently-rendered timeline belongs to. Cleared when
-  // the user switches boards so the next tab activation always refetches.
   let renderedForBoardId = null;
   let isTimelineVisible  = false;
-
-  // ═══════════════════════════════════════════
-  //  Tab switching
-  // ═══════════════════════════════════════════
 
   const ACTIVE_CLASSES   = ['text-indigo-600', 'dark:text-indigo-400', 'border-b-2', 'border-indigo-600'];
   const INACTIVE_CLASSES = ['text-slate-500', 'dark:text-slate-400', 'hover:text-indigo-700', 'dark:hover:text-indigo-300', 'transition-opacity'];
@@ -71,8 +43,7 @@
   }
 
   function showTimeline() {
-    // Hide the whole Kanban canvas so the Timeline gets full width and
-    // the user doesn't see a half-rendered board underneath.
+
     kanbanEl.classList.add('hidden');
     if (kanbanLoadingEl) kanbanLoadingEl.classList.add('hidden');
     timelineViewEl.classList.remove('hidden');
@@ -87,19 +58,15 @@
       return;
     }
 
-    // Always refetch on tab open — activity is typically stale.
     fetchAndRenderLogs(boardId);
   }
 
   tabOverviewBtn.addEventListener('click', (e) => { e.preventDefault(); showOverview(); });
   tabTimelineBtn.addEventListener('click', (e) => { e.preventDefault(); showTimeline(); });
 
-  // When the user switches boards from the sidebar, reset state and
-  // (if we're currently looking at the timeline) reload for the new board.
   window.addEventListener('dashboard:board-loaded', (e) => {
     const newBoardId = (e && e.detail && e.detail.boardId) || D.getActiveBoardId();
 
-    // Different board → blow away the previous render so nothing leaks.
     if (String(newBoardId) !== String(renderedForBoardId)) {
       renderedForBoardId = null;
       if (isTimelineVisible) {
@@ -109,25 +76,18 @@
         timelineViewEl.innerHTML = '';
       }
     } else if (isTimelineVisible && newBoardId) {
-      // Same board, but caches were just repopulated — re-resolve names.
       fetchAndRenderLogs(newBoardId);
     }
   });
 
-  // ═══════════════════════════════════════════
-  //  Fetching + rendering
-  // ═══════════════════════════════════════════
-
   async function fetchAndRenderLogs(boardId) {
-    // Board isolation: snapshot the id we're fetching for and bail out
-    // during the render step if the user has switched boards meanwhile.
+
     const requestedBoardId = boardId;
     timelineViewEl.innerHTML = loadingState();
 
     try {
       const data = await D.api(`/boards/${requestedBoardId}/logs?limit=100`);
 
-      // Abort if the user jumped to a different board while we were in-flight.
       if (String(requestedBoardId) !== String(D.getActiveBoardId())) return;
 
       const logs = (data && data.logs) || [];
@@ -154,9 +114,6 @@
     }
   }
 
-  // ═══════════════════════════════════════════
-  //  Presentation helpers
-  // ═══════════════════════════════════════════
 
   function loadingState() {
     return `
@@ -220,19 +177,12 @@
     `;
   }
 
-  // ═══════════════════════════════════════════
-  //  ID → Name resolution (never renders raw IDs)
-  // ═══════════════════════════════════════════
 
-  // Wrap a resolved (or fallback) name in a bold chip so the user's eye
-  // lands on the "thing" before the verb.
   function nameChip(text) {
     return `<span class="font-semibold text-on-surface">${D.escapeHtml(text)}</span>`;
   }
 
-  // Task name: try the live cache first, then the embedded log.task.title
-  // that the backend include'd, then the MOVE_TASK details snapshot, then
-  // the deleted-task fallback.
+
   function resolveTaskName(log) {
     const details = log.details || {};
     const liveId  = log.task_id || (log.task && log.task.id);
@@ -240,8 +190,8 @@
       const cached = D.getTaskById(liveId);
       if (cached && cached.title) return cached.title;
     }
-    if (log.task && log.task.title) return log.task.title;     // included by API
-    if (details.title)              return details.title;      // snapshot at CREATE_TASK
+    if (log.task && log.task.title) return log.task.title;
+    if (details.title)              return details.title;
     return '[การ์ดที่ถูกลบ]';
   }
 
@@ -268,7 +218,6 @@
     return '[สมาชิกที่ถูกลบ]';
   }
 
-  // Map each backend action_type → a Thai sentence with bold names.
   function describeAction(log) {
     const details = log.details || {};
 
@@ -325,8 +274,6 @@
       }
 
       case 'DELETE_TASK': {
-        // task_id is null after a delete, so resolveTaskName falls back to
-        // details.title (snapshot taken on the server before destroy).
         const taskName = (details && details.title) || '[การ์ดที่ถูกลบ]';
         return {
           icon: 'delete',
@@ -386,8 +333,6 @@
     }
   }
 
-  // Opt-in hook for future callers (e.g. live socket updates) that want
-  // the visible timeline to refresh without a manual tab click.
   window.Dashboard.refreshTimeline = () => {
     const boardId = D.getActiveBoardId();
     if (boardId && isTimelineVisible) fetchAndRenderLogs(boardId);

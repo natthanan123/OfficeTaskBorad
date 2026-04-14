@@ -1,6 +1,6 @@
 const { Notification } = require('../models');
 
-// ─── GET /api/notifications ── List notifications for the logged-in user ───
+// GET /api/notifications
 exports.getNotifications = async (req, res) => {
   try {
     const notifications = await Notification.findAll({
@@ -18,7 +18,7 @@ exports.getNotifications = async (req, res) => {
   }
 };
 
-// ─── PUT /api/notifications/:id/read ── Mark a notification as read ───
+// PUT /api/notifications/:id/read
 exports.markAsRead = async (req, res) => {
   try {
     const notification = await Notification.findByPk(req.params.id);
@@ -27,7 +27,6 @@ exports.markAsRead = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Notification not found' });
     }
 
-    // A user can only mark their own notifications as read
     if (notification.user_id !== req.user.id) {
       return res.status(403).json({ status: 'error', message: 'Forbidden' });
     }

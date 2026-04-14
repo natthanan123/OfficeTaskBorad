@@ -7,13 +7,14 @@ const {
   BoardMember,
   Label,
   TaskComment,
+  Attachment,
   sequelize,
 } = require('../models');
 
-// ─── POST / ── Create a new board ───
+// POST / — Create a new board
 exports.createBoard = async (req, res) => {
-  // Wrap board + owner-membership in a transaction so we never end up with
-  // an "orphan" board that the creator can't see in their list.
+  // Transaction keeps the board + creator membership row atomic so an
+  // orphan board never slips past getBoards' membership-based filter.
   const t = await sequelize.transaction();
   try {
     const { title, description } = req.body;
@@ -32,8 +33,6 @@ exports.createBoard = async (req, res) => {
       { transaction: t }
     );
 
-    // Add the creator as an owner-level member so getBoards (which queries
-    // through BoardMember) can find this board for them on the next request.
     await BoardMember.create(
       {
         user_id: req.user.id,
@@ -53,12 +52,9 @@ exports.createBoard = async (req, res) => {
   }
 };
 
-// ─── GET / ── Fetch boards visible to the logged-in user ───
-// • admin      → sees every board in the system
-// • otherwise  → sees boards they created OR have an accepted membership for
+// GET / — Boards visible to the caller (admins see everything)
 exports.getBoards = async (req, res) => {
   try {
-    // Options shared by both branches (include + order stay identical)
     const findOptions = {
       include: {
         model: User,
@@ -68,15 +64,12 @@ exports.getBoards = async (req, res) => {
       order: [['created_at', 'DESC']],
     };
 
-    // Non-admin users get the per-user visibility filter.
-    // Admins fall through with no `where`, so findAll returns everything.
     if (req.user.role !== 'admin') {
       findOptions.where = {
         [Op.or]: [
-          // 1) Boards I created (covers legacy boards with no membership row)
+          // Created-by-me covers legacy boards that predate BoardMember.
           { creator_id: req.user.id },
-          // 2) Boards I have an *accepted* membership for
-          //    (pending/rejected invites must NOT show up in the boards list)
+          // Only accepted memberships — pending/rejected invites must not leak.
           {
             id: {
               [Op.in]: sequelize.literal(
@@ -97,7 +90,7 @@ exports.getBoards = async (req, res) => {
   }
 };
 
-// ─── GET /:id ── Fetch a single board with columns → tasks ───
+// GET /:id — Board with columns → tasks → (assignees, labels, comments)
 exports.getBoardById = async (req, res) => {
   try {
     const board = await Board.findByPk(req.params.id, {
@@ -140,6 +133,12 @@ exports.getBoardById = async (req, res) => {
                   attributes: ['id', 'full_name', 'email'],
                 },
               },
+              {
+                model: Attachment,
+                as: 'attachments',
+                separate: true,
+                order: [['created_at', 'DESC']],
+              },
             ],
           },
         },
@@ -150,19 +149,17 @@ exports.getBoardById = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Board not found' });
     }
 
-    // Flatten into a plain JSON shape and normalise every nested relation.
-    // Optional chaining + `|| []` fallbacks cover:
-    //   • alias mismatches (`tasks` vs default pluralised `Tasks`)
-    //   • Sequelize edge cases where a `separate: true` include returns
-    //     undefined instead of an empty array on zero-row relations
-    //   • missing association instances for rows created before a migration
+    // Normalise nested relations: alias fallbacks guard against Sequelize
+    // returning `Tasks` vs `tasks` and `separate: true` yielding undefined
+    // instead of [] for zero-row includes.
     const raw = typeof board.toJSON === 'function' ? board.toJSON() : board;
 
     const safeColumns = (raw?.columns || raw?.Columns || []).map((column) => {
       const tasks = (column?.tasks || column?.Tasks || []).map((task) => ({
         ...task,
-        assignees: task?.assignees || task?.Assignees || [],
-        labels:    task?.labels    || task?.Labels    || [],
+        assignees:   task?.assignees   || task?.Assignees   || [],
+        labels:      task?.labels      || task?.Labels      || [],
+        attachments: task?.attachments || task?.Attachments || [],
         comments:  (task?.comments || task?.Comments || []).map((c) => ({
           ...c,
           author: c?.author || c?.Author || null,
@@ -180,9 +177,7 @@ exports.getBoardById = async (req, res) => {
   }
 };
 
-// ─── DELETE /:id ── Remove a board (creator or admin only) ───
-// All related columns/tasks/labels/members cascade via the FK associations
-// defined in models/index.js, so we only need to destroy the Board row.
+// DELETE /:id — Creator or admin only; cascades via FK associations.
 exports.deleteBoard = async (req, res) => {
   try {
     const board = await Board.findByPk(req.params.id);
@@ -190,7 +185,6 @@ exports.deleteBoard = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Board not found' });
     }
 
-    // Only the original creator (or an admin) is allowed to nuke the board.
     if (req.user.role !== 'admin' && board.creator_id !== req.user.id) {
       return res.status(403).json({
         status: 'error',
@@ -201,7 +195,6 @@ exports.deleteBoard = async (req, res) => {
     const boardId = board.id;
     await board.destroy();
 
-    // Broadcast so other viewers can drop the board from their sidebar.
     try {
       req.app.get('io')
         .to(`board_${boardId}`)
@@ -217,9 +210,7 @@ exports.deleteBoard = async (req, res) => {
   }
 };
 
-// ─── DELETE /:id/leave ── Current user leaves a board they're a member of ───
-// Creators cannot "leave" their own board — they must delete it instead, so
-// we block that case with a clear 400 rather than silently no-oping.
+// DELETE /:id/leave — Members only. Creators must delete the board instead.
 exports.leaveBoard = async (req, res) => {
   try {
     const board = await Board.findByPk(req.params.id);
@@ -251,7 +242,7 @@ exports.leaveBoard = async (req, res) => {
   }
 };
 
-// ─── GET /:id/labels ── List labels that belong to a board ───
+// GET /:id/labels
 exports.listBoardLabels = async (req, res) => {
   try {
     const labels = await Label.findAll({
@@ -265,7 +256,7 @@ exports.listBoardLabels = async (req, res) => {
   }
 };
 
-// ─── POST /:id/labels ── Create a new label under a board ───
+// POST /:id/labels
 exports.createBoardLabel = async (req, res) => {
   try {
     const { title, color } = req.body;
@@ -284,8 +275,6 @@ exports.createBoardLabel = async (req, res) => {
       color,
     });
 
-    // Let everyone looking at this board refetch and pick up the new palette
-    // entry — the Labels popup renders from the fresh board data.
     try {
       req.app.get('io')
         .to(`board_${board.id}`)
@@ -301,7 +290,7 @@ exports.createBoardLabel = async (req, res) => {
   }
 };
 
-// ─── GET /:id/members ── List accepted members of a board ───
+// GET /:id/members — Accepted members only.
 exports.listBoardMembers = async (req, res) => {
   try {
     const memberships = await BoardMember.findAll({
@@ -314,7 +303,6 @@ exports.listBoardMembers = async (req, res) => {
       order: [['created_at', 'ASC']],
     });
 
-    // Flatten to a simple user list — that's all the Members popup needs.
     const members = memberships
       .map(m => m.user)
       .filter(Boolean);
