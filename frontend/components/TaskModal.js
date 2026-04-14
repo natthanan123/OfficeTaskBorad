@@ -11,6 +11,7 @@
   const formatDueDate     = D.formatDueDate;
   const initials          = D.initials;
   const colorFor          = D.colorFor;
+  const coverSrc          = D.coverSrc;
   const taskCache         = D.taskCache;
   const getLabels         = D.getBoardLabelsCache;
   const getMembers        = D.getBoardMembersCache;
@@ -20,6 +21,9 @@
   const attachSingleCardEvents = D.attachSingleCardEvents;
   const attachSingleCardDrag   = D.attachSingleCardDrag;
   const updateColumnBadge = D.updateColumnBadge;
+  const uploadTaskAttachment = D.uploadTaskAttachment;
+  const hasFilesPayload   = D.hasFilesPayload;
+  const showToast         = D.showToast;
 
   const modalEl               = document.getElementById('task-modal');
   const modalBackdrop         = document.getElementById('modal-backdrop');
@@ -60,6 +64,15 @@
 
   const popupLabelsList  = document.getElementById('popup-labels-list');
   const popupMembersList = document.getElementById('popup-members-list');
+
+  const modalAttachmentsSection = document.getElementById('modal-attachments-section');
+  const modalAttachmentsList    = document.getElementById('modal-attachments-list');
+  const modalAttachmentsEmpty   = document.getElementById('modal-attachments-empty');
+  const popupAttachmentFile     = document.getElementById('popup-attachment-file');
+  const popupAttachmentUrl      = document.getElementById('popup-attachment-url');
+  const popupAttachmentSubmit   = document.getElementById('popup-attachment-link-submit');
+  const popupAttachments        = document.getElementById('popup-attachments');
+  const modalDropOverlay        = document.getElementById('modal-drop-overlay');
 
   if (!modalEl || !modalPanel) {
     console.error('[TaskModal] Required modal elements missing.');
@@ -496,6 +509,10 @@
     renderMembersPopup(task);
     renderLabelsPopup(task);
 
+    if (modalAttachmentsSection) modalAttachmentsSection.classList.remove('hidden');
+    renderAttachments(task.attachments || []);
+    refreshAttachmentsFromServer();
+
     const comments = Array.isArray(task.comments) ? task.comments : [];
     modalCommentsList.innerHTML = comments.length
       ? comments.map(c => {
@@ -547,6 +564,7 @@
     modalStatus.textContent = colTitle ? colTitle.textContent.trim() : '—';
 
     modalEditOnlySections.forEach(s => s && s.classList.add('hidden'));
+    if (modalAttachmentsSection) modalAttachmentsSection.classList.add('hidden');
     modalDeleteBtn.classList.add('hidden');
     modalSaveBtn.innerHTML = '<span class="material-symbols-outlined text-base">add_task</span> Create Task';
 
@@ -692,6 +710,281 @@
       modalDeleteBtn.innerHTML = '<span class="material-symbols-outlined text-base">delete</span> Delete';
     }
   });
+
+  function attachmentIsImage(a) {
+    return !!(a && a.mimetype && a.mimetype.startsWith('image/'));
+  }
+
+  function attachmentDisplayName(a) {
+    if (!a) return '';
+    const raw = a.filename_or_url || '';
+    if (/^https?:\/\//i.test(raw)) {
+      try {
+        const u = new URL(raw);
+        return u.hostname + (u.pathname && u.pathname !== '/' ? u.pathname : '');
+      } catch (_) {
+        return raw;
+      }
+    }
+    const parts = raw.split('/');
+    return parts[parts.length - 1] || raw;
+  }
+
+  function attachmentSourceLabel(a) {
+    if (!a) return '';
+    if (a.source === 'direct_upload' && /^https?:\/\//i.test(a.filename_or_url || '')) return 'Link';
+    if (a.source === 'direct_upload') return 'Upload';
+    return a.source || 'Attachment';
+  }
+
+  function attachmentHref(a) {
+    if (!a) return '#';
+    const raw = a.filename_or_url || '';
+    return coverSrc ? coverSrc(raw) : raw;
+  }
+
+  function renderAttachments(attachments) {
+    const list = Array.isArray(attachments) ? attachments : [];
+    if (!modalAttachmentsList) return;
+
+    if (!list.length) {
+      modalAttachmentsList.innerHTML = '';
+      if (modalAttachmentsEmpty) modalAttachmentsEmpty.classList.remove('hidden');
+      return;
+    }
+    if (modalAttachmentsEmpty) modalAttachmentsEmpty.classList.add('hidden');
+
+    modalAttachmentsList.innerHTML = list.map(a => {
+      const isImg  = attachmentIsImage(a);
+      const href   = attachmentHref(a);
+      const name   = escapeHtml(attachmentDisplayName(a));
+      const source = escapeHtml(attachmentSourceLabel(a));
+      const thumb  = isImg
+        ? `<img src="${escapeHtml(href)}" alt="" class="w-full h-full object-cover"/>`
+        : `<span class="material-symbols-outlined text-on-surface-variant">${/^https?:\/\//i.test(a.filename_or_url || '') ? 'link' : 'description'}</span>`;
+      const makeCoverBtn = isImg
+        ? `<button type="button" data-att-action="cover" data-att-id="${escapeHtml(String(a.id))}"
+                   class="text-[11px] font-semibold text-primary hover:underline">
+             ${a.is_cover ? 'Cover ✓' : 'Make cover'}
+           </button>`
+        : '';
+      return `
+        <li class="flex items-center gap-3 bg-surface-container-low border border-outline-variant/30 rounded-lg p-2">
+          <a href="${escapeHtml(href)}" target="_blank" rel="noopener"
+             class="w-16 h-16 rounded-md overflow-hidden bg-surface-container-high flex items-center justify-center flex-shrink-0">
+            ${thumb}
+          </a>
+          <div class="flex-1 min-w-0">
+            <a href="${escapeHtml(href)}" target="_blank" rel="noopener"
+               class="block text-sm font-semibold text-on-surface truncate hover:underline">${name}</a>
+            <div class="mt-0.5 text-[11px] text-on-surface-variant/70">${source}</div>
+            <div class="mt-1 flex items-center gap-3">
+              ${makeCoverBtn}
+              <button type="button" data-att-action="delete" data-att-id="${escapeHtml(String(a.id))}"
+                      class="text-[11px] font-semibold text-error hover:underline">Delete</button>
+            </div>
+          </div>
+        </li>
+      `;
+    }).join('');
+  }
+
+  function syncCachedAttachments(next) {
+    if (!activeTaskId) return;
+    const cached = taskCache.get(activeTaskId);
+    if (cached) cached.attachments = next;
+  }
+
+  async function refreshAttachmentsFromServer() {
+    if (!activeTaskId) return;
+    try {
+      const data = await api(`/tasks/${activeTaskId}/attachments`);
+      const list = (data && data.attachments) || [];
+      syncCachedAttachments(list);
+      renderAttachments(list);
+    } catch (err) {
+      if (err.message === 'Unauthorized') return;
+      console.error('fetch attachments failed:', err);
+    }
+  }
+
+  async function uploadAttachmentFile(file) {
+    if (!activeTaskId || !file) return;
+    try {
+      const data = await uploadTaskAttachment(activeTaskId, file);
+      const attachment = data && data.attachment;
+      if (attachment) {
+        const cached = taskCache.get(activeTaskId);
+        const list = (cached && Array.isArray(cached.attachments)) ? cached.attachments.slice() : [];
+        list.unshift(attachment);
+        syncCachedAttachments(list);
+        renderAttachments(list);
+      }
+      if (showToast) showToast('File uploaded', 'attach_file');
+    } catch (err) {
+      if (err.message === 'Unauthorized') return;
+      console.error('upload attachment failed:', err);
+      alert('Upload failed: ' + (err.message || 'Unknown error'));
+    }
+  }
+
+  async function addLinkAttachment(url) {
+    if (!activeTaskId || !url) return;
+    try {
+      const data = await api(`/tasks/${activeTaskId}/attachments/link`, {
+        method: 'POST',
+        body: { url },
+      });
+      const attachment = data && data.attachment;
+      if (attachment) {
+        const cached = taskCache.get(activeTaskId);
+        const list = (cached && Array.isArray(cached.attachments)) ? cached.attachments.slice() : [];
+        if (!list.some(a => String(a.id) === String(attachment.id))) list.unshift(attachment);
+        syncCachedAttachments(list);
+        renderAttachments(list);
+      }
+      if (showToast) showToast('Link attached', 'link');
+    } catch (err) {
+      if (err.message === 'Unauthorized') return;
+      console.error('add link attachment failed:', err);
+      alert('Could not attach link: ' + (err.message || 'Unknown error'));
+    }
+  }
+
+  if (popupAttachmentFile) {
+    popupAttachmentFile.addEventListener('change', async () => {
+      const files = Array.from(popupAttachmentFile.files || []);
+      if (!files.length) return;
+      popupAttachmentFile.disabled = true;
+      try {
+        for (const f of files) {
+          await uploadAttachmentFile(f);
+        }
+      } finally {
+        popupAttachmentFile.value = '';
+        popupAttachmentFile.disabled = false;
+        if (popupAttachments) popupAttachments.classList.add('hidden');
+      }
+    });
+  }
+
+  if (popupAttachmentSubmit) {
+    popupAttachmentSubmit.addEventListener('click', async () => {
+      const raw = (popupAttachmentUrl && popupAttachmentUrl.value || '').trim();
+      if (!raw) {
+        alert('Please paste a link first.');
+        if (popupAttachmentUrl) popupAttachmentUrl.focus();
+        return;
+      }
+      if (!/^https?:\/\//i.test(raw)) {
+        alert('Link must start with http:// or https://');
+        return;
+      }
+      popupAttachmentSubmit.disabled = true;
+      try {
+        await addLinkAttachment(raw);
+        if (popupAttachmentUrl) popupAttachmentUrl.value = '';
+        if (popupAttachments) popupAttachments.classList.add('hidden');
+      } finally {
+        popupAttachmentSubmit.disabled = false;
+      }
+    });
+  }
+
+  if (modalAttachmentsList) {
+    modalAttachmentsList.addEventListener('click', async (e) => {
+      const btn = e.target.closest('button[data-att-action]');
+      if (!btn || !activeTaskId) return;
+      const action = btn.dataset.attAction;
+      const attId  = btn.dataset.attId;
+      if (!attId) return;
+
+      btn.disabled = true;
+      try {
+        if (action === 'delete') {
+          if (!confirm('Delete this attachment?')) { btn.disabled = false; return; }
+          await api(`/attachments/${attId}`, { method: 'DELETE' });
+          const cached = taskCache.get(activeTaskId);
+          const list = (cached && Array.isArray(cached.attachments))
+            ? cached.attachments.filter(a => String(a.id) !== String(attId))
+            : [];
+          syncCachedAttachments(list);
+          renderAttachments(list);
+        } else if (action === 'cover') {
+          const data = await api(`/attachments/${attId}/set_cover`, { method: 'PUT' });
+          const updated = data && data.attachment;
+          const cached = taskCache.get(activeTaskId);
+          if (cached && Array.isArray(cached.attachments)) {
+            cached.attachments = cached.attachments.map(a => ({
+              ...a,
+              is_cover: String(a.id) === String(attId),
+            }));
+            renderAttachments(cached.attachments);
+          }
+          if (updated && D.getActiveBoardId && D.loadBoardData) {
+            const bid = D.getActiveBoardId();
+            if (bid) D.loadBoardData(bid);
+          }
+        }
+      } catch (err) {
+        if (err.message === 'Unauthorized') return;
+        console.error('attachment action failed:', err);
+        alert((action === 'delete' ? 'Delete' : 'Set cover') + ' failed: ' + (err.message || 'Unknown error'));
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  }
+
+  // Modal-level drag & drop with depth counter — Files only.
+  (function setupModalFileDrop() {
+    if (!modalPanel) return;
+    let depth = 0;
+
+    modalPanel.addEventListener('dragenter', (e) => {
+      if (!hasFilesPayload(e.dataTransfer)) return;
+      e.preventDefault();
+      depth++;
+      modalPanel.classList.add('is-dragover');
+    });
+
+    modalPanel.addEventListener('dragover', (e) => {
+      if (!hasFilesPayload(e.dataTransfer)) return;
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'copy';
+    });
+
+    modalPanel.addEventListener('dragleave', (e) => {
+      if (!hasFilesPayload(e.dataTransfer)) return;
+      depth--;
+      if (depth <= 0) {
+        depth = 0;
+        modalPanel.classList.remove('is-dragover');
+      }
+    });
+
+    modalPanel.addEventListener('drop', async (e) => {
+      if (!hasFilesPayload(e.dataTransfer)) return;
+      e.preventDefault();
+      depth = 0;
+      modalPanel.classList.remove('is-dragover');
+
+      if (!activeTaskId) {
+        alert('Save the task first, then drop files on it.');
+        return;
+      }
+
+      const files = Array.from(e.dataTransfer.files || []);
+      if (!files.length) return;
+      for (const f of files) {
+        await uploadAttachmentFile(f);
+      }
+    });
+  })();
+
+  window.Dashboard.renderAttachments    = renderAttachments;
+  window.Dashboard.uploadAttachmentFile = uploadAttachmentFile;
+  window.Dashboard.addLinkAttachment    = addLinkAttachment;
 
   window.Dashboard.openTaskModal   = openTaskModal;
   window.Dashboard.openCreateModal = openCreateModal;
