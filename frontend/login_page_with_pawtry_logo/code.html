@@ -8,6 +8,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
 <script id="tailwind-config">
         tailwind.config = {
             darkMode: "class",
@@ -157,11 +158,8 @@
 <span class="flex-shrink mx-4 text-[0.75rem] font-bold text-outline/60 uppercase tracking-widest">Or continue with</span>
 <div class="flex-grow border-t border-outline-variant/20"></div>
 </div>
-<!-- Social Sign In -->
-<button id="google-login" class="w-full py-3 px-4 flex items-center justify-center gap-3 bg-surface-container-low border border-outline-variant/30 rounded-xl hover:bg-surface-container-high active:scale-[0.98] transition-all duration-200" type="button">
-<img alt="Google Logo" class="w-5 h-5" data-alt="Official multi-colored Google logo icon representing third-party authentication services for secure login" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCGNXFH-hzqK53Ubwycdsh01zNdpOluUxtpGD8a9quQizCBokx-oOhP9EJuFJLOMGMsjMSvMk9ELhk5Bou-WGl5FSmsig7qIZtDYz_RN7UfxSW6IgzJ_AHK3H7J5qLbQcw8VulaAf-rBf0WmuN1NeM-oeGTGj392dG06q98IvydqEbLcxo3lmPgsvwm-plKcMIzhY7EFPMntBzWdS_q2YWe-hq-v5dxd_Z2a_Hq6iOFHn-StgMI9tK32XgLqFY_A5LXHyo8Ws2tN5A"/>
-<span class="text-sm font-semibold text-on-surface">Sign in with Google</span>
-</button>
+<!-- Social Sign In (Google Identity Services mounts its button here) -->
+<div id="google-login-container" class="w-full flex justify-center"></div>
 </form>
 <!-- Footer Text -->
 <div class="mt-8 text-center">
@@ -202,6 +200,9 @@
   (function () {
     const API_BASE = 'http://localhost:3000/api';
 
+    const GOOGLE_CLIENT_ID = '763873975321-1m711p69qbds39us2129nkt4g4n4q0gi.apps.googleusercontent.com';
+    const DASHBOARD_PAGE   = '../kanban_board_dashboard/code.html';
+
     const form         = document.getElementById('login-form');
     const emailInput   = document.getElementById('email');
     const passInput    = document.getElementById('password');
@@ -210,8 +211,7 @@
     const errorText    = document.getElementById('login-error-text');
     const pwToggleBtn  = document.getElementById('password-toggle');
     const pwToggleIcon = document.getElementById('password-toggle-icon');
-    const googleBtn    = document.getElementById('google-login');
-    const forgotLink   = document.getElementById('forgot-password');
+    const googleContainer = document.getElementById('google-login-container');
 
     // ── Password visibility toggle ──
     pwToggleBtn.addEventListener('click', () => {
@@ -220,12 +220,56 @@
       pwToggleIcon.textContent = isHidden ? 'visibility_off' : 'visibility';
     });
 
-    // ── Not-yet-implemented stubs ──
-    googleBtn.addEventListener('click', () => {
-      alert('Google Login is not yet implemented. This requires backend OAuth2 setup.');
-    });
+    // ── Google Identity Services ──
+    async function handleGoogleCredential(response) {
+      try {
+        const res = await fetch(`${API_BASE}/users/google-login`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ credential: response.credential }),
+        });
 
-    // Forgot password link now uses href directly — no JS needed
+        const payload = await res.json().catch(() => ({}));
+
+        if (!res.ok || payload.status !== 'success') {
+          showError(payload.message || `Google sign-in ไม่สำเร็จ (HTTP ${res.status})`);
+          return;
+        }
+
+        const token = payload.data && payload.data.token;
+        if (!token) {
+          showError('ไม่พบ token ในคำตอบจากเซิร์ฟเวอร์');
+          return;
+        }
+
+        localStorage.setItem('token', token);
+        window.location.href = DASHBOARD_PAGE;
+      } catch (err) {
+        console.error('Google login failed:', err);
+        showError('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบว่า backend กำลังทำงานอยู่');
+      }
+    }
+
+    function initGoogleButton() {
+      if (!window.google || !google.accounts || !google.accounts.id) {
+        setTimeout(initGoogleButton, 150);
+        return;
+      }
+      google.accounts.id.initialize({
+        client_id: GOOGLE_CLIENT_ID,
+        callback: handleGoogleCredential,
+      });
+      google.accounts.id.renderButton(googleContainer, {
+        type: 'standard',
+        theme: 'outline',
+        size: 'large',
+        text: 'signin_with',
+        shape: 'rectangular',
+        logo_alignment: 'left',
+        width: 320,
+      });
+    }
+    initGoogleButton();
 
     function showError(message) {
       errorText.textContent = message;

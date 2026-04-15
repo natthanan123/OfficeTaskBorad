@@ -31,18 +31,18 @@ module.exports = (sequelize) => {
       allowNull: false,
       defaultValue: 'member', // 'admin' | 'member'
     },
-    reset_token: {
+    reset_password_token: {
       type: DataTypes.STRING,
       allowNull: true,
     },
-    reset_token_expiry: {
+    reset_password_expires: {
       type: DataTypes.DATE,
       allowNull: true,
     },
   }, {
     tableName: 'users',
     defaultScope: {
-      attributes: { exclude: ['password_hash', 'reset_token', 'reset_token_expiry'] },
+      attributes: { exclude: ['password_hash', 'reset_password_token', 'reset_password_expires'] },
     },
     scopes: {
       withPassword: { attributes: {} }, // Use User.scope('withPassword') when you need it (e.g. login)
