@@ -151,10 +151,14 @@
   }
 
   function renderLogItem(log) {
-    const meta    = describeAction(log);
-    const actor   = (log.user && (log.user.full_name || log.user.email)) || 'ผู้ใช้';
+    const item    = log;
+    const meta    = describeAction(item);
+    const actor   = (item.user && (item.user.full_name || item.user.email)) || 'ผู้ใช้';
     const initial = (actor[0] || '?').toUpperCase();
-    const when    = D.formatNotificationTime(log.created_at);
+    const rawCreatedAt = item.createdAt || item.created_at;
+    const formattedDate = rawCreatedAt
+      ? new Date(rawCreatedAt).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+      : '';
 
     return `
       <li class="relative">
@@ -162,15 +166,15 @@
           <span class="material-symbols-outlined text-base ${D.escapeHtml(meta.iconClass)}">${D.escapeHtml(meta.icon)}</span>
         </span>
         <div class="bg-surface-container-lowest border border-outline-variant/20 rounded-xl px-4 py-3 shadow-sm hover:shadow-md transition-shadow">
-          <div class="flex items-start justify-between gap-3">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="w-6 h-6 shrink-0 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center">${D.escapeHtml(initial)}</span>
-              <p class="text-sm text-on-surface leading-snug min-w-0">
-                <span class="font-semibold">${D.escapeHtml(actor)}</span>
-                <span class="text-on-surface-variant"> ${meta.verbHtml}</span>
-              </p>
-            </div>
-            <span class="text-[11px] text-on-surface-variant whitespace-nowrap shrink-0">${D.escapeHtml(when)}</span>
+          <div class="flex items-center gap-2">
+            <span class="w-6 h-6 shrink-0 rounded-full bg-primary/10 text-primary text-[11px] font-bold flex items-center justify-center">${D.escapeHtml(initial)}</span>
+            <p class="text-sm text-on-surface leading-snug min-w-0 flex-1">
+              <span class="font-semibold">${D.escapeHtml(actor)}</span>
+              <span class="text-on-surface-variant"> ${meta.verbHtml}</span>
+            </p>
+          </div>
+          <div class="mt-1 pl-8 text-[11px] text-slate-400 font-normal tracking-wide">
+            ${D.escapeHtml(formattedDate)}
           </div>
         </div>
       </li>

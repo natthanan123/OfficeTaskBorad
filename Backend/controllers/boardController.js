@@ -276,6 +276,116 @@ exports.createBoardLabel = async (req, res) => {
   }
 };
 
+exports.updateBackground = async (req, res) => {
+  try {
+    const board = await Board.findByPk(req.params.id);
+    if (!board) {
+      return res.status(404).json({ status: 'error', message: 'Board not found' });
+    }
+
+    if (req.user.role !== 'admin' && board.creator_id !== req.user.id) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'Only the board creator can update the background',
+      });
+    }
+
+    let value = null;
+    if (req.file) {
+      value = `/uploads/avatars/${req.file.filename}`;
+    } else if (req.body && typeof req.body.background === 'string' && req.body.background.trim()) {
+      value = req.body.background.trim();
+    }
+
+    if (!value) {
+      return res.status(400).json({
+        status: 'error',
+        message: 'background file or background string is required',
+      });
+    }
+
+    await board.update({ background: value });
+
+    try {
+      req.app.get('io')
+        .to(`board_${board.id}`)
+        .emit('board_updated', { type: 'board_updated', board_id: board.id });
+    } catch (socketErr) {
+      console.error('socket emit (board_updated) failed:', socketErr);
+    }
+
+    return res.json({ status: 'success', data: { background: value } });
+  } catch (err) {
+    console.error('updateBackground error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not update background' });
+  }
+};
+
+exports.updateBoardLabel = async (req, res) => {
+  try {
+    const label = await Label.findByPk(req.params.labelId);
+    if (!label) {
+      return res.status(404).json({ status: 'error', message: 'Label not found' });
+    }
+    if (String(label.board_id) !== String(req.params.id)) {
+      return res.status(404).json({ status: 'error', message: 'Label not found on this board' });
+    }
+
+    const { title, color } = req.body || {};
+    const updates = {};
+    if (typeof title !== 'undefined') updates.title = title || null;
+    if (typeof color === 'string' && color.trim()) updates.color = color.trim();
+
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ status: 'error', message: 'Nothing to update' });
+    }
+
+    await label.update(updates);
+
+    try {
+      req.app.get('io')
+        .to(`board_${label.board_id}`)
+        .emit('board_updated', { type: 'label_updated', board_id: label.board_id });
+    } catch (socketErr) {
+      console.error('socket emit (label_updated) failed:', socketErr);
+    }
+
+    return res.json({ status: 'success', data: { label } });
+  } catch (err) {
+    console.error('updateBoardLabel error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not update label' });
+  }
+};
+
+exports.deleteBoardLabel = async (req, res) => {
+  try {
+    const label = await Label.findByPk(req.params.labelId);
+    if (!label) {
+      return res.status(404).json({ status: 'error', message: 'Label not found' });
+    }
+    if (String(label.board_id) !== String(req.params.id)) {
+      return res.status(404).json({ status: 'error', message: 'Label not found on this board' });
+    }
+
+    const boardId = label.board_id;
+    const labelId = label.id;
+    await label.destroy();
+
+    try {
+      req.app.get('io')
+        .to(`board_${boardId}`)
+        .emit('board_updated', { type: 'label_deleted', board_id: boardId });
+    } catch (socketErr) {
+      console.error('socket emit (label_deleted) failed:', socketErr);
+    }
+
+    return res.json({ status: 'success', data: { label_id: labelId } });
+  } catch (err) {
+    console.error('deleteBoardLabel error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not delete label' });
+  }
+};
+
 exports.listBoardMembers = async (req, res) => {
   try {
     const memberships = await BoardMember.findAll({

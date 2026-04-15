@@ -82,6 +82,23 @@ exports.uploadAvatar = async (req, res) => {
   }
 };
 
+exports.updateAvatar = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ status: 'error', message: 'No image file provided' });
+    }
+
+    const profile_picture = `/uploads/avatars/${req.file.filename}`;
+
+    await req.user.update({ profile_picture });
+
+    return res.json({ status: 'success', data: { profile_picture } });
+  } catch (err) {
+    console.error('updateAvatar error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not update avatar' });
+  }
+};
+
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;

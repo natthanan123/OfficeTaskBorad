@@ -55,12 +55,16 @@
   const modalDueClearBtn      = document.getElementById('modal-due-clear');
   const modalCreateLabelBtn   = document.getElementById('modal-create-label-btn');
 
-  const popupLabelsCreate        = document.getElementById('popup-labels-create');
-  const popupLabelsCreateTitle   = document.getElementById('popup-labels-create-title');
-  const popupLabelsCreateColors  = document.getElementById('popup-labels-create-colors');
-  const popupLabelsCreateSubmit  = document.getElementById('popup-labels-create-submit');
-  const popupLabelsCreateCancel  = document.getElementById('popup-labels-create-cancel');
-  let   popupLabelsSelectedColor = null;
+  const popupLabelsCreate            = document.getElementById('popup-labels-create');
+  const popupLabelsCreateTitle       = document.getElementById('popup-labels-create-title');
+  const popupLabelsCreateColorPicker = document.getElementById('popup-labels-create-color-picker');
+  const popupLabelsCreateSubmit      = document.getElementById('popup-labels-create-submit');
+  const popupLabelsCreateCancel      = document.getElementById('popup-labels-create-cancel');
+
+  const labelCtxMenuEl   = document.getElementById('label-context-menu');
+  const ctxEditLabelEl   = document.getElementById('ctx-edit-label');
+  const ctxDeleteLabelEl = document.getElementById('ctx-delete-label');
+  let   ctxMenuLabelId   = null;
 
   const popupLabelsList  = document.getElementById('popup-labels-list');
   const popupMembersList = document.getElementById('popup-members-list');
@@ -270,17 +274,19 @@
       if (empty) empty.remove();
 
       const author = (comment.author && (comment.author.full_name || comment.author.email)) || 'You';
-      const when   = comment.created_at ? new Date(comment.created_at).toLocaleString() : '';
+      const when   = comment.created_at ? new Date(comment.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+      const pic = comment.author && (comment.author.profile_picture || comment.author.avatar_url);
+      const avatar = pic
+        ? `<img src="${escapeHtml(coverSrc(pic))}" alt="${escapeHtml(author)}" class="w-8 h-8 rounded-full object-cover flex-shrink-0"/>`
+        : `<div class="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0" style="background:${colorFor(author)}">${escapeHtml(initials(author))}</div>`;
       const li = document.createElement('li');
       li.className = 'flex gap-3';
       li.innerHTML = `
-        <div class="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0" style="background:${colorFor(author)}">
-          ${escapeHtml(initials(author))}
-        </div>
+        ${avatar}
         <div class="flex-1 min-w-0">
           <div class="flex items-baseline gap-2">
             <span class="text-sm font-semibold text-on-surface">${escapeHtml(author)}</span>
-            <span class="text-[11px] text-on-surface-variant/70">${escapeHtml(when)}</span>
+            <span class="text-[10px] text-on-surface-variant/50 ml-2 whitespace-nowrap">${escapeHtml(when)}</span>
           </div>
           <div class="mt-1 bg-surface-container-low border border-outline-variant/30 rounded-lg px-3 py-2 text-sm text-on-surface whitespace-pre-wrap break-words">${escapeHtml(comment.content || '')}</div>
         </div>
@@ -376,10 +382,7 @@
 
   function resetCreateLabelForm() {
     popupLabelsCreateTitle.value = '';
-    popupLabelsSelectedColor     = null;
-    popupLabelsCreateColors.querySelectorAll('.color-swatch').forEach(btn => {
-      btn.classList.remove('ring-2', 'ring-offset-2', 'ring-on-surface');
-    });
+    if (popupLabelsCreateColorPicker) popupLabelsCreateColorPicker.value = '#3525cd';
   }
 
   function showCreateLabelForm() {
@@ -397,31 +400,17 @@
   modalCreateLabelBtn.addEventListener('click', showCreateLabelForm);
   popupLabelsCreateCancel.addEventListener('click', hideCreateLabelForm);
 
-  popupLabelsCreateColors.addEventListener('click', (e) => {
-    const btn = e.target.closest('button[data-color]');
-    if (!btn) return;
-    popupLabelsSelectedColor = btn.dataset.color;
-    popupLabelsCreateColors.querySelectorAll('.color-swatch').forEach(b => {
-      b.classList.toggle('ring-2', b === btn);
-      b.classList.toggle('ring-offset-2', b === btn);
-      b.classList.toggle('ring-on-surface', b === btn);
-    });
-  });
-
   popupLabelsCreateSubmit.addEventListener('click', async () => {
     const activeBoardId = D.getActiveBoardId();
     if (!activeBoardId) return;
-    if (!popupLabelsSelectedColor) {
-      alert('Please pick a color first.');
-      return;
-    }
+    const color = (popupLabelsCreateColorPicker && popupLabelsCreateColorPicker.value) || '#3525cd';
     const title = popupLabelsCreateTitle.value.trim();
 
     popupLabelsCreateSubmit.disabled = true;
     try {
       const data = await api(`/boards/${activeBoardId}/labels`, {
         method: 'POST',
-        body: { title: title || null, color: popupLabelsSelectedColor },
+        body: { title: title || null, color },
       });
 
       getLabels().push(data.label);
@@ -435,6 +424,135 @@
       popupLabelsCreateSubmit.disabled = false;
     }
   });
+
+  function closeLabelContextMenu() {
+    if (!labelCtxMenuEl) return;
+    labelCtxMenuEl.classList.add('hidden');
+    ctxMenuLabelId = null;
+  }
+
+  function openLabelContextMenu(x, y, labelId) {
+    if (!labelCtxMenuEl || !labelId) return;
+    ctxMenuLabelId = labelId;
+    labelCtxMenuEl.style.left = '0px';
+    labelCtxMenuEl.style.top  = '0px';
+    labelCtxMenuEl.classList.remove('hidden');
+    const rect = labelCtxMenuEl.getBoundingClientRect();
+    const maxX = window.innerWidth  - rect.width  - 8;
+    const maxY = window.innerHeight - rect.height - 8;
+    labelCtxMenuEl.style.left = `${Math.min(x, maxX)}px`;
+    labelCtxMenuEl.style.top  = `${Math.min(y, maxY)}px`;
+  }
+
+  popupLabelsList.addEventListener('contextmenu', (e) => {
+    const btn = e.target.closest('button[data-label-id]');
+    if (!btn) return;
+    e.preventDefault();
+    openLabelContextMenu(e.pageX, e.pageY, btn.dataset.labelId);
+  });
+
+  if (ctxEditLabelEl) {
+    ctxEditLabelEl.addEventListener('click', async () => {
+      const labelId = ctxMenuLabelId;
+      closeLabelContextMenu();
+      if (!labelId) return;
+
+      const activeBoardId = D.getActiveBoardId();
+      if (!activeBoardId) return;
+
+      const label = getLabels().find(l => String(l.id) === String(labelId));
+      if (!label) return;
+
+      const newTitle = prompt('Edit label title (leave blank for none):', label.title || '');
+      if (newTitle === null) return;
+      const newColor = prompt('Edit label color (hex, e.g. #3525cd):', label.color || '#3525cd');
+      if (newColor === null) return;
+      const trimmedColor = newColor.trim();
+      if (!/^#[0-9a-fA-F]{6}$/.test(trimmedColor)) {
+        alert('Color must be a hex value like #3525cd');
+        return;
+      }
+
+      try {
+        const data = await api(`/boards/${activeBoardId}/labels/${labelId}`, {
+          method: 'PUT',
+          body: { title: newTitle.trim() || null, color: trimmedColor },
+        });
+        const updated = data && data.label;
+        if (updated) {
+          label.title = updated.title;
+          label.color = updated.color;
+        }
+        taskCache.forEach(t => {
+          if (!Array.isArray(t.labels)) return;
+          t.labels.forEach(l => {
+            if (String(l.id) === String(labelId)) {
+              l.title = label.title;
+              l.color = label.color;
+            }
+          });
+        });
+
+        const cached = activeTaskId ? taskCache.get(activeTaskId) : null;
+        renderLabelsPopup(cached || { labels: [] });
+        if (cached) refreshLabelsDisplay(cached);
+      } catch (err) {
+        console.error('update label failed:', err);
+        alert('Could not update label: ' + (err.message || 'Unknown error'));
+      }
+    });
+  }
+
+  if (ctxDeleteLabelEl) {
+    ctxDeleteLabelEl.addEventListener('click', async () => {
+      const labelId = ctxMenuLabelId;
+      closeLabelContextMenu();
+      if (!labelId) return;
+
+      const activeBoardId = D.getActiveBoardId();
+      if (!activeBoardId) return;
+
+      const label = getLabels().find(l => String(l.id) === String(labelId));
+      const shownName = (label && (label.title || label.color)) || 'this label';
+      if (!confirm(`Delete label "${shownName}"?\n\nIt will be removed from every card that uses it.`)) return;
+
+      try {
+        await api(`/boards/${activeBoardId}/labels/${labelId}`, { method: 'DELETE' });
+
+        const labels = getLabels();
+        const idx = labels.findIndex(l => String(l.id) === String(labelId));
+        if (idx !== -1) labels.splice(idx, 1);
+
+        taskCache.forEach(t => {
+          if (!Array.isArray(t.labels)) return;
+          t.labels = t.labels.filter(l => String(l.id) !== String(labelId));
+        });
+
+        const cached = activeTaskId ? taskCache.get(activeTaskId) : null;
+        renderLabelsPopup(cached || { labels: [] });
+        if (cached) refreshLabelsDisplay(cached);
+      } catch (err) {
+        console.error('delete label failed:', err);
+        alert('Could not delete label: ' + (err.message || 'Unknown error'));
+      }
+    });
+  }
+
+  document.addEventListener('click', (e) => {
+    if (!labelCtxMenuEl || labelCtxMenuEl.classList.contains('hidden')) return;
+    if (e.target.closest('#label-context-menu')) return;
+    closeLabelContextMenu();
+  });
+  document.addEventListener('contextmenu', (e) => {
+    if (!labelCtxMenuEl || labelCtxMenuEl.classList.contains('hidden')) return;
+    if (e.target.closest('#popup-labels-list button[data-label-id]')) return;
+    closeLabelContextMenu();
+  });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') closeLabelContextMenu();
+  });
+  window.addEventListener('resize', closeLabelContextMenu);
+  window.addEventListener('scroll', closeLabelContextMenu, true);
 
   function refreshLabelsDisplay(task) {
     const labels = Array.isArray(task.labels) ? task.labels : [];
@@ -454,12 +572,18 @@
   function refreshAssigneesDisplay(task) {
     const assignees = Array.isArray(task.assignees) ? task.assignees : [];
     modalAssignees.innerHTML = assignees.length
-      ? assignees.map(u => `
-          <span class="inline-flex items-center gap-1.5 bg-surface-container-high px-2.5 py-1 rounded-full text-xs font-medium text-on-surface-variant" title="${escapeHtml(u.full_name || u.email || '')}">
-            <span class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style="background:${colorFor(u.email || u.id || u.full_name)}">${escapeHtml(initials(u.full_name))}</span>
-            ${escapeHtml(u.full_name || u.email)}
-          </span>
-        `).join('')
+      ? assignees.map(u => {
+          const pic = u.profile_picture || u.avatar_url;
+          const avatar = pic
+            ? `<img src="${escapeHtml(coverSrc(pic))}" alt="${escapeHtml(u.full_name || u.email || '')}" class="w-5 h-5 rounded-full object-cover"/>`
+            : `<span class="w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold text-white" style="background:${colorFor(u.email || u.id || u.full_name)}">${escapeHtml(initials(u.full_name))}</span>`;
+          return `
+            <span class="inline-flex items-center gap-1.5 bg-surface-container-high px-2.5 py-1 rounded-full text-xs font-medium text-on-surface-variant" title="${escapeHtml(u.full_name || u.email || '')}">
+              ${avatar}
+              ${escapeHtml(u.full_name || u.email)}
+            </span>
+          `;
+        }).join('')
       : '<span class="text-xs text-on-surface-variant/50 italic">No members yet</span>';
   }
 
@@ -515,16 +639,18 @@
     modalCommentsList.innerHTML = comments.length
       ? comments.map(c => {
           const author = (c.author && (c.author.full_name || c.author.email)) || 'Unknown';
-          const when   = c.created_at ? new Date(c.created_at).toLocaleString() : '';
+          const when   = c.created_at ? new Date(c.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+          const pic = c.author && (c.author.profile_picture || c.author.avatar_url);
+          const avatar = pic
+            ? `<img src="${escapeHtml(coverSrc(pic))}" alt="${escapeHtml(author)}" class="w-8 h-8 rounded-full object-cover flex-shrink-0"/>`
+            : `<div class="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0" style="background:${colorFor(author)}">${escapeHtml(initials(author))}</div>`;
           return `
             <li class="flex gap-3">
-              <div class="w-8 h-8 rounded-full flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0" style="background:${colorFor(author)}">
-                ${escapeHtml(initials(author))}
-              </div>
+              ${avatar}
               <div class="flex-1 min-w-0">
                 <div class="flex items-baseline gap-2">
                   <span class="text-sm font-semibold text-on-surface">${escapeHtml(author)}</span>
-                  <span class="text-[11px] text-on-surface-variant/70">${escapeHtml(when)}</span>
+                  <span class="text-[10px] text-on-surface-variant/50 ml-2 whitespace-nowrap">${escapeHtml(when)}</span>
                 </div>
                 <div class="mt-1 bg-surface-container-low border border-outline-variant/30 rounded-lg px-3 py-2 text-sm text-on-surface whitespace-pre-wrap break-words">${escapeHtml(c.content || '')}</div>
               </div>

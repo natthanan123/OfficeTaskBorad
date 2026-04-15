@@ -147,7 +147,7 @@
                 New Board
             </button>
 <div class="mt-6 flex items-center space-x-3 px-2">
-<img alt="User workspace avatar" class="w-8 h-8 rounded-full border-2 border-primary-fixed" data-alt="portrait of a professional creative director with soft studio lighting and clean background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7odRQzTXnuRSFFi5ioKZznRnJ4nvprwmF_ELCqA0MEXcgZ8nEVjxeSawsNS5c7VOZ2-AjvmZcvu6I7ISmyqJfrq6J2StQXFFY0OE1l5E1deBQ3wEQVvrg4apYhs1FB-zW625iL5jugsGXwPc1lXqvuioAZ_JBY_pbn0F_GJkWPiqDvXQKl1lmRCzvBVx_Oes5swREZ6Y3tyMgtqVC1QumYcFEAbl8HXXAailtSm334yzZJ2srQhUOttigr09rfenbSg3YdpBK65M"/>
+<img id="sidebar-user-avatar" alt="User workspace avatar" class="w-8 h-8 rounded-full border-2 border-primary-fixed object-cover" data-alt="portrait of a professional creative director with soft studio lighting and clean background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7odRQzTXnuRSFFi5ioKZznRnJ4nvprwmF_ELCqA0MEXcgZ8nEVjxeSawsNS5c7VOZ2-AjvmZcvu6I7ISmyqJfrq6J2StQXFFY0OE1l5E1deBQ3wEQVvrg4apYhs1FB-zW625iL5jugsGXwPc1lXqvuioAZ_JBY_pbn0F_GJkWPiqDvXQKl1lmRCzvBVx_Oes5swREZ6Y3tyMgtqVC1QumYcFEAbl8HXXAailtSm334yzZJ2srQhUOttigr09rfenbSg3YdpBK65M"/>
 <div class="overflow-hidden">
 <p class="text-xs font-bold truncate">Website Redesign</p>
 <p class="text-[10px] text-slate-500">Active Sprint</p>
@@ -183,7 +183,7 @@
 </ul>
 </div>
 </div>
-<button class="text-slate-500 hover:text-primary transition-colors">
+<button id="settings-btn" type="button" class="text-slate-500 hover:text-primary transition-colors">
 <span class="material-symbols-outlined" data-icon="settings">settings</span>
 </button>
 <button id="user-menu" type="button" title="Click to logout" class="flex items-center space-x-3 pl-4 border-l border-slate-200 hover:opacity-80 transition-opacity cursor-pointer">
@@ -193,7 +193,7 @@
 </button>
 </div>
 </header>
-<main class="flex-1 bg-surface p-8 overflow-hidden flex flex-col">
+<main id="board-main-container" class="flex-1 bg-surface p-8 overflow-hidden flex flex-col">
 <div class="flex justify-between items-end mb-8">
 <div>
 <h1 id="board-title" class="text-3xl font-extrabold tracking-tight text-on-surface">Loading board...</h1>
@@ -273,6 +273,20 @@
           class="hidden w-full text-left px-4 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2 transition-colors">
     <span class="material-symbols-outlined text-base">logout</span>
     <span>Leave Board</span>
+  </button>
+</div>
+
+<div id="label-context-menu"
+     class="hidden fixed z-[200] min-w-[180px] bg-surface-container-highest border border-outline/20 rounded-xl shadow-2xl py-1 text-sm">
+  <button id="ctx-edit-label"
+          class="w-full text-left px-4 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2 transition-colors">
+    <span class="material-symbols-outlined text-base">edit</span>
+    <span>Edit Label</span>
+  </button>
+  <button id="ctx-delete-label"
+          class="w-full text-left px-4 py-2 text-error hover:bg-error/10 flex items-center gap-2 transition-colors">
+    <span class="material-symbols-outlined text-base">delete</span>
+    <span>Delete Label</span>
   </button>
 </div>
 <!-- Task Detail Modal — logic lives in components/TaskModal.js -->
@@ -399,15 +413,7 @@
                     </div>
                     <div>
                       <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Pick a color</label>
-                      <div id="popup-labels-create-colors" class="grid grid-cols-7 gap-1.5">
-                        <button type="button" data-color="#ef4444" aria-label="Red"    class="color-swatch h-7 rounded-md bg-red-500    transition-all hover:scale-105"></button>
-                        <button type="button" data-color="#f97316" aria-label="Orange" class="color-swatch h-7 rounded-md bg-orange-500 transition-all hover:scale-105"></button>
-                        <button type="button" data-color="#eab308" aria-label="Yellow" class="color-swatch h-7 rounded-md bg-yellow-500 transition-all hover:scale-105"></button>
-                        <button type="button" data-color="#22c55e" aria-label="Green"  class="color-swatch h-7 rounded-md bg-green-500  transition-all hover:scale-105"></button>
-                        <button type="button" data-color="#0ea5e9" aria-label="Blue"   class="color-swatch h-7 rounded-md bg-sky-500    transition-all hover:scale-105"></button>
-                        <button type="button" data-color="#8b5cf6" aria-label="Purple" class="color-swatch h-7 rounded-md bg-violet-500 transition-all hover:scale-105"></button>
-                        <button type="button" data-color="#ec4899" aria-label="Pink"   class="color-swatch h-7 rounded-md bg-pink-500   transition-all hover:scale-105"></button>
-                      </div>
+                      <input type="color" id="popup-labels-create-color-picker" class="w-full h-10 cursor-pointer rounded-md border-0 p-0" value="#3525cd"/>
                     </div>
                     <div class="flex gap-2 pt-1">
                       <button id="popup-labels-create-submit" type="button"
@@ -613,13 +619,24 @@
       const visibleAssignees = assignees.slice(0, 3);
       const overflow = assignees.length - visibleAssignees.length;
 
-      const assigneeAvatars = visibleAssignees.map(u => `
-        <div class="w-6 h-6 rounded-full border border-surface flex items-center justify-center text-[9px] font-bold text-white"
-             style="background-color: ${colorFor(u.email || u.id || u.full_name)};"
-             title="${escapeHtml(u.full_name || u.email)}">
-          ${escapeHtml(initials(u.full_name))}
-        </div>
-      `).join('');
+      const assigneeAvatars = visibleAssignees.map(u => {
+        const pic = u.profile_picture || u.avatar_url;
+        if (pic) {
+          return `
+            <img src="${escapeHtml(coverSrc(pic))}"
+                 alt="${escapeHtml(u.full_name || u.email || '')}"
+                 title="${escapeHtml(u.full_name || u.email || '')}"
+                 class="w-6 h-6 rounded-full border border-surface object-cover"/>
+          `;
+        }
+        return `
+          <div class="w-6 h-6 rounded-full border border-surface flex items-center justify-center text-[9px] font-bold text-white"
+               style="background-color: ${colorFor(u.email || u.id || u.full_name)};"
+               title="${escapeHtml(u.full_name || u.email)}">
+            ${escapeHtml(initials(u.full_name))}
+          </div>
+        `;
+      }).join('');
 
       const overflowBadge = overflow > 0
         ? `<div class="w-6 h-6 rounded-full bg-primary-fixed flex items-center justify-center text-[10px] font-bold text-on-primary-fixed border border-surface">+${overflow}</div>`
@@ -916,6 +933,16 @@
         if (d && d.user) {
           userNameEl.textContent = d.user.full_name || d.user.email;
           state.currentUserId = d.user.id;
+
+          const pic = d.user.profile_picture || d.user.avatar_url;
+          if (pic) {
+            const resolved = coverSrc(pic);
+            const headerImg  = document.querySelector('#user-menu img');
+            const sidebarImg = document.getElementById('sidebar-user-avatar');
+            if (headerImg)  headerImg.src  = resolved;
+            if (sidebarImg) sidebarImg.src = resolved;
+          }
+
           if (window.Dashboard && window.Dashboard.SocketManager) {
             window.Dashboard.SocketManager.joinUserRoom(state.currentUserId);
           }
@@ -1076,6 +1103,7 @@
 <script src="../components/ColumnManager.js"></script>
 <script src="../components/KanbanDragDrop.js"></script>
 <script src="../components/FilterManager.js"></script>
+<script src="../components/SettingsModal.js"></script>
 <script src="../components/TaskModal.js"></script>
 <script src="log_page.js"></script>
 </body></html>

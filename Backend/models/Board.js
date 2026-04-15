@@ -15,6 +15,10 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: true,
     },
+    background: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
   }, {
     tableName: 'boards',
   });

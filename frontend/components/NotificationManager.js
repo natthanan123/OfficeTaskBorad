@@ -53,6 +53,9 @@
     const unread  = !n.is_read;
     const icon    = n.type === 'board_invite' ? 'group_add' : 'notifications';
     const timeStr = formatNotificationTime(n.created_at);
+    const fullWhen = n.created_at
+      ? new Date(n.created_at).toLocaleString('en-GB', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+      : '';
 
     let actionsHtml = '';
     if (n.type === 'board_invite' && n.reference_id) {
@@ -84,7 +87,10 @@
         <div class="flex items-start gap-3">
           <span class="material-symbols-outlined text-primary text-base mt-0.5 shrink-0">${icon}</span>
           <div class="flex-1 min-w-0">
-            <p class="notification-message text-sm leading-snug ${msgClasses}">${escapeHtml(n.message || '')}</p>
+            <p class="notification-message text-sm leading-snug ${msgClasses}">
+              ${escapeHtml(n.message || '')}
+              ${fullWhen ? `<span class="text-[10px] text-on-surface-variant/50 ml-2 whitespace-nowrap">${escapeHtml(fullWhen)}</span>` : ''}
+            </p>
             ${timeStr ? `<p class="text-[10px] text-on-surface-variant/70 mt-0.5">${escapeHtml(timeStr)}</p>` : ''}
             ${actionsHtml}
           </div>
