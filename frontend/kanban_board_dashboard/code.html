@@ -160,7 +160,7 @@
 <div class="flex items-center flex-1">
 <div class="relative w-full max-w-md">
 <span class="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-sm">search</span>
-<input class="w-full bg-surface-container-low border-none rounded-full py-1.5 pl-10 pr-4 text-sm focus:ring-1 focus:ring-primary" placeholder="Search tasks, docs, or people..." type="text"/>
+<input id="global-search-input" class="w-full bg-surface-container-low border-none rounded-full py-1.5 pl-10 pr-4 text-sm focus:ring-1 focus:ring-primary" placeholder="Search tasks, docs, or people..." type="text"/>
 </div>
 <nav class="hidden md:flex ml-10 space-x-6 h-full items-center font-inter title-lg text-sm font-medium">
 <button id="tab-overview" type="button" class="text-indigo-600 dark:text-indigo-400 border-b-2 border-indigo-600 h-16 flex items-center mt-[2px] bg-transparent">Overview</button>
@@ -216,10 +216,33 @@
 </div>
 </div>
 </div>
-<button class="bg-surface-container-high px-4 py-2 rounded-xl text-sm font-semibold text-on-surface flex items-center space-x-2">
+<div class="relative">
+<button id="filter-btn" type="button" class="relative bg-surface-container-high px-4 py-2 rounded-xl text-sm font-semibold text-on-surface flex items-center space-x-2 hover:opacity-90 transition-opacity">
 <span class="material-symbols-outlined text-sm">filter_list</span>
 <span>Filter</span>
+<span id="filter-active-badge" class="hidden absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-on-primary text-[10px] font-bold flex items-center justify-center border-2 border-white dark:border-slate-950 leading-none">0</span>
 </button>
+<div id="filter-popup" class="hidden absolute right-0 mt-2 w-80 bg-surface-container-lowest rounded-xl shadow-2xl border border-outline-variant/20 z-50 overflow-hidden">
+<div class="px-4 py-3 border-b border-outline-variant/20 flex items-center justify-between">
+<h4 class="text-sm font-bold text-on-surface">Filter</h4>
+<button id="filter-clear-btn" type="button" class="text-[11px] font-semibold text-primary hover:underline">Clear All Filters</button>
+</div>
+<div class="p-4 space-y-4 max-h-[420px] overflow-y-auto">
+<section>
+<h5 class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Labels</h5>
+<ul id="filter-labels-list" class="space-y-1.5">
+<li class="text-[11px] text-on-surface-variant/60 italic">No labels on this board</li>
+</ul>
+</section>
+<section>
+<h5 class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Members</h5>
+<ul id="filter-members-list" class="space-y-1.5">
+<li class="text-[11px] text-on-surface-variant/60 italic">No members on this board</li>
+</ul>
+</section>
+</div>
+</div>
+</div>
 <button id="add-column-btn" type="button" class="bg-primary text-on-primary px-4 py-2 rounded-xl text-sm font-semibold flex items-center space-x-2 shadow-lg shadow-primary/20 disabled:opacity-60 disabled:cursor-not-allowed">
 <span class="material-symbols-outlined text-sm">add</span>
 <span>Add Column</span>
@@ -1052,6 +1075,7 @@
 <script src="../components/BoardController.js"></script>
 <script src="../components/ColumnManager.js"></script>
 <script src="../components/KanbanDragDrop.js"></script>
+<script src="../components/FilterManager.js"></script>
 <script src="../components/TaskModal.js"></script>
 <script src="log_page.js"></script>
 </body></html>

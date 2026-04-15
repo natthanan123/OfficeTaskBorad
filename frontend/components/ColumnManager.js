@@ -142,7 +142,7 @@
     const dropZone = columnEl.querySelector('.kanban-drop-zone');
     const badge = columnEl.querySelector('.bg-surface-container-highest');
     if (!dropZone || !badge) return;
-    const count = dropZone.querySelectorAll('.task-card').length;
+    const count = dropZone.querySelectorAll('.task-card:not(.hidden)').length;
     badge.textContent = count;
     const placeholder = dropZone.querySelector('.empty-placeholder');
     if (count === 0 && !placeholder) {
