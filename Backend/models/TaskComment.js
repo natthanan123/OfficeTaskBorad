@@ -11,7 +11,6 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: false,
     },
-    // task_id and user_id FKs are added by the associations in models/index.js
   }, {
     tableName: 'task_comments',
     underscored: true,

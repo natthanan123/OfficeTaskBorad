@@ -29,7 +29,6 @@ module.exports = (sequelize) => {
       allowNull: false,
       defaultValue: false,
     },
-    // column_id FK is added automatically by the association
   }, {
     tableName: 'tasks',
   });

@@ -1,9 +1,6 @@
 const { BoardMember, Board, User, Notification, sequelize } = require('../models');
 
-// POST /api/boards/:id/invite — Invite a user to a board.
 exports.inviteUserToBoard = async (req, res) => {
-  // Transaction keeps the membership + notification writes atomic so we
-  // never end up with a phantom invitation that has no notification row.
   const t = await sequelize.transaction();
   try {
     const boardId = req.params.id;
@@ -29,8 +26,6 @@ exports.inviteUserToBoard = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'User with this email was not found' });
     }
 
-    // Friendly pre-check for the (user_id, board_id) unique index — the DB
-    // constraint is still the real safety net below.
     const existing = await BoardMember.findOne({
       where: { user_id: targetUser.id, board_id: boardId },
       transaction: t,
@@ -66,8 +61,6 @@ exports.inviteUserToBoard = async (req, res) => {
 
     await t.commit();
 
-    // Socket emit is fire-and-forget — a socket hiccup must not break the
-    // HTTP success path.
     try {
       req.app.get('io')
         .to(`user_${targetUser.id}`)
@@ -89,7 +82,6 @@ exports.inviteUserToBoard = async (req, res) => {
         message: err.errors.map((e) => e.message).join('; '),
       });
     }
-    // Race fallback for the (user_id, board_id) unique index.
     if (err.name === 'SequelizeUniqueConstraintError') {
       return res.status(409).json({
         status: 'error',
@@ -102,7 +94,6 @@ exports.inviteUserToBoard = async (req, res) => {
   }
 };
 
-// PUT /api/boards/:id/invite/respond — Accept or reject an invite.
 exports.respondToInvite = async (req, res) => {
   try {
     const boardId = req.params.id;
@@ -130,7 +121,6 @@ exports.respondToInvite = async (req, res) => {
       });
     }
 
-    // Reject deletes the row outright per spec; accept just flips status.
     if (status === 'rejected') {
       await membership.destroy();
       return res.json({

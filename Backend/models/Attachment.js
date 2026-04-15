@@ -7,8 +7,6 @@ module.exports = (sequelize) => {
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    // Either a stored file path (/uploads/attachments/xxx.png) for direct
-    // uploads, or the raw external URL for parsed/link attachments.
     filename_or_url: {
       type: DataTypes.TEXT,
       allowNull: false,
@@ -16,7 +14,6 @@ module.exports = (sequelize) => {
     mimetype: {
       type: DataTypes.STRING,
       allowNull: false,
-      // 'image/png', 'image/jpeg', 'link/url', etc.
     },
     size: {
       type: DataTypes.INTEGER,
@@ -38,13 +35,11 @@ module.exports = (sequelize) => {
         },
       },
     },
-    // task_id / user_id FKs come from the associations in models/index.js.
   }, {
     tableName: 'attachments',
     updatedAt: false,
     indexes: [
       { fields: ['task_id'] },
-      // Speeds up de-duplication lookups keyed on (task_id, URL).
       { fields: ['task_id', 'filename_or_url'] },
     ],
   });

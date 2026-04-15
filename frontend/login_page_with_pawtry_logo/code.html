@@ -213,14 +213,12 @@
     const pwToggleIcon = document.getElementById('password-toggle-icon');
     const googleContainer = document.getElementById('google-login-container');
 
-    // ── Password visibility toggle ──
     pwToggleBtn.addEventListener('click', () => {
       const isHidden = passInput.type === 'password';
       passInput.type = isHidden ? 'text' : 'password';
       pwToggleIcon.textContent = isHidden ? 'visibility_off' : 'visibility';
     });
 
-    // ── Google Identity Services ──
     async function handleGoogleCredential(response) {
       try {
         const res = await fetch(`${API_BASE}/users/google-login`, {

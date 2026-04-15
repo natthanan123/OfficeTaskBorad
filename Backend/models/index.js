@@ -1,6 +1,4 @@
 const sequelize = require('../config/database');
-
-// ─── Import model definitions ───
 const User         = require('./User')(sequelize);
 const Board        = require('./Board')(sequelize);
 const Column       = require('./Column')(sequelize);
@@ -13,25 +11,16 @@ const TaskComment  = require('./TaskComment')(sequelize);
 const ActivityLog  = require('./ActivityLog')(sequelize);
 const Attachment   = require('./Attachment')(sequelize);
 
-// ═══════════════════════════════════════════
-//  Associations
-// ═══════════════════════════════════════════
-
-// ── User (1) ──> Board (N) ──
-// A user creates many boards; each board has one creator.
 User.hasMany(Board,  { foreignKey: 'creator_id', as: 'boards', onDelete: 'SET NULL' });
 Board.belongsTo(User, { foreignKey: 'creator_id', as: 'creator' });
 
-// ── Board (1) ──> Column (N) ──
 Board.hasMany(Column,  { foreignKey: 'board_id', as: 'columns', onDelete: 'CASCADE' });
 Column.belongsTo(Board, { foreignKey: 'board_id', as: 'board' });
 
-// ── Column (1) ──> Task (N) ──
 Column.hasMany(Task,   { foreignKey: 'column_id', as: 'tasks', onDelete: 'CASCADE' });
 Task.belongsTo(Column, { foreignKey: 'column_id', as: 'column' });
 
-// ── Task (M) <──> User (N)  [Assignees] ──
-// Junction table: task_assignees
+
 Task.belongsToMany(User, {
   through: 'task_assignees',
   foreignKey: 'task_id',
@@ -45,12 +34,9 @@ User.belongsToMany(Task, {
   as: 'assignedTasks',
 });
 
-// ── Board (1) ──> Label (N) ──
-// Labels live inside a single board's palette and are removed with the board.
 Board.hasMany(Label,  { foreignKey: { name: 'board_id', allowNull: false }, as: 'labels', onDelete: 'CASCADE' });
 Label.belongsTo(Board, { foreignKey: { name: 'board_id', allowNull: false }, as: 'board' });
 
-// ── Task (M) <──> Label (N)  [via TaskLabel junction] ──
 Task.belongsToMany(Label, {
   through: TaskLabel,
   foreignKey: 'task_id',
@@ -66,7 +52,6 @@ Label.belongsToMany(Task, {
   onDelete: 'CASCADE',
 });
 
-// ── Task (1) ──> TaskComment (N) ──
 Task.hasMany(TaskComment, {
   foreignKey: { name: 'task_id', allowNull: false },
   as: 'comments',
@@ -77,7 +62,6 @@ TaskComment.belongsTo(Task, {
   as: 'task',
 });
 
-// ── User (1) ──> TaskComment (N) ──
 User.hasMany(TaskComment, {
   foreignKey: { name: 'user_id', allowNull: false },
   as: 'taskComments',
@@ -88,10 +72,6 @@ TaskComment.belongsTo(User, {
   as: 'author',
 });
 
-// ── Task (1) ──> Attachment (N)  [model coming later] ──
-
-// ── User (1) ──> BoardMember (N) ──
-// A user can have many board memberships (across different boards).
 User.hasMany(BoardMember, {
   foreignKey: { name: 'user_id', allowNull: false },
   as: 'boardMemberships',
@@ -102,8 +82,6 @@ BoardMember.belongsTo(User, {
   as: 'user',
 });
 
-// ── Board (1) ──> BoardMember (N) ──
-// A board has many members; deleting a board removes its membership rows.
 Board.hasMany(BoardMember, {
   foreignKey: { name: 'board_id', allowNull: false },
   as: 'members',
@@ -114,8 +92,6 @@ BoardMember.belongsTo(Board, {
   as: 'board',
 });
 
-// ── User (1) ──> Notification (N) ──
-// A notification always belongs to exactly one recipient user.
 User.hasMany(Notification, {
   foreignKey: { name: 'user_id', allowNull: false },
   as: 'notifications',
@@ -126,8 +102,6 @@ Notification.belongsTo(User, {
   as: 'user',
 });
 
-// ── Board (1) ──> ActivityLog (N) ──
-// Logs belong to a board; wiping the board wipes its audit trail too.
 Board.hasMany(ActivityLog, {
   foreignKey: { name: 'board_id', allowNull: false },
   as: 'activityLogs',
@@ -138,10 +112,6 @@ ActivityLog.belongsTo(Board, {
   as: 'board',
 });
 
-// ── User (1) ──> ActivityLog (N) ──
-// The actor (whoever performed the action). If the user is deleted we keep
-// the log row but null the reference — the audit trail should survive the
-// departure of the user who triggered it.
 User.hasMany(ActivityLog, {
   foreignKey: { name: 'user_id', allowNull: true },
   as: 'activityLogs',
@@ -152,10 +122,6 @@ ActivityLog.belongsTo(User, {
   as: 'user',
 });
 
-// ── Task (1) ──> ActivityLog (N) ──
-// Optional: only task-scoped actions (CREATE_TASK, MOVE_TASK, ADD_COMMENT…)
-// fill this in. Task deletion nulls the pointer so the "task X was deleted"
-// entry itself survives and remains readable in the board's history.
 Task.hasMany(ActivityLog, {
   foreignKey: { name: 'task_id', allowNull: true },
   as: 'activityLogs',
@@ -166,8 +132,6 @@ ActivityLog.belongsTo(Task, {
   as: 'task',
 });
 
-// ── Task (1) ──> Attachment (N) ──
-// Files + link attachments live on a task and cascade with it.
 Task.hasMany(Attachment, {
   foreignKey: { name: 'task_id', allowNull: false },
   as: 'attachments',
@@ -178,9 +142,6 @@ Attachment.belongsTo(Task, {
   as: 'task',
 });
 
-// ── User (1) ──> Attachment (N) ──
-// Uploader survives user deletion with a null reference — we keep the
-// attachment itself (it might still be a valid link/file for the task).
 User.hasMany(Attachment, {
   foreignKey: { name: 'user_id', allowNull: true },
   as: 'attachments',
@@ -191,7 +152,6 @@ Attachment.belongsTo(User, {
   as: 'uploader',
 });
 
-// ─── Export everything the rest of the app needs ───
 module.exports = {
   sequelize,
   User,

@@ -11,10 +11,7 @@ const {
   sequelize,
 } = require('../models');
 
-// POST / — Create a new board
 exports.createBoard = async (req, res) => {
-  // Transaction keeps the board + creator membership row atomic so an
-  // orphan board never slips past getBoards' membership-based filter.
   const t = await sequelize.transaction();
   try {
     const { title, description } = req.body;
@@ -52,7 +49,6 @@ exports.createBoard = async (req, res) => {
   }
 };
 
-// GET / — Boards visible to the caller (admins see everything)
 exports.getBoards = async (req, res) => {
   try {
     const findOptions = {
@@ -67,9 +63,7 @@ exports.getBoards = async (req, res) => {
     if (req.user.role !== 'admin') {
       findOptions.where = {
         [Op.or]: [
-          // Created-by-me covers legacy boards that predate BoardMember.
           { creator_id: req.user.id },
-          // Only accepted memberships — pending/rejected invites must not leak.
           {
             id: {
               [Op.in]: sequelize.literal(
@@ -90,7 +84,6 @@ exports.getBoards = async (req, res) => {
   }
 };
 
-// GET /:id — Board with columns → tasks → (assignees, labels, comments)
 exports.getBoardById = async (req, res) => {
   try {
     const board = await Board.findByPk(req.params.id, {
@@ -149,9 +142,6 @@ exports.getBoardById = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Board not found' });
     }
 
-    // Normalise nested relations: alias fallbacks guard against Sequelize
-    // returning `Tasks` vs `tasks` and `separate: true` yielding undefined
-    // instead of [] for zero-row includes.
     const raw = typeof board.toJSON === 'function' ? board.toJSON() : board;
 
     const safeColumns = (raw?.columns || raw?.Columns || []).map((column) => {
@@ -177,7 +167,6 @@ exports.getBoardById = async (req, res) => {
   }
 };
 
-// DELETE /:id — Creator or admin only; cascades via FK associations.
 exports.deleteBoard = async (req, res) => {
   try {
     const board = await Board.findByPk(req.params.id);
@@ -210,7 +199,6 @@ exports.deleteBoard = async (req, res) => {
   }
 };
 
-// DELETE /:id/leave — Members only. Creators must delete the board instead.
 exports.leaveBoard = async (req, res) => {
   try {
     const board = await Board.findByPk(req.params.id);
@@ -242,7 +230,6 @@ exports.leaveBoard = async (req, res) => {
   }
 };
 
-// GET /:id/labels
 exports.listBoardLabels = async (req, res) => {
   try {
     const labels = await Label.findAll({
@@ -256,7 +243,6 @@ exports.listBoardLabels = async (req, res) => {
   }
 };
 
-// POST /:id/labels
 exports.createBoardLabel = async (req, res) => {
   try {
     const { title, color } = req.body;
@@ -290,7 +276,6 @@ exports.createBoardLabel = async (req, res) => {
   }
 };
 
-// GET /:id/members — Accepted members only.
 exports.listBoardMembers = async (req, res) => {
   try {
     const memberships = await BoardMember.findAll({

@@ -1,6 +1,5 @@
 const { Notification } = require('../models');
 
-// GET /api/notifications
 exports.getNotifications = async (req, res) => {
   try {
     const notifications = await Notification.findAll({
@@ -18,7 +17,6 @@ exports.getNotifications = async (req, res) => {
   }
 };
 
-// PUT /api/notifications/:id/read
 exports.markAsRead = async (req, res) => {
   try {
     const notification = await Notification.findByPk(req.params.id);

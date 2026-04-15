@@ -201,7 +201,6 @@
 </div>
 </div>
 </footer>
-<!-- ─── Register API wiring ─── -->
 <script>
   (function () {
     const API_BASE = 'http://localhost:3000/api';
@@ -218,14 +217,12 @@
     const pwToggleIcon = document.getElementById('password-toggle-icon');
     const googleBtn    = document.getElementById('google-signup');
 
-    // ── Password visibility toggle ──
     pwToggleBtn.addEventListener('click', () => {
       const isHidden = passInput.type === 'password';
       passInput.type = isHidden ? 'text' : 'password';
       pwToggleIcon.textContent = isHidden ? 'visibility_off' : 'visibility';
     });
 
-    // ── Not-yet-implemented stub ──
     googleBtn.addEventListener('click', () => {
       alert('Google Login is not yet implemented. This requires backend OAuth2 setup.');
     });
@@ -255,7 +252,6 @@
       const email     = emailInput.value.trim();
       const password  = passInput.value;
 
-      // Client-side guardrails (mirror Joi rules in backend/validators/userValidator.js)
       if (!full_name || !email || !password) {
         showError('กรุณากรอกชื่อ อีเมล และรหัสผ่านให้ครบถ้วน');
         return;

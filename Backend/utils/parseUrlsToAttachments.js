@@ -2,8 +2,6 @@ const { Attachment } = require('../models');
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/g;
 
-// Strip trailing punctuation that commonly hugs URLs in prose so we don't
-// attach "example.com/page." or "example.com/page)." as distinct URLs.
 const TRAILING_NOISE = /[.,;:!?)\]}'"]+$/;
 
 const IMAGE_EXT_REGEX = /\.(png|jpe?g|gif|webp|bmp|svg|avif)(\?[^#]*)?(#.*)?$/i;
@@ -18,10 +16,6 @@ function guessMimetype(url) {
   return `image/${ext}`;
 }
 
-// Extract every URL from a blob of text, de-dup against existing task
-// attachments, and insert the new ones. Fire-and-forget from the caller's
-// point of view: any failure is logged but never rethrown so it can't
-// break the surrounding task/comment write.
 async function parseUrlsToAttachments(text, taskId, source, userId = null) {
   if (!text || !taskId) return [];
 
@@ -40,9 +34,6 @@ async function parseUrlsToAttachments(text, taskId, source, userId = null) {
     }
     if (!cleaned.length) return [];
 
-    // One round-trip: pull every existing URL for this task and skip any
-    // match. Cheap compared to N findOne calls and race-safe enough for
-    // the "parse once per edit" flow we're in.
     const existing = await Attachment.findAll({
       where: { task_id: taskId, filename_or_url: cleaned },
       attributes: ['filename_or_url'],

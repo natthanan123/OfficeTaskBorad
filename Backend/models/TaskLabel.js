@@ -7,8 +7,6 @@ module.exports = (sequelize) => {
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    // task_id and label_id FKs are added by the Task <-> Label belongsToMany
-    // association in models/index.js (this model is the `through` table).
   }, {
     tableName: 'task_labels',
     indexes: [

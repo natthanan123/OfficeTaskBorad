@@ -12,7 +12,6 @@ function buildFilename(file) {
   return `${Date.now()}-${Math.round(Math.random() * 1e6)}${ext}`;
 }
 
-// Avatars: images only.
 const avatarStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, avatarDir),
   filename:    (_req, file, cb) => cb(null, buildFilename(file)),
@@ -30,7 +29,6 @@ const avatarUpload = multer({
   limits: { fileSize: 5 * 1024 * 1024 },
 });
 
-// Attachments: any file type — validation is left to the client UI.
 const attachmentStorage = multer.diskStorage({
   destination: (_req, _file, cb) => cb(null, attachmentDir),
   filename:    (_req, file, cb) => cb(null, buildFilename(file)),
@@ -41,8 +39,6 @@ const attachmentUpload = multer({
   limits: { fileSize: 25 * 1024 * 1024 },
 });
 
-// Default export stays the avatar uploader for backwards compatibility
-// with existing userRoutes.js. New consumers reach for the named exports.
 module.exports = avatarUpload;
 module.exports.avatarUpload     = avatarUpload;
 module.exports.attachmentUpload = attachmentUpload;

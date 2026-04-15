@@ -93,7 +93,6 @@
 
   function closeAllPopups() {
     modalPanel.querySelectorAll('.mini-popup').forEach(p => p.classList.add('hidden'));
-    // Collapse the inline "create label" form too so it doesn't linger.
     if (popupLabelsCreate && !popupLabelsCreate.classList.contains('hidden')) {
       popupLabelsCreate.classList.add('hidden');
       modalCreateLabelBtn.classList.remove('hidden');
@@ -409,7 +408,6 @@
     });
   });
 
-  // POST /boards/:id/labels
   popupLabelsCreateSubmit.addEventListener('click', async () => {
     const activeBoardId = D.getActiveBoardId();
     if (!activeBoardId) return;
@@ -936,7 +934,6 @@
     });
   }
 
-  // Modal-level drag & drop with depth counter — Files only.
   (function setupModalFileDrop() {
     if (!modalPanel) return;
     let depth = 0;

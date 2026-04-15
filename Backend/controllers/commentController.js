@@ -21,9 +21,6 @@ async function resolveBoardIdForComment(comment) {
 function canMutate(req, comment) {
   return req.user.role === 'admin' || comment.user_id === req.user.id;
 }
-
-// PUT /api/comments/:id — update content. Re-parses URLs so newly added
-// links become attachments just like the initial POST.
 exports.updateComment = async (req, res) => {
   try {
     const comment = await TaskComment.findByPk(req.params.id);
@@ -43,7 +40,6 @@ exports.updateComment = async (req, res) => {
     comment.content = content.trim();
     await comment.save();
 
-    // Reload with author so the client can re-render without another call.
     const fresh = await TaskComment.findByPk(comment.id, {
       include: { model: User, as: 'author', attributes: ['id', 'full_name', 'email'] },
     });
@@ -51,8 +47,6 @@ exports.updateComment = async (req, res) => {
     const boardId = await resolveBoardIdForComment(comment);
     emitBoardUpdate(req, boardId, 'task_comment_updated');
 
-    // New links typed into the edited comment become attachments (dedup
-    // guards against re-inserting URLs that were already parsed earlier).
     await parseUrlsToAttachments(comment.content, comment.task_id, 'comment', req.user.id);
 
     return res.json({ status: 'success', data: { comment: fresh } });
@@ -62,7 +56,6 @@ exports.updateComment = async (req, res) => {
   }
 };
 
-// DELETE /api/comments/:id — owner or admin only.
 exports.deleteComment = async (req, res) => {
   try {
     const comment = await TaskComment.findByPk(req.params.id);

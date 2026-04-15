@@ -29,11 +29,9 @@ module.exports = (sequelize) => {
         },
       },
     },
-    // user_id and board_id FKs are added by the associations in models/index.js
   }, {
     tableName: 'board_members',
     indexes: [
-      // A user can only have one membership row per board.
       { unique: true, fields: ['user_id', 'board_id'] },
     ],
   });

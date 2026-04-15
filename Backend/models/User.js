@@ -29,7 +29,7 @@ module.exports = (sequelize) => {
     role: {
       type: DataTypes.STRING,
       allowNull: false,
-      defaultValue: 'member', // 'admin' | 'member'
+      defaultValue: 'member', 
     },
     reset_password_token: {
       type: DataTypes.STRING,
@@ -45,12 +45,10 @@ module.exports = (sequelize) => {
       attributes: { exclude: ['password_hash', 'reset_password_token', 'reset_password_expires'] },
     },
     scopes: {
-      withPassword: { attributes: {} }, // Use User.scope('withPassword') when you need it (e.g. login)
+      withPassword: { attributes: {} },
     },
   });
 
-  // ─── Password‑hashing hook ───
-  // Fires before CREATE and UPDATE; only re‑hashes when the value changed.
   const hashPassword = async (user) => {
     if (user.changed('password_hash')) {
       const salt = await bcrypt.genSalt(10);
@@ -61,7 +59,6 @@ module.exports = (sequelize) => {
   User.beforeCreate(hashPassword);
   User.beforeUpdate(hashPassword);
 
-  // Convenience method — keeps bcrypt out of controller code
   User.prototype.validatePassword = async function (plainText) {
     return bcrypt.compare(plainText, this.password_hash);
   };

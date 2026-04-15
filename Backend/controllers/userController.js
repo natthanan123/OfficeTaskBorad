@@ -12,7 +12,6 @@ const signToken = (id) =>
 
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
-// POST /register
 exports.register = async (req, res) => {
   try {
     const { email, password, full_name, avatar_url, role } = req.body;
@@ -26,7 +25,6 @@ exports.register = async (req, res) => {
       return res.status(409).json({ status: 'error', message: 'Email already in use' });
     }
 
-    // Plain password goes into password_hash; the beforeCreate hook hashes it.
     const user = await User.create({
       email,
       password_hash: password,
@@ -44,7 +42,6 @@ exports.register = async (req, res) => {
   }
 };
 
-// POST /login
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -68,7 +65,6 @@ exports.login = async (req, res) => {
   }
 };
 
-// POST /avatar — multipart upload handled by multer middleware.
 exports.uploadAvatar = async (req, res) => {
   try {
     if (!req.file) {
@@ -86,7 +82,6 @@ exports.uploadAvatar = async (req, res) => {
   }
 };
 
-// POST /forgot-password
 exports.forgotPassword = async (req, res) => {
   try {
     const { email } = req.body;
@@ -95,7 +90,6 @@ exports.forgotPassword = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'email is required' });
     }
 
-    // Always return success to avoid email enumeration.
     const successResponse = {
       status: 'success',
       message: 'If this email is registered, a reset link has been sent.',
@@ -147,7 +141,6 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
-// POST /reset-password
 exports.resetPassword = async (req, res) => {
   try {
     const { token, new_password } = req.body;
@@ -171,7 +164,6 @@ exports.resetPassword = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'Invalid or expired reset token' });
     }
 
-    // beforeUpdate hook rehashes password_hash on save.
     user.password_hash = new_password;
     user.reset_password_token = null;
     user.reset_password_expires = null;
@@ -184,7 +176,6 @@ exports.resetPassword = async (req, res) => {
   }
 };
 
-// POST /google-login
 exports.googleLogin = async (req, res) => {
   try {
     const { credential } = req.body;
@@ -227,7 +218,6 @@ exports.googleLogin = async (req, res) => {
   }
 };
 
-// GET /me
 exports.getMe = async (req, res) => {
   try {
     return res.json({ status: 'success', data: { user: req.user } });

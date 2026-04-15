@@ -29,7 +29,6 @@ router.post('/:id/comments', addTaskComment);
 router.post('/:id/labels',   toggleTaskLabel);
 router.post('/:id/assign',   assignTaskUser);
 
-// Attachments scoped to a task.
 router.get('/:task_id/attachments',       listAttachments);
 router.post('/:task_id/attachments',      attachmentUpload.single('file'), uploadAttachment);
 router.post('/:task_id/attachments/link', addLinkAttachment);

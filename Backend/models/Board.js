@@ -15,7 +15,6 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: true,
     },
-    // creator_id FK is added automatically by the association in models/index.js
   }, {
     tableName: 'boards',
   });

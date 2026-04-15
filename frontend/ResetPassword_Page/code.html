@@ -168,7 +168,6 @@
   const API_BASE   = 'http://localhost:3000/api';
   const LOGIN_PAGE = '../login_page_with_pawtry_logo/code.html';
 
-  // ── Extract token from URL ──
   const token = new URLSearchParams(window.location.search).get('token');
   if (!token) {
     alert('Invalid or missing token');
@@ -182,7 +181,6 @@
   const submitBtn = document.getElementById('submit-btn');
   const btnText   = submitBtn.textContent.trim();
 
-  // ── Password visibility toggles ──
   document.querySelectorAll('.pw-toggle').forEach(btn => {
     btn.addEventListener('click', () => {
       const input = document.getElementById(btn.dataset.target);
@@ -193,7 +191,6 @@
     });
   });
 
-  // ── Loading state ──
   function setLoading(loading) {
     submitBtn.disabled = loading;
     submitBtn.innerHTML = loading
@@ -202,7 +199,6 @@
     submitBtn.style.opacity = loading ? '0.7' : '1';
   }
 
-  // ── Form submit ──
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 

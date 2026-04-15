@@ -5,7 +5,6 @@ const {
   markAsRead,
 } = require('../controllers/notificationController');
 
-// All notification routes require authentication
 router.use(authMiddleware);
 
 router.get('/',          getNotifications);

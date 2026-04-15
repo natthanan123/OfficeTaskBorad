@@ -1,8 +1,5 @@
 const { ActivityLog, Board, BoardMember, User, Task } = require('../models');
 
-// GET /api/boards/:id/logs — Audit trail, newest first.
-// Visible to admin / board creator / accepted members. Pagination via
-// ?limit= (default 50, capped at 200) and ?offset= (default 0).
 exports.getBoardLogs = async (req, res) => {
   try {
     const boardId = req.params.id;
@@ -28,7 +25,6 @@ exports.getBoardLogs = async (req, res) => {
       }
     }
 
-    // Invalid/missing query strings fall back to defaults rather than 400.
     const rawLimit  = parseInt(req.query.limit,  10);
     const rawOffset = parseInt(req.query.offset, 10);
     const limit  = Number.isFinite(rawLimit)  && rawLimit  > 0 ? Math.min(rawLimit, 200) : 50;

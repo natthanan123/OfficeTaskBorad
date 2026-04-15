@@ -20,7 +20,6 @@ function emitBoardUpdate(req, boardId, type) {
   }
 }
 
-// Fire-and-forget audit write — a failed log must never break the main flow.
 async function logActivity({ board_id, user_id, task_id = null, action_type, details = null }) {
   if (!board_id || !action_type) return;
   try {
@@ -36,7 +35,6 @@ async function resolveBoardIdForTask(task) {
   return column ? column.board_id : null;
 }
 
-// POST / — Create a task in a column.
 exports.createTask = async (req, res) => {
   try {
     const { column_id, title, description, due_date, position } = req.body;
@@ -81,7 +79,6 @@ exports.createTask = async (req, res) => {
   }
 };
 
-// PUT /:id — Update task fields and/or move between columns.
 exports.updateTask = async (req, res) => {
   try {
     const task = await Task.findByPk(req.params.id);
@@ -91,7 +88,6 @@ exports.updateTask = async (req, res) => {
 
     const { title, description, due_date, column_id, position } = req.body;
 
-    // Snapshots needed for the MOVE_TASK and UPDATE_DESCRIPTION logs below.
     const originalColumnId    = task.column_id;
     const originalDescription = task.description;
     let targetColumn = null;
@@ -116,8 +112,6 @@ exports.updateTask = async (req, res) => {
     if (currentColumn) {
       emitBoardUpdate(req, currentColumn.board_id, 'task_updated');
 
-      // Cross-board move: also ping the source board so the old viewers
-      // see the task disappear without a manual refresh.
       if (originalColumnId && originalColumnId !== task.column_id) {
         const sourceColumn = await Column.findByPk(originalColumnId);
         if (sourceColumn && sourceColumn.board_id !== currentColumn.board_id) {
@@ -136,7 +130,6 @@ exports.updateTask = async (req, res) => {
       });
     }
 
-    // Normalise null/undefined/'' so flipping between them doesn't log.
     if (description !== undefined && currentColumn) {
       const prev = originalDescription == null ? '' : String(originalDescription);
       const next = task.description   == null ? '' : String(task.description);
@@ -149,7 +142,6 @@ exports.updateTask = async (req, res) => {
           details:     { title: task.title },
         });
 
-        // Auto-parse URLs from the new description into attachments.
         await parseUrlsToAttachments(next, task.id, 'description', req.user.id);
       }
     }
@@ -161,7 +153,6 @@ exports.updateTask = async (req, res) => {
   }
 };
 
-// PUT /:id/complete — Toggle is_completed.
 exports.toggleTaskComplete = async (req, res) => {
   try {
     const task = await Task.findByPk(req.params.id);
@@ -195,7 +186,6 @@ exports.toggleTaskComplete = async (req, res) => {
   }
 };
 
-// PUT /:id/due_date — Accepts null to clear.
 exports.setTaskDueDate = async (req, res) => {
   try {
     const task = await Task.findByPk(req.params.id);
@@ -217,7 +207,6 @@ exports.setTaskDueDate = async (req, res) => {
   }
 };
 
-// POST /:id/comments
 exports.addTaskComment = async (req, res) => {
   try {
     const task = await Task.findByPk(req.params.id);
@@ -236,8 +225,6 @@ exports.addTaskComment = async (req, res) => {
       content: content.trim(),
     });
 
-    // Reload with the author eager-loaded so the client can render without
-    // a second round-trip for the full board.
     const comment = await TaskComment.findByPk(created.id, {
       include: { model: User, as: 'author', attributes: ['id', 'full_name', 'email'] },
     });
@@ -253,7 +240,6 @@ exports.addTaskComment = async (req, res) => {
       details:     { comment_id: created.id },
     });
 
-    // Auto-parse URLs from the comment body into attachments.
     await parseUrlsToAttachments(content.trim(), task.id, 'comment', req.user.id);
 
     return res.status(201).json({ status: 'success', data: { comment } });
@@ -263,7 +249,6 @@ exports.addTaskComment = async (req, res) => {
   }
 };
 
-// POST /:id/labels — Toggle a label link on a task.
 exports.toggleTaskLabel = async (req, res) => {
   try {
     const task = await Task.findByPk(req.params.id);
@@ -315,7 +300,6 @@ exports.toggleTaskLabel = async (req, res) => {
   }
 };
 
-// POST /:id/assign — Toggle assignment + notify the target user.
 exports.assignTaskUser = async (req, res) => {
   const t = await sequelize.transaction();
   try {
@@ -394,7 +378,6 @@ exports.assignTaskUser = async (req, res) => {
   }
 };
 
-// DELETE /:id
 exports.deleteTask = async (req, res) => {
   try {
     const task = await Task.findByPk(req.params.id);
@@ -402,8 +385,6 @@ exports.deleteTask = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Task not found' });
     }
 
-    // Snapshot board_id, title, task id BEFORE destroy so the audit row
-    // below still has everything it needs.
     const column = await Column.findByPk(task.column_id);
     const boardId = column ? column.board_id : null;
     const deletedTitle = task.title;
@@ -413,8 +394,6 @@ exports.deleteTask = async (req, res) => {
 
     emitBoardUpdate(req, boardId, 'task_deleted');
 
-    // task_id is null because the FK is ON DELETE SET NULL; the title in
-    // details keeps the timeline readable after the row is gone.
     await logActivity({
       board_id:    boardId,
       user_id:     req.user.id,

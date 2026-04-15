@@ -15,7 +15,6 @@ module.exports = (sequelize) => {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    // board_id FK is added by the association in models/index.js
   }, {
     tableName: 'labels',
   });
