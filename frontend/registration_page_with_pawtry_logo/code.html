@@ -203,7 +203,7 @@
 </footer>
 <script>
   (function () {
-    const API_BASE = 'http://localhost:3000/api';
+    const API_BASE = 'http://192.168.1.197:3000/api';
     const LOGIN_PAGE = '../login_page_with_pawtry_logo/code.html';
 
     const form         = document.getElementById('register-form');
@@ -281,7 +281,7 @@
         window.location.href = LOGIN_PAGE;
       } catch (err) {
         console.error('Register request failed:', err);
-        showError('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบว่า backend กำลังทำงานอยู่ที่ http://localhost:3000');
+        showError('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบว่า backend กำลังทำงานอยู่ที่ http://192.168.1.197:3000');
       } finally {
         setLoading(false);
       }

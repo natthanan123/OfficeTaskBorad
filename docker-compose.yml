@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: taskboard-postgres
+    restart: always
+    environment:
+      POSTGRES_USER: MIX_admin
+      POSTGRES_PASSWORD: Golden168$
+      POSTGRES_DB: office_task_board
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  backend:
+    build: ./Backend
+    container_name: taskboard-backend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    env_file:
+      - ./Backend/.env
+    volumes:
+      - ./Backend/uploads:/app/uploads
+
+  frontend:
+    image: nginx:alpine
+    container_name: taskboard-frontend
+    restart: always
+    ports:
+      - "5500:80"
+    volumes:
+      - ./frontend:/usr/share/nginx/html:ro
+
+  adminer:
+    image: adminer
+    container_name: taskboard-adminer
+    restart: always
+    ports:
+      - "8080:8080"
+
+volumes:
+  pgdata:

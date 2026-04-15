@@ -18,7 +18,7 @@
 
   const token = localStorage.getItem('token');
 
-  const socket = io('http://localhost:3000', {
+  const socket = io('http://192.168.1.197:3000', {
     auth: { token },
     transports: ['websocket', 'polling'],
   });
