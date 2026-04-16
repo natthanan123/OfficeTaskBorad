@@ -6,8 +6,9 @@
 <title>Pawtry | Workspace</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script src="../config.js"></script>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-<script src="http://192.168.1.197:3000/socket.io/socket.io.js"></script>
+<script>document.write('<script src="' + window.APP_CONFIG.API_ORIGIN + '/socket.io/socket.io.js"><\/script>');</script>
 <script id="tailwind-config">
       tailwind.config = {
         darkMode: "class",
@@ -534,7 +535,7 @@
 
 <script>
   (function () {
-    const API_BASE   = 'http://192.168.1.197:3000/api';
+    const API_BASE   = window.APP_CONFIG.API_BASE;
     const LOGIN_PAGE = '../login_page_with_pawtry_logo/code.html';
     const token = localStorage.getItem('token');
     if (!token) {
@@ -706,7 +707,7 @@
     function coverSrc(pathOrUrl) {
       if (!pathOrUrl) return '';
       if (/^https?:\/\//i.test(pathOrUrl)) return pathOrUrl;
-      if (pathOrUrl.startsWith('/uploads/')) return `http://192.168.1.197:3000${pathOrUrl}`;
+      if (pathOrUrl.startsWith('/uploads/')) return `${window.APP_CONFIG.API_ORIGIN}${pathOrUrl}`;
       return pathOrUrl;
     }
 
@@ -891,7 +892,7 @@
           <div class="flex flex-col items-center gap-3 max-w-md text-center">
             <span class="material-symbols-outlined text-error text-[40px]">error</span>
             <p class="text-sm font-semibold text-on-surface">${escapeHtml(message)}</p>
-            <p class="text-xs text-on-surface-variant">ตรวจสอบว่า backend กำลังทำงานอยู่ที่ http://192.168.1.197:3000 และมี board ในฐานข้อมูล</p>
+            <p class="text-xs text-on-surface-variant">ตรวจสอบว่า backend กำลังทำงานอยู่ที่ ${window.APP_CONFIG.API_ORIGIN} และมี board ในฐานข้อมูล</p>
           </div>
         </div>
       `;

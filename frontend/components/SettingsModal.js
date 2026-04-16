@@ -5,8 +5,8 @@
     return;
   }
 
-  const API_ORIGIN = 'http://192.168.1.197:3000';
-  const API_BASE   = `${API_ORIGIN}/api`;
+  const API_ORIGIN = window.APP_CONFIG.API_ORIGIN;
+  const API_BASE   = window.APP_CONFIG.API_BASE;
 
   const api       = D.api;
   const showToast = D.showToast;

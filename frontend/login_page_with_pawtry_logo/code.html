@@ -4,6 +4,7 @@
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
 <title>Login | Pawtry</title>
+<script src="../config.js"></script>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
@@ -198,7 +199,7 @@
 <!-- ─── Login API wiring ─── -->
 <script>
   (function () {
-    const API_BASE = 'http://192.168.1.197:3000/api';
+    const API_BASE = window.APP_CONFIG.API_BASE;
 
     const GOOGLE_CLIENT_ID = '763873975321-1m711p69qbds39us2129nkt4g4n4q0gi.apps.googleusercontent.com';
     const DASHBOARD_PAGE   = '../kanban_board_dashboard/code.html';
@@ -324,7 +325,7 @@
         window.location.href = '../kanban_board_dashboard/code.html';
       } catch (err) {
         console.error('Login request failed:', err);
-        showError('เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบว่า backend กำลังทำงานอยู่ที่ http://192.168.1.197:3000');
+        showError(`เชื่อมต่อเซิร์ฟเวอร์ไม่ได้ กรุณาตรวจสอบว่า backend กำลังทำงานอยู่ที่ ${window.APP_CONFIG.API_ORIGIN}`);
       } finally {
         setLoading(false);
       }
