@@ -36,7 +36,7 @@ const attachmentStorage = multer.diskStorage({
 
 const attachmentUpload = multer({
   storage: attachmentStorage,
-  limits: { fileSize: 25 * 1024 * 1024 },
+  limits: { fileSize: 2 * 1024 * 1024 * 1024 }, // 2GB
 });
 
 module.exports = avatarUpload;

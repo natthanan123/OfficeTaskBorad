@@ -10,6 +10,7 @@ const {
   sequelize,
 } = require('../models');
 const { parseUrlsToAttachments } = require('../utils/parseUrlsToAttachments');
+const { processMentionsForComment } = require('../utils/mentionUtil');
 
 function emitBoardUpdate(req, boardId, type) {
   if (!boardId) return;
@@ -214,19 +215,31 @@ exports.addTaskComment = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Task not found' });
     }
 
-    const { content } = req.body;
+    const { content, parent_id } = req.body;
     if (!content || typeof content !== 'string' || !content.trim()) {
       return res.status(400).json({ status: 'error', message: 'content is required' });
+    }
+
+    // If parent_id provided, validate it exists and belongs to same task
+    if (parent_id) {
+      const parent = await TaskComment.findByPk(parent_id);
+      if (!parent) {
+        return res.status(404).json({ status: 'error', message: 'Parent comment not found' });
+      }
+      if (String(parent.task_id) !== String(task.id)) {
+        return res.status(400).json({ status: 'error', message: 'Parent comment does not belong to this task' });
+      }
     }
 
     const created = await TaskComment.create({
       task_id: task.id,
       user_id: req.user.id,
       content: content.trim(),
+      parent_id: parent_id || null,
     });
 
     const comment = await TaskComment.findByPk(created.id, {
-      include: { model: User, as: 'author', attributes: ['id', 'full_name', 'email'] },
+      include: { model: User, as: 'author', attributes: ['id', 'full_name', 'email', 'profile_picture'] },
     });
 
     const boardId = await resolveBoardIdForTask(task);
@@ -241,6 +254,15 @@ exports.addTaskComment = async (req, res) => {
     });
 
     await parseUrlsToAttachments(content.trim(), task.id, 'comment', req.user.id);
+
+    // Process @mentions → create notifications for mentioned users
+    await processMentionsForComment({
+      content: content.trim(),
+      commentId: created.id,
+      taskId: task.id,
+      authorId: req.user.id,
+      req,
+    });
 
     return res.status(201).json({ status: 'success', data: { comment } });
   } catch (err) {
@@ -406,5 +428,199 @@ exports.deleteTask = async (req, res) => {
   } catch (err) {
     console.error('deleteTask error:', err);
     return res.status(500).json({ status: 'error', message: 'Could not delete task' });
+  }
+};
+
+// ─────────────────────────────────────────────
+// Copy / Watch / Archive (Trello-style actions)
+// ─────────────────────────────────────────────
+
+/**
+ * POST /api/tasks/:id/copy
+ * body: { title?, column_id? }
+ * Creates a duplicate of the task (including labels, assignees, and description).
+ */
+exports.copyTask = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const original = await Task.findByPk(req.params.id, { transaction: t });
+    if (!original) {
+      await t.rollback();
+      return res.status(404).json({ status: 'error', message: 'Task not found' });
+    }
+
+    const targetColumnId = req.body.column_id || original.column_id;
+    const targetColumn = await Column.findByPk(targetColumnId, { transaction: t });
+    if (!targetColumn) {
+      await t.rollback();
+      return res.status(404).json({ status: 'error', message: 'Target column not found' });
+    }
+
+    const maxPos = await Task.max('position', { where: { column_id: targetColumnId }, transaction: t });
+    const finalPosition = (maxPos ?? -1) + 1;
+
+    const newTitle = (typeof req.body.title === 'string' && req.body.title.trim())
+      ? req.body.title.trim()
+      : `${original.title} (copy)`;
+
+    // Create the copy
+    const copy = await Task.create({
+      column_id: targetColumnId,
+      title: newTitle,
+      description: original.description,
+      due_date: original.due_date,
+      position: finalPosition,
+    }, { transaction: t });
+
+    // Copy labels (many-to-many via TaskLabel)
+    try {
+      const originalLabels = await TaskLabel.findAll({ where: { task_id: original.id }, transaction: t });
+      for (const tl of originalLabels) {
+        await TaskLabel.create({ task_id: copy.id, label_id: tl.label_id }, { transaction: t });
+      }
+    } catch (e) { /* ignore label copy failures */ }
+
+    // Copy assignees
+    try {
+      const origAssignees = await original.getAssignees({ transaction: t });
+      for (const u of origAssignees) {
+        await copy.addAssignee(u, { transaction: t });
+      }
+    } catch (e) { /* ignore assignee copy failures */ }
+
+    await t.commit();
+
+    // Load fresh copy with relations to return
+    const fresh = await Task.findByPk(copy.id, {
+      include: [
+        { model: User, as: 'assignees', attributes: ['id', 'full_name', 'email'], through: { attributes: [] } },
+        { model: Label, as: 'labels', through: { attributes: [] } },
+      ],
+    });
+
+    emitBoardUpdate(req, targetColumn.board_id, 'task_copied');
+
+    await logActivity({
+      board_id:    targetColumn.board_id,
+      user_id:     req.user.id,
+      task_id:     copy.id,
+      action_type: 'COPY_TASK',
+      details:     { source_task_id: original.id, title: newTitle },
+    });
+
+    return res.status(201).json({ status: 'success', data: { task: fresh } });
+  } catch (err) {
+    try { await t.rollback(); } catch (e) {}
+    console.error('copyTask error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not copy task' });
+  }
+};
+
+/**
+ * POST /api/tasks/:id/watch
+ * Toggle the current user as a watcher of this task.
+ * Response: { watching: bool, watchers: [user_ids] }
+ */
+exports.toggleTaskWatch = async (req, res) => {
+  try {
+    const task = await Task.findByPk(req.params.id);
+    if (!task) {
+      return res.status(404).json({ status: 'error', message: 'Task not found' });
+    }
+
+    // Use raw query against task_watchers table (expected schema)
+    // Graceful fallback: if table doesn't exist, return a soft success
+    let watching = false;
+    let watchers = [];
+    try {
+      const [existing] = await sequelize.query(
+        'SELECT user_id FROM task_watchers WHERE task_id = :tid AND user_id = :uid',
+        { replacements: { tid: task.id, uid: req.user.id } }
+      );
+      if (existing && existing.length > 0) {
+        await sequelize.query(
+          'DELETE FROM task_watchers WHERE task_id = :tid AND user_id = :uid',
+          { replacements: { tid: task.id, uid: req.user.id } }
+        );
+        watching = false;
+      } else {
+        await sequelize.query(
+          'INSERT INTO task_watchers (task_id, user_id, created_at) VALUES (:tid, :uid, NOW())',
+          { replacements: { tid: task.id, uid: req.user.id } }
+        );
+        watching = true;
+      }
+      const [rows] = await sequelize.query(
+        'SELECT user_id FROM task_watchers WHERE task_id = :tid',
+        { replacements: { tid: task.id } }
+      );
+      watchers = (rows || []).map(r => r.user_id);
+    } catch (sqlErr) {
+      // Table might not exist — graceful degradation
+      console.warn('task_watchers table missing, returning soft success:', sqlErr.message);
+      return res.json({
+        status: 'success',
+        data: { watching: true, watchers: [req.user.id] },
+      });
+    }
+
+    const boardId = await resolveBoardIdForTask(task);
+    await logActivity({
+      board_id:    boardId,
+      user_id:     req.user.id,
+      task_id:     task.id,
+      action_type: watching ? 'WATCH_TASK' : 'UNWATCH_TASK',
+      details:     {},
+    });
+
+    return res.json({ status: 'success', data: { watching, watchers } });
+  } catch (err) {
+    console.error('toggleTaskWatch error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not toggle watch' });
+  }
+};
+
+/**
+ * POST /api/tasks/:id/archive
+ * Sets archived_at = NOW() (soft delete). Falls back to destroying if column missing.
+ */
+exports.archiveTask = async (req, res) => {
+  try {
+    const task = await Task.findByPk(req.params.id);
+    if (!task) {
+      return res.status(404).json({ status: 'error', message: 'Task not found' });
+    }
+
+    const column = await Column.findByPk(task.column_id);
+    const boardId = column ? column.board_id : null;
+
+    // Try soft-delete via archived_at column
+    let archived = false;
+    try {
+      await sequelize.query(
+        'UPDATE tasks SET archived_at = NOW() WHERE id = :tid',
+        { replacements: { tid: task.id } }
+      );
+      archived = true;
+    } catch (sqlErr) {
+      // archived_at column may not exist → fall back to hard delete
+      console.warn('archived_at column missing, falling back to destroy:', sqlErr.message);
+      await task.destroy();
+      archived = true;
+    }
+
+    emitBoardUpdate(req, boardId, 'task_archived');
+    await logActivity({
+      board_id:    boardId,
+      user_id:     req.user.id,
+      task_id:     task.id,
+      action_type: 'ARCHIVE_TASK',
+      details:     { title: task.title },
+    });
+
+    return res.json({ status: 'success', data: { task_id: task.id, archived } });
+  } catch (err) {
+    console.error('archiveTask error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not archive task' });
   }
 };

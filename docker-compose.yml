@@ -34,7 +34,7 @@ services:
     ports:
       - "5500:80"
     volumes:
-      - ./frontend:/usr/share/nginx/html:ro
+      - ./frontend:/usr/share/nginx/html
 
   adminer:
     image: adminer

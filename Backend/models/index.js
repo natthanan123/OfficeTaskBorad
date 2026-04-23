@@ -1,15 +1,16 @@
 const sequelize = require('../config/database');
-const User         = require('./User')(sequelize);
-const Board        = require('./Board')(sequelize);
-const Column       = require('./Column')(sequelize);
-const Task         = require('./Task')(sequelize);
-const BoardMember  = require('./BoardMember')(sequelize);
-const Notification = require('./Notification')(sequelize);
-const Label        = require('./Label')(sequelize);
-const TaskLabel    = require('./TaskLabel')(sequelize);
-const TaskComment  = require('./TaskComment')(sequelize);
-const ActivityLog  = require('./ActivityLog')(sequelize);
-const Attachment   = require('./Attachment')(sequelize);
+const User             = require('./User')(sequelize);
+const Board            = require('./Board')(sequelize);
+const Column           = require('./Column')(sequelize);
+const Task             = require('./Task')(sequelize);
+const BoardMember      = require('./BoardMember')(sequelize);
+const Notification     = require('./Notification')(sequelize);
+const Label            = require('./Label')(sequelize);
+const TaskLabel        = require('./TaskLabel')(sequelize);
+const TaskComment      = require('./TaskComment')(sequelize);
+const ActivityLog      = require('./ActivityLog')(sequelize);
+const Attachment       = require('./Attachment')(sequelize);
+const CommentReaction  = require('./CommentReaction')(sequelize);
 
 User.hasMany(Board,  { foreignKey: 'creator_id', as: 'boards', onDelete: 'SET NULL' });
 Board.belongsTo(User, { foreignKey: 'creator_id', as: 'creator' });
@@ -70,6 +71,39 @@ User.hasMany(TaskComment, {
 TaskComment.belongsTo(User, {
   foreignKey: { name: 'user_id', allowNull: false },
   as: 'author',
+});
+
+// ── Reply thread (parent/child comment) ──
+TaskComment.belongsTo(TaskComment, {
+  foreignKey: { name: 'parent_id', allowNull: true },
+  as: 'parent',
+  onDelete: 'CASCADE',
+});
+TaskComment.hasMany(TaskComment, {
+  foreignKey: { name: 'parent_id', allowNull: true },
+  as: 'replies',
+  onDelete: 'CASCADE',
+});
+
+// ── Comment reactions ──
+TaskComment.hasMany(CommentReaction, {
+  foreignKey: { name: 'comment_id', allowNull: false },
+  as: 'reactions',
+  onDelete: 'CASCADE',
+});
+CommentReaction.belongsTo(TaskComment, {
+  foreignKey: { name: 'comment_id', allowNull: false },
+  as: 'comment',
+});
+
+User.hasMany(CommentReaction, {
+  foreignKey: { name: 'user_id', allowNull: false },
+  as: 'commentReactions',
+  onDelete: 'CASCADE',
+});
+CommentReaction.belongsTo(User, {
+  foreignKey: { name: 'user_id', allowNull: false },
+  as: 'user',
 });
 
 User.hasMany(BoardMember, {
@@ -165,4 +199,5 @@ module.exports = {
   TaskComment,
   ActivityLog,
   Attachment,
+  CommentReaction,
 };

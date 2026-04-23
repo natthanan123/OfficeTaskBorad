@@ -1,4 +1,3 @@
-
 (function () {
   const D = window.Dashboard;
   if (!D) {
@@ -59,7 +58,7 @@
 
     let actionsHtml = '';
     if (n.type === 'board_invite' && n.reference_id) {
-      const refId = escapeHtml(n.reference_id);
+      const refId   = escapeHtml(n.reference_id);
       const notifId = escapeHtml(n.id);
       actionsHtml = `
         <div class="flex gap-2 mt-2">
@@ -161,6 +160,7 @@
   async function handleInviteRespond(btn) {
     const action  = btn.dataset.action;
     const boardId = btn.dataset.boardId;
+    const notifId = btn.dataset.notificationId;
     if (!boardId || !['accepted', 'rejected'].includes(action)) return;
 
     const parent  = btn.closest('.notification-item');
@@ -172,13 +172,36 @@
         method: 'PUT',
         body: { status: action },
       });
-      if (D.loadBoards) await D.loadBoards();
-      await fetchNotifications();
     } catch (err) {
       if (err.message === 'Unauthorized') return;
-      console.error('Failed to respond to invite:', err);
-      alert('Could not respond to invite: ' + (err.message || 'Unknown error'));
-      buttons.forEach(b => b.disabled = false);
+      console.warn('Invite respond error (auto-dismiss):', err.message);
+    }
+
+    // ── ลบ notification ออกจาก cache และ DOM ทันที เสมอ ──
+    cachedNotifications = cachedNotifications.filter(n => String(n.id) !== String(notifId));
+    if (parent) parent.remove();
+
+    const unread = cachedNotifications.filter(n => !n.is_read).length;
+    updateNotificationBadge(unread);
+    notificationSummary.textContent = unread > 0 ? `${unread} unread` : 'All read';
+
+    if (cachedNotifications.length === 0) {
+      notificationListEl.innerHTML = `
+        <li class="px-4 py-10 text-xs text-center text-on-surface-variant italic">
+          No notifications yet
+        </li>
+      `;
+    }
+
+    // ── โหลด board list ใหม่โดยไม่เปลี่ยน active board ──
+    if (action === 'accepted') {
+      try {
+        const data = await D.api('/boards');
+        if (data && data.boards) {
+          D.state.cachedBoards = data.boards;
+          if (D.renderBoardList) D.renderBoardList();
+        }
+      } catch (e) { /* ignore */ }
     }
   }
 

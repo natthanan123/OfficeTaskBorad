@@ -1,0 +1,393 @@
+{
+  "name": "Pawtry LINE+Facebook Chatbot",
+  "nodes": [
+    {
+      "id": "a1b2c3d4-0001-0001-0001-000000000001",
+      "name": "LINE Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 300],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "line-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0002-0002-0002-000000000002",
+      "name": "Facebook Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [0, 500],
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "facebook-webhook",
+        "responseMode": "responseNode",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0003-0003-0003-000000000003",
+      "name": "แยก Platform",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [220, 380],
+      "parameters": {
+        "mode": "expression",
+        "output": "={{ $json.source === 'facebook' ? 1 : 0 }}",
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0004-0004-0004-000000000004",
+      "name": "Parse LINE Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 280],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst events = body.events || [];\nconst results = [];\nfor (const event of events) {\n  if (event.type === 'message' && event.message.type === 'text') {\n    results.push({\n      platform: 'line',\n      userId: event.source.userId,\n      replyToken: event.replyToken,\n      text: event.message.text.trim(),\n      senderId: event.source.userId\n    });\n  } else if (event.type === 'postback') {\n    results.push({\n      platform: 'line',\n      userId: event.source.userId,\n      replyToken: event.replyToken,\n      text: event.postback.data.trim(),\n      senderId: event.source.userId\n    });\n  }\n}\nreturn results.length > 0 ? results : [{ platform: 'line', userId: '', replyToken: '', text: '', senderId: '' }];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0005-0005-0005-000000000005",
+      "name": "Parse Facebook Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [440, 480],
+      "parameters": {
+        "jsCode": "const body = $input.first().json.body;\nconst results = [];\nconst entries = body.entry || [];\nfor (const entry of entries) {\n  const messagings = entry.messaging || [];\n  for (const msg of messagings) {\n    if (msg.message && msg.message.text) {\n      results.push({\n        platform: 'facebook',\n        userId: msg.sender.id,\n        replyToken: msg.sender.id,\n        text: msg.message.text.trim(),\n        senderId: msg.sender.id\n      });\n    } else if (msg.postback) {\n      results.push({\n        platform: 'facebook',\n        userId: msg.sender.id,\n        replyToken: msg.sender.id,\n        text: msg.postback.payload.trim(),\n        senderId: msg.sender.id\n      });\n    }\n  }\n}\nreturn results.length > 0 ? results : [{ platform: 'facebook', userId: '', replyToken: '', text: '', senderId: '' }];"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0006-0006-0006-000000000006",
+      "name": "Merge Messages",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [660, 380],
+      "parameters": {
+        "mode": "passThrough",
+        "output": "input1"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0007-0007-0007-000000000007",
+      "name": "ตรวจสอบ Intent",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [880, 380],
+      "parameters": {
+        "mode": "rules",
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "combinator": "or",
+                "conditions": [
+                  { "leftValue": "={{ $json.text }}", "rightValue": "คอร์ส", "operator": { "type": "string", "operation": "contains" } },
+                  { "leftValue": "={{ $json.text }}", "rightValue": "หลักสูตร", "operator": { "type": "string", "operation": "contains" } },
+                  { "leftValue": "={{ $json.text }}", "rightValue": "เรียน", "operator": { "type": "string", "operation": "contains" } },
+                  { "leftValue": "={{ $json.text }}", "rightValue": "academy", "operator": { "type": "string", "operation": "contains" } }
+                ]
+              },
+              "output": 0
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "combinator": "or",
+                "conditions": [
+                  { "leftValue": "={{ $json.text }}", "rightValue": "บริการ", "operator": { "type": "string", "operation": "contains" } },
+                  { "leftValue": "={{ $json.text }}", "rightValue": "OEM", "operator": { "type": "string", "operation": "contains" } },
+                  { "leftValue": "={{ $json.text }}", "rightValue": "โรงแรม", "operator": { "type": "string", "operation": "contains" } },
+                  { "leftValue": "={{ $json.text }}", "rightValue": "consult", "operator": { "type": "string", "operation": "contains" } },
+                  { "leftValue": "={{ $json.text }}", "rightValue": "นำเข้า", "operator": { "type": "string", "operation": "contains" } },
+                  { "leftValue": "={{ $json.text }}", "rightValue": "ส่งออก", "operator": { "type": "string", "operation": "contains" } }
+                ]
+              },
+              "output": 1
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "combinator": "or",
+                "conditions": [
+                  { "leftValue": "={{ $json.text }}", "rightValue": "บทความ", "operator": { "type": "string", "operation": "contains" } },
+                  { "leftValue": "={{ $json.text }}", "rightValue": "blog", "operator": { "type": "string", "operation": "contains" } },
+                  { "leftValue": "={{ $json.text }}", "rightValue": "ข่าว", "operator": { "type": "string", "operation": "contains" } }
+                ]
+              },
+              "output": 2
+            },
+            {
+              "conditions": {
+                "options": { "caseSensitive": false, "leftValue": "", "typeValidation": "strict" },
+                "combinator": "or",
+                "conditions": [
+                  { "leftValue": "={{ $json.text }}", "rightValue": "สวัสดี", "operator": { "type": "string", "operation": "contains" } },
+                  { "leftValue": "={{ $json.text }}", "rightValue": "hello", "operator": { "type": "string", "operation": "contains" } },
+                  { "leftValue": "={{ $json.text }}", "rightValue": "hi", "operator": { "type": "string", "operation": "contains" } },
+                  { "leftValue": "={{ $json.text }}", "rightValue": "เริ่มต้น", "operator": { "type": "string", "operation": "contains" } }
+                ]
+              },
+              "output": 3
+            }
+          ]
+        },
+        "fallbackOutput": 4,
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0008-0008-0008-000000000008",
+      "name": "Carousel คอร์สเรียน",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 160],
+      "parameters": {
+        "jsCode": "const platform = $json.platform;\nconst userId = $json.userId;\nconst replyToken = $json.replyToken;\n\nif (platform === 'line') {\n  const carousel = {\n    type: 'template',\n    altText: 'คอร์สเรียนธุรกิจสัตว์เลี้ยง Pawtry Academy',\n    template: {\n      type: 'carousel',\n      columns: [\n        {\n          thumbnailImageUrl: 'https://www.pawtrythailand.com/images/course-food.jpg',\n          title: 'หลักสูตรผู้ประกอบการอาหารสัตว์เลี้ยง',\n          text: 'Pet Food Business - เจาะลึกการสร้างแบรนด์ตั้งแต่ 0 จนส่งออก',\n          actions: [\n            { type: 'uri', label: 'ดูรายละเอียด', uri: 'https://www.pawtrythailand.com/academy-food' },\n            { type: 'postback', label: 'สอบถามราคา', data: 'ถามราคา_PFB' },\n            { type: 'postback', label: 'ดูตารางเรียน', data: 'ดูตารางเรียน' }\n          ]\n        },\n        {\n          thumbnailImageUrl: 'https://www.pawtrythailand.com/images/course-hotel.jpg',\n          title: 'หลักสูตรธุรกิจสัตว์เลี้ยงครบวงจร',\n          text: 'Pet Business Builder - คัมภีร์เริ่มธุรกิจสัตว์เลี้ยงให้ทำกำไร',\n          actions: [\n            { type: 'uri', label: 'ดูรายละเอียด', uri: 'https://www.pawtrythailand.com/academy-hotel' },\n            { type: 'postback', label: 'สอบถามราคา', data: 'ถามราคา_PBB' },\n            { type: 'postback', label: 'ติดต่อเรา', data: 'ติดต่อเรา' }\n          ]\n        }\n      ]\n    }\n  };\n  return [{ json: { platform, userId, replyToken, messageType: 'carousel_course', payload: carousel } }];\n} else {\n  // Facebook Generic Template\n  const template = {\n    attachment: {\n      type: 'template',\n      payload: {\n        template_type: 'generic',\n        elements: [\n          {\n            title: 'หลักสูตรผู้ประกอบการอาหารสัตว์เลี้ยง',\n            subtitle: 'Pet Food Business - เจาะลึกตั้งแต่ 0 จนส่งออก',\n            default_action: { type: 'web_url', url: 'https://www.pawtrythailand.com/academy-food' },\n            buttons: [\n              { type: 'web_url', url: 'https://www.pawtrythailand.com/academy-food', title: 'ดูรายละเอียด' },\n              { type: 'postback', title: 'สอบถามราคา', payload: 'ถามราคา_PFB' }\n            ]\n          },\n          {\n            title: 'หลักสูตรธุรกิจสัตว์เลี้ยงครบวงจร',\n            subtitle: 'Pet Business Builder - เริ่มธุรกิจสัตว์เลี้ยงให้ทำกำไร',\n            default_action: { type: 'web_url', url: 'https://www.pawtrythailand.com/academy-hotel' },\n            buttons: [\n              { type: 'web_url', url: 'https://www.pawtrythailand.com/academy-hotel', title: 'ดูรายละเอียด' },\n              { type: 'postback', title: 'สอบถามราคา', payload: 'ถามราคา_PBB' }\n            ]\n          }\n        ]\n      }\n    }\n  };\n  return [{ json: { platform, userId, replyToken, messageType: 'carousel_course', payload: template } }];\n}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0009-0009-0009-000000000009",
+      "name": "Carousel บริการ",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 320],
+      "parameters": {
+        "jsCode": "const platform = $json.platform;\nconst userId = $json.userId;\nconst replyToken = $json.replyToken;\n\nif (platform === 'line') {\n  const carousel = {\n    type: 'template',\n    altText: 'บริการของ Pawtry Thailand',\n    template: {\n      type: 'carousel',\n      columns: [\n        {\n          thumbnailImageUrl: 'https://www.pawtrythailand.com/images/service-oem.jpg',\n          title: 'รับผลิต OEM อาหารสัตว์เลี้ยง',\n          text: 'ผลิตอาหารสัตว์เลี้ยงมาตรฐาน GMP/HACCP ส่งออกได้',\n          actions: [\n            { type: 'uri', label: 'ดูรายละเอียด', uri: 'https://www.pawtrythailand.com/service-oem' },\n            { type: 'postback', label: 'ขอใบเสนอราคา', data: 'ขอใบเสนอราคา_OEM' }\n          ]\n        },\n        {\n          thumbnailImageUrl: 'https://www.pawtrythailand.com/images/service-construction.jpg',\n          title: 'รับจบครบวงจรโรงแรมหมาแมว',\n          text: 'One-Stop Service สร้างโรงแรมสัตว์เลี้ยงครบวงจร',\n          actions: [\n            { type: 'uri', label: 'ดูรายละเอียด', uri: 'https://www.pawtrythailand.com/service-construction' },\n            { type: 'postback', label: 'นัดสำรวจหน้างาน', data: 'นัดสำรวจ_construction' }\n          ]\n        },\n        {\n          thumbnailImageUrl: 'https://www.pawtrythailand.com/images/service-consult.jpg',\n          title: 'Consult พัฒนาอสังหาสัตว์เลี้ยง',\n          text: 'ปรึกษาพัฒนาอสังหาสำหรับสัตว์เลี้ยง วิเคราะห์ ROI',\n          actions: [\n            { type: 'uri', label: 'ดูรายละเอียด', uri: 'https://www.pawtrythailand.com/service-consult' },\n            { type: 'postback', label: 'ดูแพ็กเกจ', data: 'ดูแพ็กเกจ_consult' }\n          ]\n        },\n        {\n          thumbnailImageUrl: 'https://www.pawtrythailand.com/images/service-import.jpg',\n          title: 'นำเข้า/ส่งออก',\n          text: 'บริการนำเข้า-ส่งออกสินค้าสัตว์เลี้ยงทั่วโลก',\n          actions: [\n            { type: 'uri', label: 'ดูรายละเอียด', uri: 'https://www.pawtrythailand.com/service-import' },\n            { type: 'postback', label: 'ขอใบเสนอราคา', data: 'ขอใบเสนอราคา_import' }\n          ]\n        }\n      ]\n    }\n  };\n  return [{ json: { platform, userId, replyToken, messageType: 'carousel_service', payload: carousel } }];\n} else {\n  const template = {\n    attachment: {\n      type: 'template',\n      payload: {\n        template_type: 'generic',\n        elements: [\n          {\n            title: 'รับผลิต OEM อาหารสัตว์เลี้ยง',\n            subtitle: 'มาตรฐาน GMP/HACCP ส่งออกได้',\n            default_action: { type: 'web_url', url: 'https://www.pawtrythailand.com/service-oem' },\n            buttons: [{ type: 'web_url', url: 'https://www.pawtrythailand.com/service-oem', title: 'ดูรายละเอียด' }]\n          },\n          {\n            title: 'รับจบครบวงจรโรงแรมหมาแมว',\n            subtitle: 'One-Stop Service สร้างโรงแรมสัตว์เลี้ยงครบวงจร',\n            default_action: { type: 'web_url', url: 'https://www.pawtrythailand.com/service-construction' },\n            buttons: [{ type: 'web_url', url: 'https://www.pawtrythailand.com/service-construction', title: 'ดูรายละเอียด' }]\n          },\n          {\n            title: 'Consult พัฒนาอสังหาสัตว์เลี้ยง',\n            subtitle: 'วิเคราะห์ ROI ก่อนลงทุนจริง',\n            default_action: { type: 'web_url', url: 'https://www.pawtrythailand.com/service-consult' },\n            buttons: [{ type: 'web_url', url: 'https://www.pawtrythailand.com/service-consult', title: 'ดูรายละเอียด' }]\n          },\n          {\n            title: 'นำเข้า/ส่งออก',\n            subtitle: 'บริการนำเข้า-ส่งออกสินค้าสัตว์เลี้ยงทั่วโลก',\n            default_action: { type: 'web_url', url: 'https://www.pawtrythailand.com/service-import' },\n            buttons: [{ type: 'web_url', url: 'https://www.pawtrythailand.com/service-import', title: 'ดูรายละเอียด' }]\n          }\n        ]\n      }\n    }\n  };\n  return [{ json: { platform, userId, replyToken, messageType: 'carousel_service', payload: template } }];\n}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0010-0010-0010-000000000010",
+      "name": "Carousel บทความ",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 460],
+      "parameters": {
+        "jsCode": "const platform = $json.platform;\nconst userId = $json.userId;\nconst replyToken = $json.replyToken;\n\nif (platform === 'line') {\n  const carousel = {\n    type: 'template',\n    altText: 'บทความล่าสุดจาก Pawtry Thailand',\n    template: {\n      type: 'carousel',\n      columns: [\n        {\n          thumbnailImageUrl: 'https://www.pawtrythailand.com/images/blog-tiktok.jpg',\n          title: 'การตลาดธุรกิจสัตว์เลี้ยง',\n          text: 'TikTok, LINE, Facebook ใช้อะไรให้ผลสุด?',\n          actions: [\n            { type: 'uri', label: 'อ่านบทความ', uri: 'https://www.pawtrythailand.com/blog' }\n          ]\n        },\n        {\n          thumbnailImageUrl: 'https://www.pawtrythailand.com/images/blog-grooming.jpg',\n          title: 'Pet Grooming ลงทุนน้อย กำไรดี?',\n          text: 'เจาะลึก 2024 โดยที่ปรึกษาธุรกิจสัตว์เลี้ยง',\n          actions: [\n            { type: 'uri', label: 'อ่านบทความ', uri: 'https://www.pawtrythailand.com/blog' }\n          ]\n        },\n        {\n          thumbnailImageUrl: 'https://www.pawtrythailand.com/images/blog-50k.jpg',\n          title: 'เริ่มธุรกิจสัตว์เลี้ยงงบ 50,000 บาท',\n          text: 'ทำได้จริงไหม? เจาะลึก 5 ไอเดียทำเงิน',\n          actions: [\n            { type: 'uri', label: 'อ่านบทความ', uri: 'https://www.pawtrythailand.com/blog' }\n          ]\n        }\n      ]\n    }\n  };\n  return [{ json: { platform, userId, replyToken, messageType: 'carousel_blog', payload: carousel } }];\n} else {\n  const template = {\n    attachment: {\n      type: 'template',\n      payload: {\n        template_type: 'generic',\n        elements: [\n          {\n            title: 'การตลาดธุรกิจสัตว์เลี้ยง: TikTok, LINE, Facebook',\n            subtitle: 'เลือกถูกจะทำยอดขายพุ่ง!',\n            default_action: { type: 'web_url', url: 'https://www.pawtrythailand.com/blog' },\n            buttons: [{ type: 'web_url', url: 'https://www.pawtrythailand.com/blog', title: 'อ่านบทความ' }]\n          },\n          {\n            title: 'Pet Grooming ลงทุนน้อยกำไรดีจริงหรือ?',\n            subtitle: 'เจาะลึก 2024 โดยผู้เชี่ยวชาญ',\n            default_action: { type: 'web_url', url: 'https://www.pawtrythailand.com/blog' },\n            buttons: [{ type: 'web_url', url: 'https://www.pawtrythailand.com/blog', title: 'อ่านบทความ' }]\n          },\n          {\n            title: 'เริ่มธุรกิจสัตว์เลี้ยงงบ 50,000 บาท',\n            subtitle: '5 ไอเดียทำเงินที่ทำได้จริง',\n            default_action: { type: 'web_url', url: 'https://www.pawtrythailand.com/blog' },\n            buttons: [{ type: 'web_url', url: 'https://www.pawtrythailand.com/blog', title: 'อ่านบทความ' }]\n          }\n        ]\n      }\n    }\n  };\n  return [{ json: { platform, userId, replyToken, messageType: 'carousel_blog', payload: template } }];\n}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0011-0011-0011-000000000011",
+      "name": "ข้อความต้อนรับ",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 600],
+      "parameters": {
+        "jsCode": "const platform = $json.platform;\nconst userId = $json.userId;\nconst replyToken = $json.replyToken;\n\nif (platform === 'line') {\n  const messages = [\n    {\n      type: 'text',\n      text: 'สวัสดีค่ะ 🐾\\nยินดีต้อนรับสู่ Pawtry Thailand!\\n\\nเราพร้อมช่วยคุณสร้างธุรกิจสัตว์เลี้ยงที่ประสบความสำเร็จค่ะ 😊',\n      quickReply: {\n        items: [\n          { type: 'action', action: { type: 'postback', label: '🎓 คอร์สเรียน', data: 'คอร์สเรียน' } },\n          { type: 'action', action: { type: 'postback', label: '🛠️ บริการ', data: 'บริการ' } },\n          { type: 'action', action: { type: 'postback', label: '📰 บทความ', data: 'บทความ' } },\n          { type: 'action', action: { type: 'postback', label: '📞 ติดต่อเรา', data: 'ติดต่อเรา' } }\n        ]\n      }\n    }\n  ];\n  return [{ json: { platform, userId, replyToken, messageType: 'welcome', messages } }];\n} else {\n  return [{ json: {\n    platform, userId, replyToken,\n    messageType: 'welcome',\n    messages: [{\n      text: 'สวัสดีค่ะ 🐾 ยินดีต้อนรับสู่ Pawtry Thailand! พิมพ์ \"คอร์สเรียน\", \"บริการ\" หรือ \"บทความ\" เพื่อดูข้อมูลค่ะ',\n      quick_replies: [\n        { content_type: 'text', title: '🎓 คอร์สเรียน', payload: 'คอร์สเรียน' },\n        { content_type: 'text', title: '🛠️ บริการ', payload: 'บริการ' },\n        { content_type: 'text', title: '📰 บทความ', payload: 'บทความ' }\n      ]\n    }]\n  } }];\n}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0012-0012-0012-000000000012",
+      "name": "ตอบจาก Flow XLSX",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 740],
+      "parameters": {
+        "jsCode": "// Flow responses from My_PFB.xlsx\nconst text = ($json.text || '').toLowerCase();\nconst platform = $json.platform;\nconst userId = $json.userId;\nconst replyToken = $json.replyToken;\n\n// === FLOW MAP from xlsx ===\nconst flowMap = [\n  {\n    keywords: ['เคยทำมาแล้ว', 'ยังไม่เคย', 'กำลังสนใจ', 'สนใจ'],\n    output: 'ถ้างั้นตรงกับหลักสูตรเราเลยค่ะ\\nหลักสูตรเราสอนตั้งแต่ 0 ถึงการผลิต และการจัดจำหน่ายเลยค่ะ👍\\n\\nแอดมินส่งรายละเอียดให้นะคะ',\n    quickReplies: ['ดูตารางเรียน', 'ถามราคา', 'ดูวิทยากร']\n  },\n  {\n    keywords: ['ดูตารางเรียน', 'ตารางเรียน', 'วันเรียน', 'รอบเรียน'],\n    output: '🗓️ ตารางเรียนหลักสูตร PFB\\n\\n📍 สถานที่เรียน : Nord Frost Company Limited (ลาดพร้าว 71)\\n\\n👉เรียน 9 วัน ทุกวันเสาร์ / วันอาทิตย์ ค่ะ\\n🚨เวลา : 10:00-16:00น\\n\\n🔥รอบ พ.ค. ปี 2569\\n👉วันที่ 2,3,9,10,16,17,22,23,24 พ.ค.\\n👉 16 และ 22 พ.ค. เข้าโรงงานค่ะ\\n👉รับจำนวน 20 ท่านเท่านั้น',\n    quickReplies: ['ถามราคา', 'ดูวิทยากร', 'จองที่นั่ง']\n  },\n  {\n    keywords: ['ถามราคา', 'ราคา', 'ค่าเรียน', 'ค่าใช้จ่าย', 'เท่าไร'],\n    output: 'ราคานี้พิเศษเฉพาะคุณลูกค้าเท่านั้น🔥\\nจากราคาปกติ 69,900 บาท❌\\n.\\n📣Promotion\\n📍1 ท่าน เพียง 59,900 บาท✅\\n📍2 ท่าน เพียง 49,900 บาท✅\\n.\\n‼️เฉพาะเดือนนี้เท่านั้น‼️\\n.\\n📎 ดูรายละเอียดเพิ่มเติม\\nhttps://www.pawtrythailand.com/academy-food\\n.\\nหรือแจ้ง ชื่อ + เบอร์โทร ไว้ได้นะคะ ❤️',\n    quickReplies: ['จองที่นั่ง', 'หลักสูตรออนไลน์', 'ดูวิทยากร']\n  },\n  {\n    keywords: ['หลักสูตรออนไลน์', 'ออนไลน์', 'online'],\n    output: 'หลักสูตรออนไลน์ 📱✨\\nท่านละ 54,900 บาท 💰\\n.\\nโดยทางหลักสูตรจะบันทึก VDO 🎥\\nและส่งให้เรียนย้อนหลัง ได้ 3 วัน ⏱️\\nคลิปจะถูกลบโดยอัตโนมัติ ❌\\n.\\nหลักสูตร Online ✅\\nสามารถเข้าเยี่ยมชมโรงงานได้ตามปกติ 🏭👍\\n.\\nสนใจแจ้ง ชื่อ + เบอร์โทร ไว้ได้นะคะ ❤️',\n    quickReplies: ['จองที่นั่ง', 'ถามราคา', 'ดูวิทยากร']\n  },\n  {\n    keywords: ['ดูวิทยากร', 'วิทยากร', 'ผู้สอน', 'อาจารย์'],\n    output: '👨‍🏫 วิทยากรในการอบรมหลักสูตรอาหารสัตว์เลี้ยงนะคะ\\nแต่ละท่านมีประสบการณ์จริงในวงการธุรกิจสัตว์เลี้ยงค่ะ\\n\\n📎 ดูข้อมูลวิทยากรและหลักสูตรเต็มได้ที่\\nhttps://www.pawtrythailand.com/academy-food',\n    quickReplies: ['ถามราคา', 'จองที่นั่ง', 'ดูรีวิว']\n  },\n  {\n    keywords: ['ดูรีวิว', 'รีวิว', 'ความคิดเห็น', 'ผู้เรียน'],\n    output: '📌 รีวิวจากผู้เรียนจริง\\n🎥 บรรยากาศการเรียนและเยี่ยมชมโรงงานนะคะ\\nดูได้เลยค่ะ 👉\\nhttps://www.facebook.com/share/v/19coUhhG3o/?mibextid=wwXIfr',\n    quickReplies: ['จองที่นั่ง', 'ถามราคา', 'สอบถามเพิ่มเติม']\n  },\n  {\n    keywords: ['จองที่นั่ง', 'จอง', 'สมัคร', 'ลงทะเบียน', 'สำรองที่นั่ง'],\n    output: 'สนใจสำรองที่นั่งค่ะ 🐾\\nรบกวนขอทราบรายละเอียดดังนี้นะคะ\\n\\n1️⃣ ชื่อ-นามสกุล\\n2️⃣ เบอร์โทรศัพท์\\n\\n📌 กรณีออกในนามบริษัท\\nขอรายละเอียดบริษัทด้วยนะคะ ❤️',\n    quickReplies: []\n  },\n  {\n    keywords: ['ติดต่อเรา', 'ติดต่อ', 'สอบถามเพิ่มเติม', 'รายละเอียดเพิ่มเติม'],\n    output: '📎 ดูรายละเอียดเพิ่มเติมได้เลยค่ะ\\nhttps://www.pawtrythailand.com/academy-food\\n\\nหรือแจ้ง ชื่อ + เบอร์โทร ไว้ได้นะคะ\\nจะมีเจ้าหน้าที่ติดต่อกลับค่ะ ❤️',\n    quickReplies: ['จองที่นั่ง', 'ถามราคา', 'ดูวิทยากร']\n  }\n];\n\nlet matched = null;\nfor (const flow of flowMap) {\n  if (flow.keywords.some(k => text.includes(k.toLowerCase()))) {\n    matched = flow;\n    break;\n  }\n}\n\nif (!matched) {\n  matched = {\n    output: 'ขอบคุณที่ติดต่อมานะคะ 🐾\\nแอดมินจะรีบตอบกลับโดยเร็วที่สุดค่ะ\\n\\nหรือสามารถดูข้อมูลเพิ่มเติมได้ที่\\nhttps://www.pawtrythailand.com',\n    quickReplies: ['คอร์สเรียน', 'บริการ', 'บทความ']\n  };\n}\n\nif (platform === 'line') {\n  const msg = {\n    type: 'text',\n    text: matched.output\n  };\n  if (matched.quickReplies && matched.quickReplies.length > 0) {\n    msg.quickReply = {\n      items: matched.quickReplies.map(label => ({\n        type: 'action',\n        action: { type: 'postback', label: label, data: label }\n      }))\n    };\n  }\n  return [{ json: { platform, userId, replyToken, messageType: 'text_flow', messages: [msg] } }];\n} else {\n  const result = { text: matched.output };\n  if (matched.quickReplies && matched.quickReplies.length > 0) {\n    result.quick_replies = matched.quickReplies.map(title => ({\n      content_type: 'text', title, payload: title\n    }));\n  }\n  return [{ json: { platform, userId, replyToken, messageType: 'text_flow', messages: [result] } }];\n}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0013-0013-0013-000000000013",
+      "name": "ส่งข้อความ LINE",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1360, 480],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.line.me/v2/bot/message/reply",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "headers": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "bodyParameters": {
+          "parameters": []
+        },
+        "options": {},
+        "jsonBody": "={{ {\n  \"replyToken\": $json.replyToken,\n  \"messages\": $json.messageType === 'carousel_course' || $json.messageType === 'carousel_service' || $json.messageType === 'carousel_blog' ? [$json.payload] : $json.messages\n} }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0014-0014-0014-000000000014",
+      "name": "ส่งข้อความ Facebook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1360, 660],
+      "parameters": {
+        "method": "POST",
+        "url": "=https://graph.facebook.com/v18.0/me/messages?access_token={{$vars.FACEBOOK_PAGE_ACCESS_TOKEN}}",
+        "headers": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "bodyParameters": {
+          "parameters": []
+        },
+        "options": {},
+        "jsonBody": "={{ {\n  \"recipient\": { \"id\": $json.userId },\n  \"message\": $json.messageType === 'carousel_course' || $json.messageType === 'carousel_service' || $json.messageType === 'carousel_blog' ? $json.payload : $json.messages[0]\n} }}"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0015-0015-0015-000000000015",
+      "name": "Route ส่งข้อความ LINE",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1220, 480],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.platform }}",
+              "rightValue": "line",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0016-0016-0016-000000000016",
+      "name": "Route ส่งข้อความ Facebook",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1220, 660],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.platform }}",
+              "rightValue": "facebook",
+              "operator": { "type": "string", "operation": "equals" }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      }
+    },
+    {
+      "id": "a1b2c3d4-0017-0017-0017-000000000017",
+      "name": "Merge All Responses",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3,
+      "position": [1060, 560],
+      "parameters": {
+        "mode": "passThrough",
+        "output": "input1"
+      }
+    },
+    {
+      "id": "a1b2c3d4-0018-0018-0018-000000000018",
+      "name": "LINE Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1600, 480],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    },
+    {
+      "id": "a1b2c3d4-0019-0019-0019-000000000019",
+      "name": "Facebook Respond 200",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1600, 660],
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK",
+        "options": {
+          "responseCode": 200
+        }
+      }
+    }
+  ],
+  "connections": {
+    "LINE Webhook": {
+      "main": [[{ "node": "แยก Platform", "type": "main", "index": 0 }]]
+    },
+    "Facebook Webhook": {
+      "main": [[{ "node": "แยก Platform", "type": "main", "index": 0 }]]
+    },
+    "แยก Platform": {
+      "main": [
+        [{ "node": "Parse LINE Message", "type": "main", "index": 0 }],
+        [{ "node": "Parse Facebook Message", "type": "main", "index": 0 }]
+      ]
+    },
+    "Parse LINE Message": {
+      "main": [[{ "node": "Merge Messages", "type": "main", "index": 0 }]]
+    },
+    "Parse Facebook Message": {
+      "main": [[{ "node": "Merge Messages", "type": "main", "index": 1 }]]
+    },
+    "Merge Messages": {
+      "main": [[{ "node": "ตรวจสอบ Intent", "type": "main", "index": 0 }]]
+    },
+    "ตรวจสอบ Intent": {
+      "main": [
+        [{ "node": "Carousel คอร์สเรียน", "type": "main", "index": 0 }],
+        [{ "node": "Carousel บริการ", "type": "main", "index": 0 }],
+        [{ "node": "Carousel บทความ", "type": "main", "index": 0 }],
+        [{ "node": "ข้อความต้อนรับ", "type": "main", "index": 0 }],
+        [{ "node": "ตอบจาก Flow XLSX", "type": "main", "index": 0 }]
+      ]
+    },
+    "Carousel คอร์สเรียน": {
+      "main": [[{ "node": "Merge All Responses", "type": "main", "index": 0 }]]
+    },
+    "Carousel บริการ": {
+      "main": [[{ "node": "Merge All Responses", "type": "main", "index": 0 }]]
+    },
+    "Carousel บทความ": {
+      "main": [[{ "node": "Merge All Responses", "type": "main", "index": 0 }]]
+    },
+    "ข้อความต้อนรับ": {
+      "main": [[{ "node": "Merge All Responses", "type": "main", "index": 0 }]]
+    },
+    "ตอบจาก Flow XLSX": {
+      "main": [[{ "node": "Merge All Responses", "type": "main", "index": 0 }]]
+    },
+    "Merge All Responses": {
+      "main": [
+        [
+          { "node": "Route ส่งข้อความ LINE", "type": "main", "index": 0 },
+          { "node": "Route ส่งข้อความ Facebook", "type": "main", "index": 0 }
+        ]
+      ]
+    },
+    "Route ส่งข้อความ LINE": {
+      "main": [[{ "node": "ส่งข้อความ LINE", "type": "main", "index": 0 }]]
+    },
+    "Route ส่งข้อความ Facebook": {
+      "main": [[{ "node": "ส่งข้อความ Facebook", "type": "main", "index": 0 }]]
+    },
+    "ส่งข้อความ LINE": {
+      "main": [[{ "node": "LINE Respond 200", "type": "main", "index": 0 }]]
+    },
+    "ส่งข้อความ Facebook": {
+      "main": [[{ "node": "Facebook Respond 200", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 2,
+  "updatedAt": "2026-04-15T00:00:00.000Z",
+  "versionId": "pawtry-v1"
+}
