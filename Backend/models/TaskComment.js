@@ -11,6 +11,10 @@ module.exports = (sequelize) => {
       type: DataTypes.TEXT,
       allowNull: false,
     },
+    parent_id: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
   }, {
     tableName: 'task_comments',
     underscored: true,

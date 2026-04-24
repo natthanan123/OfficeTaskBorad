@@ -1,4 +1,5 @@
 const { BoardMember, Board, User, Notification, sequelize } = require('../models');
+const { sendLineMessage } = require('../routes/lineRoutes');
 
 exports.inviteUserToBoard = async (req, res) => {
   const t = await sequelize.transaction();
@@ -61,12 +62,26 @@ exports.inviteUserToBoard = async (req, res) => {
 
     await t.commit();
 
+    // ── Socket notification (in-app) ──
     try {
       req.app.get('io')
         .to(`user_${targetUser.id}`)
         .emit('new_notification', { notification });
     } catch (socketErr) {
       console.error('socket emit (new_notification) failed:', socketErr);
+    }
+
+    // ── LINE notification (scaffolding; no-op until the user links a LINE account) ──
+    try {
+      const invited = await User.findByPk(targetUser.id, { attributes: ['id', 'line_user_id'] });
+      if (invited && invited.line_user_id) {
+        await sendLineMessage(
+          invited.line_user_id,
+          `🤝 คุณได้รับคำเชิญเข้าร่วม Board\nBoard: "${board.title}"\n\nเปิดแอปเพื่อ Accept หรือ Reject`
+        );
+      }
+    } catch (lineErr) {
+      console.error('LINE Notify (invite) failed:', lineErr.message);
     }
 
     return res.status(201).json({
@@ -123,16 +138,24 @@ exports.respondToInvite = async (req, res) => {
 
     if (status === 'rejected') {
       await membership.destroy();
-      return res.json({
-        status: 'success',
-        data: { board_id: boardId, action: 'rejected' },
-      });
+    } else {
+      membership.status = 'accepted';
+      await membership.save();
     }
 
-    membership.status = 'accepted';
-    await membership.save();
+    // Clean up the pending-invite notification regardless of outcome.
+    await Notification.destroy({
+      where: {
+        user_id: req.user.id,
+        type: 'board_invite',
+        reference_id: boardId,
+      },
+    });
 
-    return res.json({ status: 'success', data: { membership } });
+    return res.json({
+      status: 'success',
+      data: { board_id: boardId, action: status, membership: status === 'accepted' ? membership : null },
+    });
   } catch (err) {
     if (err.name === 'SequelizeValidationError') {
       return res.status(400).json({

@@ -1,5 +1,7 @@
 const { TaskComment, Task, Column, User } = require('../models');
 const { parseUrlsToAttachments } = require('../utils/parseUrlsToAttachments');
+const { processMentionsForComment, extractMentionedUserIds } = require('../utils/mentionUtil');
+const { sanitizeHtml } = require('../utils/sanitizeHtml');
 
 function emitBoardUpdate(req, boardId, type) {
   if (!boardId) return;
@@ -21,6 +23,7 @@ async function resolveBoardIdForComment(comment) {
 function canMutate(req, comment) {
   return req.user.role === 'admin' || comment.user_id === req.user.id;
 }
+
 exports.updateComment = async (req, res) => {
   try {
     const comment = await TaskComment.findByPk(req.params.id);
@@ -37,17 +40,38 @@ exports.updateComment = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'content is required' });
     }
 
-    comment.content = content.trim();
+    const clean = sanitizeHtml(content.trim());
+    if (!clean) {
+      return res.status(400).json({ status: 'error', message: 'content is empty after sanitization' });
+    }
+
+    const oldMentions = new Set(extractMentionedUserIds(comment.content));
+    const newMentions = extractMentionedUserIds(clean);
+    const freshMentions = newMentions.filter(id => !oldMentions.has(id));
+
+    comment.content = clean;
     await comment.save();
 
     const fresh = await TaskComment.findByPk(comment.id, {
-      include: { model: User, as: 'author', attributes: ['id', 'full_name', 'email'] },
+      include: { model: User, as: 'author', attributes: ['id', 'full_name', 'email', 'profile_picture', 'avatar_url'] },
     });
 
     const boardId = await resolveBoardIdForComment(comment);
     emitBoardUpdate(req, boardId, 'task_comment_updated');
 
     await parseUrlsToAttachments(comment.content, comment.task_id, 'comment', req.user.id);
+
+    if (freshMentions.length) {
+      const fakeContent = freshMentions
+        .map(id => `<span data-mention="${id}">@user</span>`)
+        .join(' ');
+      await processMentionsForComment({
+        content: fakeContent,
+        commentId: comment.id,
+        authorId: req.user.id,
+        req,
+      });
+    }
 
     return res.json({ status: 'success', data: { comment: fresh } });
   } catch (err) {

@@ -6,6 +6,14 @@
 <title>Pawtry | Workspace</title>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
 <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://cdn.quilljs.com/1.3.7/quill.snow.css" rel="stylesheet"/>
+<script type="module" src="https://cdn.jsdelivr.net/npm/emoji-picker-element@1/index.js"></script>
+<style>
+  .ql-container { border: none !important; font-size: 0.875rem; }
+  .ql-editor { min-height: 38px; max-height: 250px; overflow-y: auto; overflow-x: hidden; padding: 10px 12px; color: #172b4d; }
+  .ql-editor.ql-blank::before { color: #6b778c; font-style: normal; left: 12px; right: 12px; font-size: 0.875rem; }
+  #modal-comment-submit { display: none !important; }
+</style>
 <script src="../config.js"></script>
 <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 <script>document.write('<script src="' + window.APP_CONFIG.API_ORIGIN + '/socket.io/socket.io.js"><\/script>');</script>
@@ -101,21 +109,12 @@
           to   { opacity: 1; transform: scale(1)    translateY(0); }
         }
         .file-drop-overlay {
-          position: absolute;
-          inset: 0;
-          display: none;
-          align-items: center;
-          justify-content: center;
-          background-color: rgba(0, 0, 0, 0.7);
-          color: #ffffff;
-          font-weight: 700;
-          font-size: 1rem;
-          letter-spacing: 0.02em;
-          pointer-events: none;
-          border-radius: inherit;
-          z-index: 80;
-          text-align: center;
-          padding: 1rem;
+          position: absolute; inset: 0; display: none;
+          align-items: center; justify-content: center;
+          background-color: rgba(0, 0, 0, 0.7); color: #ffffff;
+          font-weight: 700; font-size: 1rem; letter-spacing: 0.02em;
+          pointer-events: none; border-radius: inherit;
+          z-index: 80; text-align: center; padding: 1rem;
         }
         #modal-panel .file-drop-overlay { z-index: 120; border-radius: 1rem; }
         .is-dragover > .file-drop-overlay { display: flex; }
@@ -124,6 +123,927 @@
           outline: 2px dashed rgba(53,37,205,0.6);
           outline-offset: -2px;
         }
+
+        /* ── Pawtry Custom Quill Toolbar ── */
+        .pawtry-quill-wrapper {
+          border: 1px solid #dfe1e6;
+          border-radius: 6px;
+          background: #fff;
+          overflow: hidden;
+        }
+        .pawtry-quill-wrapper:focus-within {
+          border-color: #0052cc;
+          box-shadow: 0 0 0 1px #0052cc;
+        }
+        #pawtry-quill-toolbar {
+          display: none;
+          flex-wrap: wrap;
+          align-items: center;
+          padding: 6px 8px;
+          border-bottom: 1px solid #dfe1e6;
+          background: #fff;
+          gap: 2px;
+        }
+        #pawtry-quill-toolbar.is-visible { display: flex; }
+        .pawtry-tb-group {
+          display: flex;
+          align-items: center;
+          gap: 2px;
+          padding-right: 6px;
+          margin-right: 6px;
+          border-right: 1px solid #dfe1e6;
+        }
+        .pawtry-tb-group:last-child { border-right: none; margin-right: 0; padding-right: 0; }
+        .pawtry-tb-btn {
+          min-width: 28px; height: 28px;
+          display: inline-flex; align-items: center; justify-content: center;
+          padding: 0 6px;
+          border: none; background: transparent;
+          border-radius: 3px;
+          cursor: pointer;
+          color: #42526e;
+          font-size: 13px;
+          transition: background 0.1s;
+        }
+        .pawtry-tb-btn:hover { background: #e4e6ea; }
+        .pawtry-tb-btn.is-active { background: #dbe3f7; color: #0052cc; }
+        .pawtry-tb-btn .material-symbols-outlined { font-size: 18px; }
+        .pawtry-tb-btn.with-caret { padding-right: 2px; }
+        .pawtry-tb-btn .caret { font-size: 14px; margin-left: 2px; opacity: 0.6; }
+
+        /* ── Popups (insert menu / more menu / emoji / link dialog) ── */
+        .pawtry-popup {
+          position: fixed;
+          z-index: 1000;
+          background: #fff;
+          border: 1px solid #dfe1e6;
+          border-radius: 8px;
+          box-shadow: 0 8px 24px -4px rgba(9, 30, 66, 0.25);
+          display: none;
+        }
+        .pawtry-popup.is-open { display: block; }
+
+        #pawtry-insert-menu { min-width: 300px; max-width: 340px; }
+        .pawtry-insert-search {
+          padding: 10px 12px;
+          border-bottom: 1px solid #f4f5f7;
+        }
+        .pawtry-insert-search input {
+          width: 100%;
+          padding: 6px 10px;
+          border: 1px solid #dfe1e6;
+          border-radius: 4px;
+          font-size: 13px;
+          outline: none;
+        }
+        .pawtry-insert-search input:focus {
+          border-color: #0052cc;
+          box-shadow: 0 0 0 1px #0052cc;
+        }
+        .pawtry-insert-list { max-height: 360px; overflow-y: auto; padding: 4px; }
+        .pawtry-insert-item {
+          display: flex; align-items: flex-start; gap: 10px;
+          padding: 8px 10px; border-radius: 4px; cursor: pointer;
+          transition: background 0.1s;
+        }
+        .pawtry-insert-item:hover, .pawtry-insert-item.is-focused { background: #f4f5f7; }
+        .pawtry-insert-item__icon {
+          width: 32px; height: 32px; border-radius: 4px;
+          background: #f4f5f7;
+          display: flex; align-items: center; justify-content: center;
+          flex-shrink: 0;
+        }
+        .pawtry-insert-item__icon .material-symbols-outlined { font-size: 18px; color: #42526e; }
+        .pawtry-insert-item__body { flex: 1; min-width: 0; }
+        .pawtry-insert-item__title { font-size: 14px; font-weight: 600; color: #172b4d; line-height: 1.2; }
+        .pawtry-insert-item__desc { font-size: 12px; color: #6b778c; margin-top: 2px; line-height: 1.3; }
+        .pawtry-insert-item__shortcut {
+          font-size: 11px; color: #6b778c;
+          background: #f4f5f7; padding: 2px 6px; border-radius: 3px;
+          font-family: ui-monospace, monospace; align-self: center;
+        }
+
+        #pawtry-more-menu,
+        #pawtry-header-menu,
+        #pawtry-list-menu { min-width: 220px; padding: 4px; }
+        #pawtry-more-menu .pawtry-insert-item__icon,
+        #pawtry-header-menu .pawtry-insert-item__icon,
+        #pawtry-list-menu .pawtry-insert-item__icon { width: 24px; height: 24px; background: transparent; }
+        #pawtry-more-menu .pawtry-insert-item__icon .material-symbols-outlined,
+        #pawtry-header-menu .pawtry-insert-item__icon .material-symbols-outlined,
+        #pawtry-list-menu .pawtry-insert-item__icon .material-symbols-outlined { font-size: 16px; }
+
+        #pawtry-emoji-popup { padding: 0; border-radius: 8px; overflow: hidden; }
+
+        #pawtry-link-dialog { min-width: 340px; padding: 16px; }
+        #pawtry-link-dialog label {
+          display: block; font-size: 12px; font-weight: 600;
+          color: #172b4d; margin-bottom: 4px;
+        }
+        #pawtry-link-dialog label .req { color: #de350b; }
+        #pawtry-link-dialog label .opt { font-weight: 400; color: #6b778c; }
+        #pawtry-link-dialog input {
+          width: 100%; padding: 8px 10px;
+          border: 1px solid #dfe1e6; border-radius: 4px;
+          font-size: 14px; margin-bottom: 12px; outline: none;
+        }
+        #pawtry-link-dialog input:focus { border-color: #0052cc; box-shadow: 0 0 0 1px #0052cc; }
+        #pawtry-link-dialog .helper { font-size: 11px; color: #6b778c; margin: -8px 0 12px; }
+        #pawtry-link-dialog .actions { display: flex; justify-content: flex-end; gap: 8px; }
+        #pawtry-link-dialog button {
+          padding: 6px 14px; border-radius: 4px;
+          font-size: 13px; font-weight: 600;
+          cursor: pointer; border: none;
+        }
+        #pawtry-link-dialog .btn-cancel { background: transparent; color: #42526e; }
+        #pawtry-link-dialog .btn-insert { background: #0052cc; color: #fff; }
+        #pawtry-link-dialog .btn-insert:disabled { background: #a5adba; cursor: not-allowed; }
+
+        /* ── Comment content styling ── */
+        #modal-comment-quill .ql-editor blockquote,
+        #modal-comments-list blockquote {
+          border-left: 3px solid #dfe1e6;
+          padding-left: 12px; margin: 8px 0; color: #5e6c84;
+        }
+        #modal-comment-quill .ql-editor pre.ql-syntax,
+        #modal-comments-list pre.ql-syntax {
+          background: #f4f5f7; border-radius: 3px;
+          padding: 8px 12px; margin: 8px 0;
+          font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace;
+          font-size: 0.85em; overflow-x: auto;
+        }
+        #modal-comment-quill .ql-editor h1,
+        #modal-comments-list h1 { font-size: 1.4em; font-weight: 700; margin: 0.4em 0; }
+        #modal-comment-quill .ql-editor h2,
+        #modal-comments-list h2 { font-size: 1.2em; font-weight: 600; margin: 0.4em 0; }
+        #modal-comment-quill .ql-editor h3,
+        #modal-comments-list h3 { font-size: 1.05em; font-weight: 600; margin: 0.3em 0; }
+        #modal-comment-quill .ql-editor img,
+        #modal-comments-list img {
+          max-width: 100%; height: auto; border-radius: 3px; margin: 4px 0;
+        }
+        #modal-comment-quill .ql-editor a,
+        #modal-comments-list a { color: #0052cc; text-decoration: underline; }
+
+        /* ── Comment actions (edit / delete) ── */
+        .pawtry-comment-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          margin-top: 4px;
+          padding-left: 12px;
+          font-size: 11px;
+          color: #6b778c;
+        }
+        .pawtry-comment-action-btn {
+          background: none; border: none; padding: 2px 0;
+          color: #6b778c; cursor: pointer;
+          text-decoration: underline;
+          font-size: 11px;
+          transition: color 0.1s;
+        }
+        .pawtry-comment-action-btn:hover { color: #0052cc; }
+        .pawtry-comment-action-btn.is-danger:hover { color: #de350b; }
+        .pawtry-comment-action-sep {
+          color: #c1c7d0;
+          user-select: none;
+        }
+
+        /* ── Comment edit mode ── */
+        .pawtry-comment-edit-wrapper {
+          border: 1px solid #dfe1e6;
+          border-radius: 6px;
+          background: #fff;
+          overflow: hidden;
+        }
+        .pawtry-comment-edit-wrapper:focus-within {
+          border-color: #0052cc;
+          box-shadow: 0 0 0 1px #0052cc;
+        }
+        .pawtry-comment-edit-textarea {
+          width: 100%;
+          min-height: 80px;
+          max-height: 300px;
+          padding: 10px 12px;
+          border: none;
+          outline: none;
+          font-family: inherit;
+          font-size: 0.875rem;
+          color: #172b4d;
+          resize: vertical;
+          background: transparent;
+        }
+        .pawtry-comment-edit-actions {
+          display: flex;
+          gap: 8px;
+          margin-top: 8px;
+        }
+        .pawtry-comment-edit-save {
+          background: #0052cc;
+          color: #fff;
+          border: none;
+          padding: 6px 14px;
+          border-radius: 4px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: background 0.1s;
+        }
+        .pawtry-comment-edit-save:hover { background: #0747a6; }
+        .pawtry-comment-edit-save:disabled { background: #a5adba; cursor: not-allowed; }
+        .pawtry-comment-edit-cancel {
+          background: transparent;
+          color: #42526e;
+          border: none;
+          padding: 6px 14px;
+          border-radius: 4px;
+          font-size: 13px;
+          font-weight: 500;
+          cursor: pointer;
+          transition: background 0.1s;
+        }
+        .pawtry-comment-edit-cancel:hover { background: #f4f5f7; }
+
+        .pawtry-comment-timestamp {
+          font-size: 12px;
+          color: #0052cc;
+          text-decoration: none;
+          white-space: nowrap;
+          transition: color 0.1s;
+        }
+        .pawtry-comment-timestamp:hover {
+          color: #0747a6;
+          text-decoration: underline;
+        }
+        /* ── Edited indicator ── */
+        .pawtry-comment-edited {
+          font-size: 12px;
+          color: #5e6c84;
+          font-style: normal;
+          margin-left: 2px;
+          cursor: help;
+        }
+        .pawtry-comment-flash {
+          animation: pawtry-flash 1.2s ease-out;
+        }
+        @keyframes pawtry-flash {
+          0%   { background: rgba(82, 156, 202, 0.18); }
+          100% { background: transparent; }
+        }
+
+        .pawtry-reactions-row {
+          display: inline-flex;
+          flex-wrap: wrap;
+          gap: 4px;
+          align-items: center;
+          vertical-align: middle;
+        }
+        .pawtry-reaction-pill {
+          display: inline-flex;
+          align-items: center;
+          gap: 4px;
+          padding: 1px 8px;
+          background: #f4f5f7;
+          border: 1px solid #dfe1e6;
+          border-radius: 12px;
+          font-size: 12px;
+          line-height: 1.4;
+          cursor: pointer;
+          transition: all 0.1s;
+          user-select: none;
+        }
+        .pawtry-reaction-pill:hover { background: #e4e6ea; }
+        .pawtry-reaction-pill.is-mine {
+          background: #deebff;
+          border-color: #4c9aff;
+          color: #0052cc;
+        }
+        .pawtry-reaction-pill.is-mine:hover { background: #b3d4ff; }
+        .pawtry-reaction-emoji { font-size: 13px; line-height: 1; }
+        .pawtry-reaction-count { font-weight: 600; font-size: 11px; }
+
+        .pawtry-reaction-picker-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: transparent;
+          border: none;
+          padding: 0 2px;
+          cursor: pointer;
+          color: #6b778c;
+          transition: color 0.1s;
+          vertical-align: middle;
+        }
+        .pawtry-reaction-picker-btn:hover { color: #0052cc; }
+        .pawtry-reaction-picker-btn .material-symbols-outlined {
+          font-size: 16px;
+        }
+
+        .pawtry-comment-footer {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+          margin-top: 4px;
+          padding-left: 12px;
+          font-size: 11px;
+          color: #6b778c;
+        }
+        .pawtry-comment-footer .pawtry-comment-actions {
+          display: inline-flex;
+          gap: 6px;
+          margin-top: 0;
+          padding-left: 0;
+        }
+
+        /* ── Reply form ── */
+        .pawtry-reply-form {
+          margin-top: 8px;
+          padding-left: 12px;
+        }
+        .pawtry-reply-wrapper {
+          border: 1px solid #dfe1e6;
+          border-radius: 6px;
+          background: #fff;
+        }
+        .pawtry-reply-wrapper:focus-within {
+          border-color: #0052cc;
+          box-shadow: 0 0 0 1px #0052cc;
+        }
+        .pawtry-reply-textarea {
+          width: 100%;
+          min-height: 60px;
+          max-height: 200px;
+          padding: 8px 10px;
+          border: none;
+          outline: none;
+          font-family: inherit;
+          font-size: 0.875rem;
+          color: #172b4d;
+          resize: vertical;
+          background: transparent;
+        }
+        .pawtry-reply-actions {
+          display: flex;
+          gap: 6px;
+          margin-top: 6px;
+        }
+
+        #modal-comments-list .pawtry-reply-item {
+          position: relative;
+          margin-top: 10px;
+        }
+        #modal-comments-list li.pawtry-reply-depth-1 {
+          margin-left: 48px !important;
+        }
+        #modal-comments-list li.pawtry-reply-depth-2 {
+          margin-left: 96px !important;
+        }
+        #modal-comments-list li.pawtry-reply-depth-3 {
+          margin-left: 144px !important;
+        }
+
+        #modal-comments-list > li:not(.pawtry-reply-item) {
+          padding-top: 12px;
+          padding-bottom: 4px;
+          border-top: 1px solid #f0f1f3;
+        }
+        #modal-comments-list > li:not(.pawtry-reply-item):first-child {
+          border-top: none;
+          padding-top: 0;
+        }
+
+        .pawtry-reply-item::before {
+          content: '';
+          position: absolute;
+          left: -14px;
+          top: 16px;
+          bottom: 16px;
+          width: 2px;
+          background: transparent;
+          transition: background 0.15s;
+        }
+        .pawtry-reply-item:hover::before {
+          background: #dfe1e6;
+        }
+
+        .pawtry-mention {
+          display: inline-block;
+          background: #deebff;
+          color: #0052cc;
+          padding: 1px 6px;
+          border-radius: 3px;
+          font-weight: 600;
+          text-decoration: none;
+          cursor: default;
+        }
+        .pawtry-mention:hover { background: #b3d4ff; }
+
+        .pawtry-mention-menu {
+          position: fixed;
+          z-index: 1100;
+          background: #fff;
+          border: 1px solid #dfe1e6;
+          border-radius: 8px;
+          box-shadow: 0 8px 24px -4px rgba(9, 30, 66, 0.25);
+          min-width: 220px;
+          max-height: 240px;
+          overflow-y: auto;
+          display: none;
+          padding: 4px;
+        }
+        .pawtry-mention-menu.is-open { display: block; }
+        .pawtry-mention-item {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          padding: 6px 8px;
+          border-radius: 4px;
+          cursor: pointer;
+          transition: background 0.1s;
+        }
+        .pawtry-mention-item:hover,
+        .pawtry-mention-item.is-focused {
+          background: #f4f5f7;
+        }
+        .pawtry-mention-item__avatar {
+          width: 24px; height: 24px;
+          border-radius: 50%;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 10px;
+          font-weight: 700;
+          color: #fff;
+          flex-shrink: 0;
+        }
+        .pawtry-mention-item__name {
+          font-size: 13px;
+          color: #172b4d;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .pawtry-reply-quill-container {
+          border: 1px solid #dfe1e6;
+          border-radius: 6px;
+          background: #fff;
+          overflow: hidden;
+        }
+        .pawtry-reply-quill-container:focus-within {
+          border-color: #0052cc;
+          box-shadow: 0 0 0 1px #0052cc;
+        }
+        .pawtry-reply-quill-container .ql-editor {
+          min-height: 60px;
+          max-height: 200px;
+          padding: 8px 10px !important;
+        }
+        .pawtry-reply-quill-container .ql-container.ql-snow {
+          border: none;
+        }
+        .pawtry-main-comment-actions {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          margin-top: 8px;
+        }
+        .pawtry-main-comment-actions .pawtry-comment-edit-save {
+          padding: 8px 18px;
+          font-size: 0.9rem;
+        }
+
+        .pawtry-reply-toolbar {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 2px;
+          padding: 4px 6px;
+          border-bottom: 1px solid #dfe1e6;
+          background: #f9fafb;
+        }
+        .pawtry-reply-toolbar .pawtry-tb-group {
+          display: flex;
+          align-items: center;
+          gap: 2px;
+          padding: 0 2px;
+          border-right: 1px solid #dfe1e6;
+        }
+        .pawtry-reply-toolbar .pawtry-tb-group:last-child { border-right: none; }
+        .pawtry-reply-toolbar .pawtry-tb-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          height: 26px;
+          min-width: 26px;
+          padding: 0 6px;
+          border: none;
+          background: transparent;
+          color: #172b4d;
+          border-radius: 3px;
+          cursor: pointer;
+          font-size: 13px;
+          transition: background 0.1s;
+        }
+        .pawtry-reply-toolbar .pawtry-tb-btn:hover {
+          background: rgba(9, 30, 66, 0.08);
+        }
+        .pawtry-reply-toolbar .pawtry-tb-btn.is-active {
+          background: #e4f0ff;
+          color: #0052cc;
+        }
+        .pawtry-reply-toolbar .pawtry-tb-btn .material-symbols-outlined {
+          font-size: 16px;
+        }
+        .pawtry-reply-toolbar .pawtry-tb-btn.with-caret { gap: 1px; padding: 0 4px; }
+        .pawtry-reply-toolbar .pawtry-tb-btn .caret { font-size: 14px; opacity: 0.6; }
+
+        .pawtry-comment-main-actions {
+          display: flex;
+          gap: 8px;
+          margin-top: 8px;
+        }
+
+        .pawtry-desc-edit-btn {
+          background: #f4f5f7;
+          border: none;
+          padding: 4px 12px;
+          border-radius: 4px;
+          font-size: 12px;
+          font-weight: 600;
+          color: #172b4d;
+          cursor: pointer;
+          transition: background 0.1s;
+        }
+        .pawtry-desc-edit-btn:hover { background: #e4e6ea; }
+        .pawtry-desc-view {
+          cursor: pointer;
+        }
+        .pawtry-desc-body {
+          font-size: 14px;
+          color: #172b4d;
+          line-height: 1.5;
+          padding: 8px 4px;
+          min-height: 40px;
+          word-break: break-word;
+        }
+        .pawtry-desc-body:empty { display: none; }
+        .pawtry-desc-body p { margin: 0 0 8px 0; }
+        .pawtry-desc-body p:last-child { margin-bottom: 0; }
+        .pawtry-desc-body h1, .pawtry-desc-body h2, .pawtry-desc-body h3 {
+          font-weight: 700;
+          margin: 12px 0 6px;
+        }
+        .pawtry-desc-body h1 { font-size: 1.4em; }
+        .pawtry-desc-body h2 { font-size: 1.2em; }
+        .pawtry-desc-body h3 { font-size: 1.05em; }
+        .pawtry-desc-body ul, .pawtry-desc-body ol { padding-left: 24px; margin: 6px 0; }
+        .pawtry-desc-body a { color: #0052cc; text-decoration: underline; }
+        .pawtry-desc-body a:hover { color: #0747a6; }
+        .pawtry-desc-body blockquote {
+          border-left: 3px solid #dfe1e6;
+          padding-left: 12px;
+          margin: 8px 0;
+          color: #5e6c84;
+        }
+        .pawtry-desc-body img {
+          max-width: 100%;
+          border-radius: 4px;
+          margin: 6px 0;
+        }
+        .pawtry-desc-body code {
+          background: #f4f5f7;
+          padding: 1px 4px;
+          border-radius: 3px;
+          font-family: 'SFMono-Regular', Consolas, monospace;
+          font-size: 0.9em;
+        }
+        .pawtry-desc-body pre.ql-syntax {
+          background: #091e42;
+          color: #fff;
+          padding: 10px 12px;
+          border-radius: 4px;
+          overflow-x: auto;
+          font-family: 'SFMono-Regular', Consolas, monospace;
+          font-size: 0.85em;
+        }
+        .pawtry-desc-empty {
+          width: 100%;
+          text-align: left;
+          background: #f4f5f7;
+          border: none;
+          padding: 12px 14px;
+          border-radius: 6px;
+          color: #5e6c84;
+          font-size: 14px;
+          cursor: pointer;
+          min-height: 56px;
+          transition: background 0.1s;
+        }
+        .pawtry-desc-empty:hover { background: #e4e6ea; }
+
+        .pawtry-desc-edit-wrapper {
+          border: 1px solid #dfe1e6;
+          border-radius: 6px;
+          background: #fff;
+          overflow: hidden;
+        }
+        .pawtry-desc-edit-wrapper:focus-within {
+          border-color: #0052cc;
+          box-shadow: 0 0 0 1px #0052cc;
+        }
+        .pawtry-desc-edit-wrapper .ql-editor {
+          min-height: 120px;
+          max-height: 400px;
+          padding: 10px 12px !important;
+          font-size: 14px;
+        }
+        .pawtry-desc-edit-wrapper .ql-container.ql-snow { border: none; }
+        .pawtry-desc-edit-actions {
+          display: flex;
+          gap: 8px;
+          margin-top: 8px;
+        }
+
+        /* ── Description toolbar (Trello-style) ── */
+        .pawtry-desc-toolbar {
+          display: flex;
+          align-items: center;
+          flex-wrap: wrap;
+          gap: 2px;
+          padding: 4px 6px;
+          border-bottom: 1px solid #dfe1e6;
+          background: #f9fafb;
+        }
+        .pawtry-desc-toolbar .pawtry-tb-group {
+          display: flex;
+          align-items: center;
+          gap: 2px;
+          padding: 0 2px;
+          border-right: 1px solid #dfe1e6;
+        }
+        .pawtry-desc-toolbar .pawtry-tb-group:last-child { border-right: none; }
+        .pawtry-desc-toolbar .pawtry-tb-btn {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          height: 28px;
+          min-width: 28px;
+          padding: 0 8px;
+          border: none;
+          background: transparent;
+          color: #172b4d;
+          border-radius: 3px;
+          cursor: pointer;
+          font-size: 13px;
+          transition: background 0.1s;
+        }
+        .pawtry-desc-toolbar .pawtry-tb-btn:hover {
+          background: rgba(9, 30, 66, 0.08);
+        }
+        .pawtry-desc-toolbar .pawtry-tb-btn.is-active {
+          background: #e4f0ff;
+          color: #0052cc;
+        }
+        .pawtry-desc-toolbar .pawtry-tb-btn .material-symbols-outlined {
+          font-size: 18px;
+        }
+        .pawtry-desc-toolbar .pawtry-tb-btn.with-caret { gap: 1px; padding: 0 6px; }
+        .pawtry-desc-toolbar .pawtry-tb-btn .caret { font-size: 14px; opacity: 0.6; }
+
+        /* Spacer pushes right-aligned group to the right */
+        .pawtry-desc-toolbar-spacer {
+          flex: 1;
+        }
+        .pawtry-desc-toolbar .pawtry-tb-group.no-border {
+          border-right: none;
+        }
+
+        /* Markdown preview box */
+        .pawtry-desc-markdown {
+          display: block;
+          margin: 0;
+          padding: 10px 12px;
+          font-family: 'SFMono-Regular', Consolas, 'Courier New', monospace;
+          font-size: 13px;
+          color: #172b4d;
+          background: #f9fafb;
+          white-space: pre-wrap;
+          word-break: break-word;
+          min-height: 120px;
+          max-height: 400px;
+          overflow-y: auto;
+          border-top: 1px solid #dfe1e6;
+        }
+
+        /* Editor help modal */
+        .pawtry-desc-help {
+          position: fixed;
+          inset: 0;
+          z-index: 200;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .pawtry-desc-help.hidden { display: none; }
+        .pawtry-desc-help-backdrop {
+          position: absolute;
+          inset: 0;
+          background: rgba(9, 30, 66, 0.54);
+          backdrop-filter: blur(2px);
+        }
+        .pawtry-desc-help-panel {
+          position: relative;
+          background: #fff;
+          border-radius: 10px;
+          width: 90%;
+          max-width: 500px;
+          max-height: 80vh;
+          overflow: hidden;
+          display: flex;
+          flex-direction: column;
+          box-shadow: 0 20px 40px rgba(9, 30, 66, 0.25);
+        }
+        .pawtry-desc-help-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          padding: 12px 16px;
+          border-bottom: 1px solid #dfe1e6;
+          font-size: 15px;
+        }
+        .pawtry-desc-help-close {
+          border: none;
+          background: transparent;
+          cursor: pointer;
+          color: #5e6c84;
+          padding: 4px;
+          border-radius: 4px;
+        }
+        .pawtry-desc-help-close:hover { background: #f4f5f7; color: #172b4d; }
+        .pawtry-desc-help-body {
+          padding: 14px 16px;
+          overflow-y: auto;
+          font-size: 13px;
+          color: #172b4d;
+        }
+        .pawtry-desc-help-intro {
+          margin: 0 0 10px 0;
+          color: #5e6c84;
+        }
+        .pawtry-desc-help-table {
+          width: 100%;
+          border-collapse: collapse;
+        }
+        .pawtry-desc-help-table th,
+        .pawtry-desc-help-table td {
+          padding: 6px 8px;
+          text-align: left;
+          border-bottom: 1px solid #f0f1f3;
+        }
+        .pawtry-desc-help-table th {
+          font-size: 11px;
+          text-transform: uppercase;
+          color: #5e6c84;
+          font-weight: 700;
+        }
+        .pawtry-desc-help-table kbd {
+          display: inline-block;
+          background: #f4f5f7;
+          border: 1px solid #dfe1e6;
+          border-radius: 3px;
+          padding: 1px 6px;
+          font-size: 11px;
+          font-family: inherit;
+          box-shadow: 0 1px 0 rgba(9, 30, 66, 0.1);
+        }
+
+        /* ── More actions menu (⋯ dropdown in modal header) ── */
+        .pawtry-more-actions-menu {
+          position: absolute;
+          top: 48px;
+          right: 14px;
+          z-index: 150;
+          background: #fff;
+          border: 1px solid #dfe1e6;
+          border-radius: 8px;
+          box-shadow: 0 8px 24px -4px rgba(9, 30, 66, 0.25);
+          min-width: 200px;
+          padding: 6px;
+          display: block;
+        }
+        .pawtry-more-actions-menu.hidden { display: none; }
+        .pawtry-more-item {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          width: 100%;
+          padding: 8px 10px;
+          border: none;
+          background: transparent;
+          color: #172b4d;
+          font-size: 13px;
+          text-align: left;
+          cursor: pointer;
+          border-radius: 4px;
+          transition: background 0.1s;
+        }
+        .pawtry-more-item:hover {
+          background: #f4f5f7;
+        }
+        .pawtry-more-item.is-danger {
+          color: #bf2600;
+        }
+        .pawtry-more-item.is-danger:hover {
+          background: #ffebe6;
+        }
+        .pawtry-more-icon {
+          font-size: 18px !important;
+          color: inherit;
+          opacity: 0.85;
+        }
+        .pawtry-more-sep {
+          height: 1px;
+          background: #dfe1e6;
+          margin: 4px 0;
+        }
+        .pawtry-move-header {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 8px 10px 6px;
+          border-bottom: 1px solid #f0f1f3;
+          margin-bottom: 4px;
+        }
+        .pawtry-move-list {
+          max-height: 240px;
+          overflow-y: auto;
+        }
+        .pawtry-move-option {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          width: 100%;
+          padding: 8px 10px;
+          border: none;
+          background: transparent;
+          font-size: 13px;
+          text-align: left;
+          cursor: pointer;
+          border-radius: 4px;
+          color: #172b4d;
+        }
+        .pawtry-move-option:hover { background: #f4f5f7; }
+        .pawtry-move-option.is-current {
+          background: #e4f0ff;
+          color: #0052cc;
+          font-weight: 600;
+        }
+
+        /* Copy / Share dialogs */
+        .pawtry-copy-dialog { min-width: 280px; padding: 0; }
+        .pawtry-copy-body { padding: 10px 12px 12px; }
+        .pawtry-copy-label {
+          display: block;
+          font-size: 11px;
+          font-weight: 700;
+          color: #5e6c84;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
+          margin: 8px 0 4px;
+        }
+        .pawtry-copy-label:first-child { margin-top: 0; }
+        .pawtry-copy-input {
+          width: 100%;
+          padding: 6px 8px;
+          border: 1px solid #dfe1e6;
+          border-radius: 4px;
+          font-size: 13px;
+          background: #fff;
+          color: #172b4d;
+        }
+        .pawtry-copy-input:focus {
+          outline: none;
+          border-color: #0052cc;
+          box-shadow: 0 0 0 1px #0052cc;
+        }
+        .pawtry-copy-submit {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          background: #0052cc;
+          color: #fff;
+          border: none;
+          padding: 8px 14px;
+          border-radius: 4px;
+          font-size: 13px;
+          font-weight: 600;
+          cursor: pointer;
+          margin-top: 10px;
+          transition: background 0.1s;
+        }
+        .pawtry-copy-submit:hover { background: #0747a6; }
     </style>
 </head>
 <body class="bg-surface text-on-surface flex overflow-hidden h-screen">
@@ -148,7 +1068,7 @@
                 New Board
             </button>
 <div class="mt-6 flex items-center space-x-3 px-2">
-<img id="sidebar-user-avatar" alt="User workspace avatar" class="w-8 h-8 rounded-full border-2 border-primary-fixed object-cover" data-alt="portrait of a professional creative director with soft studio lighting and clean background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7odRQzTXnuRSFFi5ioKZznRnJ4nvprwmF_ELCqA0MEXcgZ8nEVjxeSawsNS5c7VOZ2-AjvmZcvu6I7ISmyqJfrq6J2StQXFFY0OE1l5E1deBQ3wEQVvrg4apYhs1FB-zW625iL5jugsGXwPc1lXqvuioAZ_JBY_pbn0F_GJkWPiqDvXQKl1lmRCzvBVx_Oes5swREZ6Y3tyMgtqVC1QumYcFEAbl8HXXAailtSm334yzZJ2srQhUOttigr09rfenbSg3YdpBK65M"/>
+<img id="sidebar-user-avatar" alt="User workspace avatar" class="w-8 h-8 rounded-full border-2 border-primary-fixed object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC7odRQzTXnuRSFFi5ioKZznRnJ4nvprwmF_ELCqA0MEXcgZ8nEVjxeSawsNS5c7VOZ2-AjvmZcvu6I7ISmyqJfrq6J2StQXFFY0OE1l5E1deBQ3wEQVvrg4apYhs1FB-zW625iL5jugsGXwPc1lXqvuioAZ_JBY_pbn0F_GJkWPiqDvXQKl1lmRCzvBVx_Oes5swREZ6Y3tyMgtqVC1QumYcFEAbl8HXXAailtSm334yzZJ2srQhUOttigr09rfenbSg3YdpBK65M"/>
 <div class="overflow-hidden">
 <p class="text-xs font-bold truncate">Website Redesign</p>
 <p class="text-[10px] text-slate-500">Active Sprint</p>
@@ -263,272 +1183,490 @@
 </div>
 <div id="toast-container" class="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 items-end pointer-events-none"></div>
 
-<div id="board-context-menu"
-     class="hidden fixed z-[150] min-w-[180px] bg-surface-container-highest border border-outline/20 rounded-xl shadow-2xl py-1 text-sm">
-  <button id="ctx-delete-board"
-          class="hidden w-full text-left px-4 py-2 text-error hover:bg-error/10 flex items-center gap-2 transition-colors">
-    <span class="material-symbols-outlined text-base">delete</span>
-    <span>Delete Board</span>
+<div id="board-context-menu" class="hidden fixed z-[150] min-w-[180px] bg-surface-container-highest border border-outline/20 rounded-xl shadow-2xl py-1 text-sm">
+  <button id="ctx-delete-board" class="hidden w-full text-left px-4 py-2 text-error hover:bg-error/10 flex items-center gap-2 transition-colors">
+    <span class="material-symbols-outlined text-base">delete</span><span>Delete Board</span>
   </button>
-  <button id="ctx-leave-board"
-          class="hidden w-full text-left px-4 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2 transition-colors">
-    <span class="material-symbols-outlined text-base">logout</span>
-    <span>Leave Board</span>
+  <button id="ctx-leave-board" class="hidden w-full text-left px-4 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2 transition-colors">
+    <span class="material-symbols-outlined text-base">logout</span><span>Leave Board</span>
   </button>
 </div>
 
-<div id="label-context-menu"
-     class="hidden fixed z-[200] min-w-[180px] bg-surface-container-highest border border-outline/20 rounded-xl shadow-2xl py-1 text-sm">
-  <button id="ctx-edit-label"
-          class="w-full text-left px-4 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2 transition-colors">
-    <span class="material-symbols-outlined text-base">edit</span>
-    <span>Edit Label</span>
+<div id="label-context-menu" class="hidden fixed z-[200] min-w-[180px] bg-surface-container-highest border border-outline/20 rounded-xl shadow-2xl py-1 text-sm">
+  <button id="ctx-edit-label" class="w-full text-left px-4 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2 transition-colors">
+    <span class="material-symbols-outlined text-base">edit</span><span>Edit Label</span>
   </button>
-  <button id="ctx-delete-label"
-          class="w-full text-left px-4 py-2 text-error hover:bg-error/10 flex items-center gap-2 transition-colors">
-    <span class="material-symbols-outlined text-base">delete</span>
-    <span>Delete Label</span>
+  <button id="ctx-delete-label" class="w-full text-left px-4 py-2 text-error hover:bg-error/10 flex items-center gap-2 transition-colors">
+    <span class="material-symbols-outlined text-base">delete</span><span>Delete Label</span>
   </button>
 </div>
-<!-- Task Detail Modal — logic lives in components/TaskModal.js -->
+
+<!-- Task Detail Modal -->
 <div id="task-modal" class="fixed inset-0 z-[100] hidden">
   <div id="modal-backdrop" class="absolute inset-0 bg-black/50 backdrop-blur-sm"></div>
-
   <div id="modal-scroll" class="absolute inset-0 flex items-start justify-center p-4 overflow-y-auto">
-    <div id="modal-panel" class="relative bg-surface-container-lowest rounded-2xl shadow-2xl w-full max-w-5xl my-8 animate-[fadeIn_0.15s_ease-out]">
-
+    <div id="modal-panel" class="relative bg-white rounded-2xl shadow-2xl w-full max-w-6xl my-8 animate-[fadeIn_0.15s_ease-out] overflow-hidden">
       <div id="modal-drop-overlay" class="file-drop-overlay">Drop files to upload.</div>
-
-      <button id="modal-close" class="absolute top-4 right-4 z-10 text-on-surface-variant/60 hover:text-on-surface transition-colors">
-        <span class="material-symbols-outlined">close</span>
-      </button>
-
-      <header class="px-8 pt-8 pb-5 border-b border-outline-variant/20 pr-14">
-        <div class="flex items-start gap-3">
-          <span class="material-symbols-outlined text-on-surface-variant mt-2">credit_card</span>
-          <div class="flex-1 min-w-0">
-            <input id="modal-title" type="text" placeholder="Task title"
-                   class="w-full bg-transparent text-2xl font-bold text-on-surface placeholder:text-on-surface-variant/40 focus:outline-none focus:bg-surface-container-low rounded-lg px-2 py-1 -ml-2 transition-colors"/>
-            <p class="mt-1 pl-2 text-sm text-on-surface-variant">
-              in list <span id="modal-status" class="font-semibold text-on-surface underline underline-offset-2">—</span>
-            </p>
-          </div>
+      <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-gray-50">
+        <div class="flex items-center gap-2 text-sm text-gray-500 min-w-0">
+          <span class="material-symbols-outlined text-base text-gray-400 shrink-0">view_kanban</span>
+          <span id="modal-board-name" class="font-medium text-gray-700 truncate"></span>
+          <span class="text-gray-400 shrink-0">/</span>
+          <span id="modal-status" class="font-medium text-gray-700 truncate">—</span>
         </div>
-      </header>
+        <div class="flex items-center gap-1 shrink-0">
+          <button id="modal-more-btn" type="button" class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100" title="More actions">
+            <span class="material-symbols-outlined text-xl">more_horiz</span>
+          </button>
+          <button id="modal-close" type="button" class="text-gray-400 hover:text-gray-600 transition-colors p-1 rounded-lg hover:bg-gray-100" title="Close">
+            <span class="material-symbols-outlined text-xl">close</span>
+          </button>
+        </div>
+      </div>
 
-      <div class="flex flex-col md:flex-row gap-8 px-8 py-6">
+      <!-- More actions dropdown menu (Trello-style) -->
+      <div id="modal-more-menu" class="pawtry-more-actions-menu hidden">
+        <button type="button" class="pawtry-more-item" data-action="join">
+          <span class="material-symbols-outlined pawtry-more-icon">person_add</span>
+          <span data-join-label>Join</span>
+        </button>
+        <button type="button" class="pawtry-more-item" data-action="move">
+          <span class="material-symbols-outlined pawtry-more-icon">arrow_forward</span>
+          <span>Move</span>
+        </button>
+        <button type="button" class="pawtry-more-item" data-action="copy">
+          <span class="material-symbols-outlined pawtry-more-icon">content_copy</span>
+          <span>Copy</span>
+        </button>
+        <button type="button" class="pawtry-more-item" data-action="watch">
+          <span class="material-symbols-outlined pawtry-more-icon">visibility</span>
+          <span data-watch-label>Watch</span>
+        </button>
+        <div class="pawtry-more-sep"></div>
+        <button type="button" class="pawtry-more-item" data-action="share">
+          <span class="material-symbols-outlined pawtry-more-icon">share</span>
+          <span>Share</span>
+        </button>
+        <button type="button" class="pawtry-more-item is-danger" data-action="archive">
+          <span class="material-symbols-outlined pawtry-more-icon">archive</span>
+          <span>Archive</span>
+        </button>
+      </div>
 
-        <div class="flex-1 min-w-0 space-y-6">
+      <!-- Move to column picker -->
+      <div id="modal-move-menu" class="pawtry-more-actions-menu hidden">
+        <div class="pawtry-move-header">
+          <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Move to</span>
+          <button type="button" id="modal-move-back" class="text-gray-400 hover:text-gray-600">
+            <span class="material-symbols-outlined text-base">close</span>
+          </button>
+        </div>
+        <div id="modal-move-list" class="pawtry-move-list"></div>
+      </div>
 
-          <section id="modal-labels-section">
-            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Labels</h4>
-            <div id="modal-labels-display" class="flex flex-wrap items-center gap-1.5"></div>
-          </section>
+      <!-- Copy card dialog -->
+      <div id="modal-copy-menu" class="pawtry-more-actions-menu pawtry-copy-dialog hidden">
+        <div class="pawtry-move-header">
+          <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Copy card</span>
+          <button type="button" id="modal-copy-back" class="text-gray-400 hover:text-gray-600">
+            <span class="material-symbols-outlined text-base">close</span>
+          </button>
+        </div>
+        <div class="pawtry-copy-body">
+          <label class="pawtry-copy-label">Title</label>
+          <input id="modal-copy-title" type="text" class="pawtry-copy-input"/>
+          <label class="pawtry-copy-label">Copy to</label>
+          <select id="modal-copy-column" class="pawtry-copy-input"></select>
+          <button id="modal-copy-submit" type="button" class="pawtry-copy-submit">Create card</button>
+        </div>
+      </div>
 
-          <section id="modal-due-section">
-            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Due date</h4>
-            <label id="modal-due" class="inline-flex items-center gap-2.5 bg-surface-container-high hover:bg-surface-container-highest rounded-lg px-3 py-2 cursor-pointer transition-colors">
-              <input id="modal-complete-checkbox" type="checkbox" class="w-4 h-4 rounded accent-primary cursor-pointer"/>
-              <span class="material-symbols-outlined text-base text-on-surface-variant">calendar_today</span>
-              <span id="modal-due-text" class="text-sm text-on-surface"></span>
+      <!-- Share dialog -->
+      <div id="modal-share-menu" class="pawtry-more-actions-menu pawtry-copy-dialog hidden">
+        <div class="pawtry-move-header">
+          <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Share this card</span>
+          <button type="button" id="modal-share-back" class="text-gray-400 hover:text-gray-600">
+            <span class="material-symbols-outlined text-base">close</span>
+          </button>
+        </div>
+        <div class="pawtry-copy-body">
+          <label class="pawtry-copy-label">Link to this card</label>
+          <div class="flex gap-2">
+            <input id="modal-share-url" type="text" readonly class="pawtry-copy-input flex-1"/>
+            <button id="modal-share-copy" type="button" class="pawtry-copy-submit" style="margin:0">Copy</button>
+          </div>
+          <p id="modal-share-feedback" class="text-xs text-green-600 mt-2 hidden">Link copied!</p>
+        </div>
+      </div>
+      <div class="flex min-h-0">
+        <div class="flex-1 min-w-0 px-6 py-5 space-y-5 overflow-y-auto" style="max-height:78vh">
+          <div class="flex items-start gap-3">
+            <span class="material-symbols-outlined text-gray-400 mt-2 text-xl shrink-0">credit_card</span>
+            <input id="modal-title" type="text" placeholder="Task title" class="flex-1 text-xl font-bold text-gray-800 placeholder:text-gray-300 focus:outline-none focus:bg-gray-50 rounded-lg px-2 py-1 -ml-2 transition-colors border-0 bg-transparent"/>
+          </div>
+          <div id="modal-labels-section" class="hidden ml-9">
+            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Labels</p>
+            <div id="modal-labels-display" class="flex flex-wrap gap-1.5"></div>
+          </div>
+          <div id="modal-due-section" class="hidden ml-9">
+            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">Due date</p>
+            <label id="modal-due" class="inline-flex items-center gap-2 bg-gray-100 hover:bg-gray-200 rounded-lg px-3 py-1.5 cursor-pointer transition-colors">
+              <input id="modal-complete-checkbox" type="checkbox" class="w-4 h-4 rounded accent-indigo-600 cursor-pointer"/>
+              <span class="material-symbols-outlined text-base text-gray-500">calendar_today</span>
+              <span id="modal-due-text" class="text-sm text-gray-700"></span>
               <span id="modal-complete-badge" class="hidden text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-green-500/20 text-green-700">Complete</span>
             </label>
-          </section>
-
-          <section>
-            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2 flex items-center gap-2">
-              <span class="material-symbols-outlined text-base">notes</span>
-              Description
-            </h4>
-            <textarea id="modal-desc" rows="8" placeholder="Add a more detailed description..."
-                      class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-y transition-all"></textarea>
-          </section>
-
-          <section id="modal-attachments-section">
-            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2 flex items-center gap-2">
-              <span class="material-symbols-outlined text-base">attachment</span>
-              Attachments
-            </h4>
-            <ul id="modal-attachments-list" class="space-y-2"></ul>
-            <p id="modal-attachments-empty" class="text-xs text-on-surface-variant/50 italic hidden">No attachments yet. Click "+ Attachment" in the sidebar to add one.</p>
-          </section>
-
-        </div>
-
-        <div class="w-full md:w-80 flex-shrink-0 space-y-6">
-
-          <section id="modal-members-section">
-            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Members</h4>
-            <div id="modal-assignees" class="flex flex-wrap items-center gap-2"></div>
-          </section>
-
-          <aside id="modal-sidebar">
-            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-2">Add to card</h4>
-            <div class="space-y-2">
-
+          </div>
+          <div id="modal-sidebar" class="ml-9">
+            <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Add to card</p>
+            <div class="flex flex-wrap gap-2 mb-4">
               <div class="relative">
-                <button type="button" data-popup="popup-members"
-                        class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
-                  <span class="material-symbols-outlined text-base">person</span>
-                  Members
+                <button type="button" data-popup="popup-members" class="sidebar-action-btn flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
+                  <span class="material-symbols-outlined text-base">person</span>Members
                 </button>
-                <div id="popup-members" class="mini-popup hidden absolute right-0 top-full mt-2 w-64 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
-                  <div class="flex items-center justify-between mb-3">
-                    <h5 class="text-sm font-semibold text-on-surface">Members</h5>
-                    <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
-                      <span class="material-symbols-outlined text-base">close</span>
-                    </button>
+                <div id="popup-members" class="mini-popup hidden absolute left-0 top-full mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-2xl z-20 p-3">
+                  <div class="flex items-center justify-between mb-2">
+                    <h5 class="text-sm font-semibold text-gray-800">Members</h5>
+                    <button type="button" class="mini-popup-close text-gray-400 hover:text-gray-600"><span class="material-symbols-outlined text-base">close</span></button>
                   </div>
-                  <input id="popup-members-search" type="text" placeholder="Search members..."
-                         class="w-full mb-2 bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
+                  <input id="popup-members-search" type="text" placeholder="Search members..." class="w-full mb-2 bg-gray-50 border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30"/>
                   <ul id="popup-members-list" class="space-y-1 max-h-48 overflow-y-auto"></ul>
                 </div>
               </div>
-
               <div class="relative">
-                <button type="button" data-popup="popup-labels"
-                        class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
-                  <span class="material-symbols-outlined text-base">label</span>
-                  Labels
+                <button type="button" data-popup="popup-labels" class="sidebar-action-btn flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
+                  <span class="material-symbols-outlined text-base">label</span>Labels
                 </button>
-                <div id="popup-labels" class="mini-popup hidden absolute right-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
-                  <div class="flex items-center justify-between mb-3">
-                    <h5 class="text-sm font-semibold text-on-surface">Labels</h5>
-                    <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
-                      <span class="material-symbols-outlined text-base">close</span>
-                    </button>
+                <div id="popup-labels" class="mini-popup hidden absolute left-0 top-full mt-1 w-72 bg-white border border-gray-200 rounded-xl shadow-2xl z-20 p-3">
+                  <div class="flex items-center justify-between mb-2">
+                    <h5 class="text-sm font-semibold text-gray-800">Labels</h5>
+                    <button type="button" class="mini-popup-close text-gray-400 hover:text-gray-600"><span class="material-symbols-outlined text-base">close</span></button>
                   </div>
-
                   <ul id="popup-labels-list" class="space-y-2"></ul>
-
-                  <button id="modal-create-label-btn" type="button"
-                          class="mt-3 w-full bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-opacity">
-                    Create new label
-                  </button>
-
-                  <div id="popup-labels-create" class="hidden mt-3 pt-3 border-t border-outline-variant/20 space-y-2">
-                    <div>
-                      <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1">Title (optional)</label>
-                      <input id="popup-labels-create-title" type="text" placeholder="Label name..."
-                             class="w-full bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
-                    </div>
-                    <div>
-                      <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Pick a color</label>
-                      <input type="color" id="popup-labels-create-color-picker" class="w-full h-10 cursor-pointer rounded-md border-0 p-0" value="#3525cd"/>
-                    </div>
-                    <div class="flex gap-2 pt-1">
-                      <button id="popup-labels-create-submit" type="button"
-                              class="flex-1 bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 disabled:opacity-50 transition-opacity">
-                        Create
-                      </button>
-                      <button id="popup-labels-create-cancel" type="button"
-                              class="bg-surface-container-high text-on-surface font-medium px-3 py-1.5 rounded-md text-xs hover:bg-surface-container-highest transition-colors">
-                        Cancel
-                      </button>
+                  <button id="modal-create-label-btn" type="button" class="mt-3 w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold px-3 py-1.5 rounded-md text-xs transition-colors">Create new label</button>
+                  <div id="popup-labels-create" class="hidden mt-3 pt-3 border-t border-gray-200 space-y-2">
+                    <div><label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Title (optional)</label>
+                      <input id="popup-labels-create-title" type="text" placeholder="Label name..." class="w-full bg-gray-50 border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30"/></div>
+                    <div><label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Pick a color</label>
+                      <input type="color" id="popup-labels-create-color-picker" class="w-full h-9 cursor-pointer rounded-md border-0 p-0" value="#3525cd"/></div>
+                    <div class="flex gap-2">
+                      <button id="popup-labels-create-submit" type="button" class="flex-1 bg-indigo-600 text-white font-semibold px-3 py-1.5 rounded-md text-xs hover:bg-indigo-700 disabled:opacity-50 transition-colors">Create</button>
+                      <button id="popup-labels-create-cancel" type="button" class="bg-gray-100 text-gray-700 font-medium px-3 py-1.5 rounded-md text-xs hover:bg-gray-200 transition-colors">Cancel</button>
                     </div>
                   </div>
                 </div>
               </div>
-
               <div class="relative">
-                <button type="button" data-popup="popup-dates"
-                        class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
-                  <span class="material-symbols-outlined text-base">schedule</span>
-                  Dates
+                <button type="button" data-popup="popup-dates" class="sidebar-action-btn flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
+                  <span class="material-symbols-outlined text-base">schedule</span>Dates
                 </button>
-                <div id="popup-dates" class="mini-popup hidden absolute right-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
-                  <div class="flex items-center justify-between mb-3">
-                    <h5 class="text-sm font-semibold text-on-surface">Dates</h5>
-                    <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
-                      <span class="material-symbols-outlined text-base">close</span>
-                    </button>
+                <div id="popup-dates" class="mini-popup hidden absolute left-0 top-full mt-1 w-72 bg-white border border-gray-200 rounded-xl shadow-2xl z-20 p-3">
+                  <div class="flex items-center justify-between mb-2">
+                    <h5 class="text-sm font-semibold text-gray-800">Dates</h5>
+                    <button type="button" class="mini-popup-close text-gray-400 hover:text-gray-600"><span class="material-symbols-outlined text-base">close</span></button>
                   </div>
-                  <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Due date</label>
+                  <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Due date</label>
                   <div class="flex items-center gap-2">
-                    <input id="modal-due-input" type="datetime-local"
-                           class="flex-1 min-w-0 bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
-                    <button id="modal-due-save" type="button"
-                            class="bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 transition-opacity">
-                      Save
-                    </button>
+                    <input id="modal-due-input" type="datetime-local" class="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30"/>
+                    <button id="modal-due-save" type="button" class="bg-indigo-600 text-white font-semibold px-3 py-1.5 rounded-md text-xs hover:bg-indigo-700 transition-colors">Save</button>
                   </div>
-                  <div class="mt-4 pt-3 border-t border-outline-variant/20">
-                    <button id="modal-due-clear" type="button"
-                            class="w-full flex items-center justify-center gap-1.5 bg-surface-container-high text-on-surface font-medium px-3 py-1.5 rounded-md text-xs hover:bg-surface-container-highest transition-colors">
-                      <span class="material-symbols-outlined text-sm">delete_outline</span>
-                      Remove date
+                  <div class="mt-3 pt-3 border-t border-gray-200">
+                    <button id="modal-due-clear" type="button" class="w-full flex items-center justify-center gap-1.5 bg-gray-100 text-gray-600 font-medium px-3 py-1.5 rounded-md text-xs hover:bg-gray-200 transition-colors">
+                      <span class="material-symbols-outlined text-sm">delete_outline</span>Remove date
                     </button>
                   </div>
                 </div>
               </div>
-
               <div class="relative">
-                <button type="button" data-popup="popup-attachments"
-                        class="sidebar-action-btn w-full flex items-center gap-2 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-sm font-medium px-3 py-2 rounded-lg transition-colors">
-                  <span class="material-symbols-outlined text-base">attach_file</span>
-                  Attachment
+                <button type="button" data-popup="popup-attachments" class="sidebar-action-btn flex items-center gap-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors">
+                  <span class="material-symbols-outlined text-base">attach_file</span>Attachment
                 </button>
-                <div id="popup-attachments" class="mini-popup hidden absolute right-0 top-full mt-2 w-72 bg-surface-container-lowest border border-outline-variant/30 rounded-xl shadow-2xl z-20 p-3">
-                  <div class="flex items-center justify-between mb-3">
-                    <h5 class="text-sm font-semibold text-on-surface">Attach</h5>
-                    <button type="button" class="mini-popup-close text-on-surface-variant/60 hover:text-on-surface">
-                      <span class="material-symbols-outlined text-base">close</span>
-                    </button>
+                <div id="popup-attachments" class="mini-popup hidden absolute left-0 top-full mt-1 w-72 bg-white border border-gray-200 rounded-xl shadow-2xl z-20 p-3">
+                  <div class="flex items-center justify-between mb-2">
+                    <h5 class="text-sm font-semibold text-gray-800">Attach</h5>
+                    <button type="button" class="mini-popup-close text-gray-400 hover:text-gray-600"><span class="material-symbols-outlined text-base">close</span></button>
                   </div>
-                  <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Upload a file</label>
-                  <input id="popup-attachment-file" type="file"
-                         class="w-full text-xs text-on-surface file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary-container file:text-on-primary hover:file:opacity-90 cursor-pointer"/>
-                  <div class="mt-4 pt-3 border-t border-outline-variant/20">
-                    <label class="block text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Paste a link</label>
+                  <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Upload a file</label>
+                  <input id="popup-attachment-file" type="file" accept="image/*,video/*,audio/*,.mkv,.avi,.mov,.mp4,.webm,.pdf,.doc,.docx,.xls,.xlsx,.txt" class="w-full text-xs text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-600 hover:file:bg-indigo-100 cursor-pointer"/>
+                  <div class="mt-3 pt-3 border-t border-gray-200">
+                    <label class="block text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Paste a link</label>
                     <div class="flex items-center gap-2">
-                      <input id="popup-attachment-url" type="url" placeholder="https://..."
-                             class="flex-1 min-w-0 bg-surface-container-low border border-outline-variant/40 rounded-md px-2 py-1.5 text-xs text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"/>
-                      <button id="popup-attachment-link-submit" type="button"
-                              class="bg-primary-container text-on-primary font-semibold px-3 py-1.5 rounded-md text-xs hover:opacity-90 disabled:opacity-50 transition-opacity">
-                        Attach
-                      </button>
+                      <input id="popup-attachment-url" type="url" placeholder="https://..." class="flex-1 min-w-0 bg-gray-50 border border-gray-200 rounded-md px-2 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-indigo-500/30"/>
+                      <button id="popup-attachment-link-submit" type="button" class="bg-indigo-600 text-white font-semibold px-3 py-1.5 rounded-md text-xs hover:bg-indigo-700 disabled:opacity-50 transition-colors">Attach</button>
                     </div>
                   </div>
                 </div>
               </div>
-
+              <button id="modal-save" type="button" class="hidden flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                <span class="material-symbols-outlined text-base">save</span>Save Changes
+              </button>
+              <button id="modal-delete" type="button" class="hidden flex items-center gap-1.5 bg-gray-100 hover:bg-red-50 hover:text-red-600 text-gray-500 text-sm font-medium px-3 py-1.5 rounded-lg transition-colors disabled:opacity-50">
+                <span class="material-symbols-outlined text-base">delete</span>Delete
+              </button>
             </div>
-          </aside>
+            <section id="modal-members-section">
+              <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">Members</p>
+              <div id="modal-assignees" class="flex flex-wrap gap-1.5"></div>
+            </section>
+          </div>
+          <div class="ml-9">
+            <div class="flex items-center justify-between mb-2">
+              <div class="flex items-center gap-2">
+                <span class="material-symbols-outlined text-base text-gray-500">notes</span>
+                <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Description</p>
+              </div>
+              <button id="modal-desc-edit-btn" type="button" class="pawtry-desc-edit-btn hidden">Edit</button>
+            </div>
 
-          <section id="modal-activity-section">
-            <h4 class="text-[11px] font-bold text-on-surface-variant uppercase tracking-wider mb-3 flex items-center gap-2">
-              <span class="material-symbols-outlined text-base">forum</span>
-              Activity
-            </h4>
+            <!-- View mode (Trello-like preview) -->
+            <div id="modal-desc-view" class="pawtry-desc-view">
+              <div id="modal-desc-body" class="pawtry-desc-body"></div>
+              <button id="modal-desc-empty-placeholder" type="button" class="pawtry-desc-empty hidden">
+                Add a more detailed description...
+              </button>
+            </div>
 
-            <div class="flex gap-2 mb-4">
-              <div id="modal-comment-avatar" class="w-8 h-8 rounded-full bg-primary-container flex items-center justify-center text-[11px] font-bold text-on-primary flex-shrink-0">U</div>
-              <div class="flex-1 min-w-0">
-                <textarea id="modal-comment-input" rows="2" placeholder="Write a comment..."
-                          class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg px-3 py-2 text-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary resize-none transition-all"></textarea>
-                <button id="modal-comment-submit" type="button"
-                        class="mt-2 bg-primary-container text-on-primary font-semibold px-4 py-1.5 rounded-lg text-xs hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50">
-                  Save
-                </button>
+            <!-- Edit mode (hidden by default, shown when Edit is clicked) -->
+            <div id="modal-desc-edit" class="pawtry-desc-edit hidden">
+              <div class="pawtry-desc-edit-wrapper">
+                <div class="pawtry-desc-toolbar" id="modal-desc-toolbar">
+                  <div class="pawtry-tb-group">
+                    <button type="button" class="pawtry-tb-btn with-caret" data-desc-action="header-menu" title="Text style">
+                      <span style="font-weight:700">Tt</span>
+                      <span class="caret material-symbols-outlined">expand_more</span>
+                    </button>
+                  </div>
+                  <div class="pawtry-tb-group">
+                    <button type="button" class="pawtry-tb-btn" data-desc-action="bold" title="Bold"><b>B</b></button>
+                    <button type="button" class="pawtry-tb-btn" data-desc-action="italic" title="Italic"><i>I</i></button>
+                  </div>
+                  <div class="pawtry-tb-group">
+                    <button type="button" class="pawtry-tb-btn" data-desc-action="more" title="More formatting">
+                      <span class="material-symbols-outlined">more_horiz</span>
+                    </button>
+                  </div>
+                  <div class="pawtry-tb-group">
+                    <button type="button" class="pawtry-tb-btn with-caret" data-desc-action="list-menu" title="Lists">
+                      <span class="material-symbols-outlined">format_list_bulleted</span>
+                      <span class="caret material-symbols-outlined">expand_more</span>
+                    </button>
+                  </div>
+                  <div class="pawtry-tb-group">
+                    <button type="button" class="pawtry-tb-btn with-caret" data-desc-action="insert" title="Insert">
+                      <span class="material-symbols-outlined">add</span>
+                      <span class="caret material-symbols-outlined">expand_more</span>
+                    </button>
+                  </div>
+                  <div class="pawtry-tb-group">
+                    <button type="button" class="pawtry-tb-btn" data-desc-action="mention" title="Mention">
+                      <span style="font-weight:700;font-size:15px">@</span>
+                    </button>
+                  </div>
+
+                  <!-- Spacer to push the next group to the right -->
+                  <div class="pawtry-desc-toolbar-spacer"></div>
+
+                  <div class="pawtry-tb-group no-border">
+                    <button type="button" class="pawtry-tb-btn" data-desc-action="attach" title="Attach file">
+                      <span class="material-symbols-outlined">attach_file</span>
+                    </button>
+                    <button type="button" class="pawtry-tb-btn" data-desc-action="markdown" title="View Markdown">
+                      <span style="font-weight:700;font-family:serif">M</span><span class="material-symbols-outlined" style="font-size:14px">swap_vert</span>
+                    </button>
+                    <button type="button" class="pawtry-tb-btn" data-desc-action="help" title="Editor help">
+                      <span class="material-symbols-outlined">help_outline</span>
+                    </button>
+                  </div>
+                </div>
+                <div id="modal-desc-quill"></div>
+                <!-- Markdown view (toggled by the M↕ button) -->
+                <pre id="modal-desc-markdown" class="pawtry-desc-markdown hidden"></pre>
+              </div>
+              <div class="pawtry-desc-edit-actions">
+                <button id="modal-desc-save-btn" type="button" class="pawtry-comment-edit-save">Save</button>
+                <button id="modal-desc-cancel-btn" type="button" class="pawtry-comment-edit-cancel">Cancel</button>
               </div>
             </div>
 
-            <ul id="modal-comments-list" class="space-y-4"></ul>
-          </section>
+            <!-- Hidden legacy textarea kept so existing save logic continues to work -->
+            <textarea id="modal-desc" class="hidden"></textarea>
+          </div>
+          <div id="modal-attachments-section" class="ml-9 pb-4">
+            <div class="flex items-center gap-2 mb-2">
+              <span class="material-symbols-outlined text-base text-gray-500">attachment</span>
+              <p class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Attachments</p>
+            </div>
+            <ul id="modal-attachments-list" class="space-y-2"></ul>
+            <p id="modal-attachments-empty" class="text-xs text-gray-400 italic hidden">No attachments yet.</p>
+          </div>
+        </div>
 
+        <div id="modal-activity-section" class="w-96 shrink-0 border-l border-gray-200 bg-gray-50 px-5 py-5 overflow-y-auto" style="max-height:78vh">
+          <div class="flex items-center gap-2 mb-4">
+            <span class="material-symbols-outlined text-base text-gray-500">forum</span>
+            <p class="text-sm font-bold text-gray-700">Activity</p>
+          </div>
+          <div class="flex gap-3 mb-5">
+            <div id="modal-comment-avatar" class="w-8 h-8 rounded-full bg-indigo-500 flex items-center justify-center text-[11px] font-bold text-white flex-shrink-0">U</div>
+            <div class="flex-1 min-w-0">
+              <div class="pawtry-quill-wrapper">
+                <div id="pawtry-quill-toolbar">
+                  <div class="pawtry-tb-group">
+                    <button type="button" class="pawtry-tb-btn with-caret" data-pawtry-action="header-menu" title="Text style">
+                      <span style="font-weight:700">Tt</span>
+                      <span class="caret material-symbols-outlined">expand_more</span>
+                    </button>
+                  </div>
+                  <div class="pawtry-tb-group">
+                    <button type="button" class="pawtry-tb-btn" data-pawtry-action="bold" title="Bold"><b>B</b></button>
+                    <button type="button" class="pawtry-tb-btn" data-pawtry-action="italic" title="Italic"><i>I</i></button>
+                  </div>
+                  <div class="pawtry-tb-group">
+                    <button type="button" class="pawtry-tb-btn" data-pawtry-action="more" title="More formatting">
+                      <span class="material-symbols-outlined">more_horiz</span>
+                    </button>
+                  </div>
+                  <div class="pawtry-tb-group">
+                    <button type="button" class="pawtry-tb-btn with-caret" data-pawtry-action="list-menu" title="Lists">
+                      <span class="material-symbols-outlined">format_list_bulleted</span>
+                      <span class="caret material-symbols-outlined">expand_more</span>
+                    </button>
+                  </div>
+                  <div class="pawtry-tb-group">
+                    <button type="button" class="pawtry-tb-btn with-caret" data-pawtry-action="insert" title="Insert">
+                      <span class="material-symbols-outlined">add</span>
+                      <span class="caret material-symbols-outlined">expand_more</span>
+                    </button>
+                  </div>
+                  <div class="pawtry-tb-group">
+                    <button type="button" class="pawtry-tb-btn" data-pawtry-action="attach" title="Attach file">
+                      <span class="material-symbols-outlined">attach_file</span>
+                    </button>
+                  </div>
+                </div>
+                <div id="modal-comment-quill"></div>
+              </div>
+              <textarea id="modal-comment-input" class="hidden"></textarea>
+              <button id="modal-comment-submit" type="button">Save</button>
+            </div>
+          </div>
+          <ul id="modal-comments-list" class="space-y-4"></ul>
         </div>
       </div>
+    </div>
+  </div>
+</div>
 
-      <div class="px-8 pb-8 pt-4 border-t border-outline-variant/20 flex gap-3">
-        <button id="modal-save" type="button" class="flex-1 flex items-center justify-center gap-2 bg-primary-container text-on-primary font-semibold py-2.5 rounded-xl shadow-lg shadow-primary-container/20 hover:opacity-90 active:scale-[0.98] transition-all text-sm">
-          <span class="material-symbols-outlined text-base">save</span>
-          Save Changes
-        </button>
-        <button id="modal-delete" type="button" class="flex items-center justify-center gap-2 bg-error-container text-on-error-container font-semibold px-5 py-2.5 rounded-xl hover:opacity-90 active:scale-[0.98] transition-all text-sm">
-          <span class="material-symbols-outlined text-base">delete</span>
-          Delete
-        </button>
-      </div>
+<!-- Toolbar Popups -->
+<div id="pawtry-insert-menu" class="pawtry-popup">
+  <div class="pawtry-insert-search">
+    <input id="pawtry-insert-search-input" type="text" placeholder="Search" autocomplete="off"/>
+  </div>
+  <div id="pawtry-insert-list" class="pawtry-insert-list"></div>
+</div>
+
+<div id="pawtry-more-menu" class="pawtry-popup">
+  <div class="pawtry-insert-list">
+    <div class="pawtry-insert-item" data-more-action="underline">
+      <div class="pawtry-insert-item__icon"><span class="material-symbols-outlined">format_underlined</span></div>
+      <div class="pawtry-insert-item__body"><div class="pawtry-insert-item__title">Underline</div></div>
+    </div>
+    <div class="pawtry-insert-item" data-more-action="strike">
+      <div class="pawtry-insert-item__icon"><span class="material-symbols-outlined">strikethrough_s</span></div>
+      <div class="pawtry-insert-item__body"><div class="pawtry-insert-item__title">Strikethrough</div></div>
+    </div>
+    <div class="pawtry-insert-item" data-more-action="blockquote">
+      <div class="pawtry-insert-item__icon"><span class="material-symbols-outlined">format_quote</span></div>
+      <div class="pawtry-insert-item__body"><div class="pawtry-insert-item__title">Quote</div></div>
+    </div>
+    <div class="pawtry-insert-item" data-more-action="clean">
+      <div class="pawtry-insert-item__icon"><span class="material-symbols-outlined">format_clear</span></div>
+      <div class="pawtry-insert-item__body"><div class="pawtry-insert-item__title">Clear formatting</div></div>
+    </div>
+  </div>
+</div>
+
+<div id="pawtry-header-menu" class="pawtry-popup">
+  <div class="pawtry-insert-list">
+    <div class="pawtry-insert-item" data-header-level="0">
+      <div class="pawtry-insert-item__icon"><span class="material-symbols-outlined">text_fields</span></div>
+      <div class="pawtry-insert-item__body"><div class="pawtry-insert-item__title">Normal</div></div>
+    </div>
+    <div class="pawtry-insert-item" data-header-level="1">
+      <div class="pawtry-insert-item__icon"><span style="font-weight:700;font-size:14px">H1</span></div>
+      <div class="pawtry-insert-item__body"><div class="pawtry-insert-item__title">Heading 1</div></div>
+    </div>
+    <div class="pawtry-insert-item" data-header-level="2">
+      <div class="pawtry-insert-item__icon"><span style="font-weight:600;font-size:13px">H2</span></div>
+      <div class="pawtry-insert-item__body"><div class="pawtry-insert-item__title">Heading 2</div></div>
+    </div>
+    <div class="pawtry-insert-item" data-header-level="3">
+      <div class="pawtry-insert-item__icon"><span style="font-weight:600;font-size:12px">H3</span></div>
+      <div class="pawtry-insert-item__body"><div class="pawtry-insert-item__title">Heading 3</div></div>
+    </div>
+  </div>
+</div>
+
+<div id="pawtry-list-menu" class="pawtry-popup">
+  <div class="pawtry-insert-list">
+    <div class="pawtry-insert-item" data-list-type="bullet">
+      <div class="pawtry-insert-item__icon"><span class="material-symbols-outlined">format_list_bulleted</span></div>
+      <div class="pawtry-insert-item__body"><div class="pawtry-insert-item__title">Bullet list</div></div>
+    </div>
+    <div class="pawtry-insert-item" data-list-type="ordered">
+      <div class="pawtry-insert-item__icon"><span class="material-symbols-outlined">format_list_numbered</span></div>
+      <div class="pawtry-insert-item__body"><div class="pawtry-insert-item__title">Numbered list</div></div>
+    </div>
+  </div>
+</div>
+
+<div id="pawtry-emoji-popup" class="pawtry-popup">
+  <emoji-picker></emoji-picker>
+</div>
+
+<div id="pawtry-link-dialog" class="pawtry-popup">
+  <label>Link <span class="req">*</span></label>
+  <input id="pawtry-link-url" type="url" placeholder="Paste a link" autocomplete="off"/>
+  <label>Display text <span class="opt">(optional)</span></label>
+  <input id="pawtry-link-text" type="text" placeholder="Text to display" autocomplete="off"/>
+  <p class="helper">Give this link a title or description</p>
+  <div class="actions">
+    <button type="button" class="btn-cancel" id="pawtry-link-cancel">Cancel</button>
+    <button type="button" class="btn-insert" id="pawtry-link-insert">Insert</button>
+  </div>
+</div>
+
+<input id="pawtry-attach-input" type="file" style="display:none" accept="image/*,video/*,audio/*,.mkv,.avi,.mov,.mp4,.webm,.pdf,.doc,.docx,.xls,.xlsx,.txt"/>
+
+<!-- Mention autocomplete dropdown (shared by main editor + reply forms) -->
+<div id="pawtry-mention-menu" class="pawtry-mention-menu"></div>
+
+<!-- Description Editor Help modal -->
+<div id="pawtry-desc-help" class="pawtry-desc-help hidden">
+  <div class="pawtry-desc-help-backdrop"></div>
+  <div class="pawtry-desc-help-panel">
+    <div class="pawtry-desc-help-header">
+      <span style="font-weight:700">Formatting help</span>
+      <button type="button" id="pawtry-desc-help-close" class="pawtry-desc-help-close">
+        <span class="material-symbols-outlined">close</span>
+      </button>
+    </div>
+    <div class="pawtry-desc-help-body">
+      <p class="pawtry-desc-help-intro">Use these shortcuts to quickly format your description.</p>
+      <table class="pawtry-desc-help-table">
+        <tr><th>Action</th><th>Shortcut</th></tr>
+        <tr><td>Bold</td><td><kbd>Ctrl</kbd> + <kbd>B</kbd></td></tr>
+        <tr><td>Italic</td><td><kbd>Ctrl</kbd> + <kbd>I</kbd></td></tr>
+        <tr><td>Underline</td><td><kbd>Ctrl</kbd> + <kbd>U</kbd></td></tr>
+        <tr><td>Insert link</td><td>Click <strong>+</strong> → Link</td></tr>
+        <tr><td>Insert image</td><td>Click <strong>+</strong> → Image</td></tr>
+        <tr><td>Bulleted list</td><td>Click <strong>:≡</strong> → Bulleted</td></tr>
+        <tr><td>Numbered list</td><td>Click <strong>:≡</strong> → Numbered</td></tr>
+        <tr><td>Heading</td><td>Click <strong>Tt</strong> → H1/H2/H3</td></tr>
+        <tr><td>Mention member</td><td>Type <kbd>@</kbd> then name</td></tr>
+        <tr><td>Code snippet</td><td>Click <strong>+</strong> → Code snippet</td></tr>
+        <tr><td>Quote</td><td>Click <strong>+</strong> → Quote</td></tr>
+      </table>
     </div>
   </div>
 </div>
@@ -538,10 +1676,7 @@
     const API_BASE   = window.APP_CONFIG.API_BASE;
     const LOGIN_PAGE = '../login_page_with_pawtry_logo/code.html';
     const token = localStorage.getItem('token');
-    if (!token) {
-      window.location.replace(LOGIN_PAGE);
-      return;
-    }
+    if (!token) { window.location.replace(LOGIN_PAGE); return; }
 
     const boardTitleEl = document.getElementById('board-title');
     const columnsEl    = document.getElementById('kanban-columns');
@@ -555,59 +1690,32 @@
     const taskCache = new Map();
     const columnCache = new Map();
 
-    const state = {
-      activeBoardId:     null,
-      cachedBoards:      [],
-      boardLabelsCache:  [],
-      boardMembersCache: [],
-      currentUserId:     null,
-    };
+    const state = { activeBoardId: null, cachedBoards: [], boardLabelsCache: [], boardMembersCache: [], currentUserId: null };
 
     async function api(path, { method = 'GET', body } = {}) {
-      const opts = {
-        method,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-      };
+      const opts = { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` } };
       if (body) opts.body = JSON.stringify(body);
-
       const res = await fetch(`${API_BASE}${path}`, opts);
-      if (res.status === 401) {
-        localStorage.removeItem('token');
-        window.location.replace(LOGIN_PAGE);
-        throw new Error('Unauthorized');
-      }
+      if (res.status === 401) { localStorage.removeItem('token'); window.location.replace(LOGIN_PAGE); throw new Error('Unauthorized'); }
       const payload = await res.json().catch(() => ({}));
-      if (!res.ok || payload.status !== 'success') {
-        throw new Error(payload.message || `Request failed (HTTP ${res.status})`);
-      }
+      if (!res.ok || payload.status !== 'success') throw new Error(payload.message || `Request failed (HTTP ${res.status})`);
       return payload.data;
     }
 
     function escapeHtml(str) {
       if (str == null) return '';
-      return String(str)
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
     }
-
     function formatDueDate(isoDate) {
       if (!isoDate) return '';
       const d = new Date(isoDate);
       if (isNaN(d.getTime())) return '';
       return d.toLocaleDateString('en-US', { month: 'short', day: '2-digit' });
     }
-
     function initials(name) {
       if (!name) return '?';
       return name.trim().split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase();
     }
-
     function colorFor(str) {
       const palette = ['#3525cd', '#58579b', '#7e3000', '#a44100', '#4f46e5', '#454386'];
       let hash = 0;
@@ -619,90 +1727,27 @@
       const assignees = Array.isArray(task.assignees) ? task.assignees : [];
       const visibleAssignees = assignees.slice(0, 3);
       const overflow = assignees.length - visibleAssignees.length;
-
       const assigneeAvatars = visibleAssignees.map(u => {
         const pic = u.profile_picture || u.avatar_url;
-        if (pic) {
-          return `
-            <img src="${escapeHtml(coverSrc(pic))}"
-                 alt="${escapeHtml(u.full_name || u.email || '')}"
-                 title="${escapeHtml(u.full_name || u.email || '')}"
-                 class="w-6 h-6 rounded-full border border-surface object-cover"/>
-          `;
-        }
-        return `
-          <div class="w-6 h-6 rounded-full border border-surface flex items-center justify-center text-[9px] font-bold text-white"
-               style="background-color: ${colorFor(u.email || u.id || u.full_name)};"
-               title="${escapeHtml(u.full_name || u.email)}">
-            ${escapeHtml(initials(u.full_name))}
-          </div>
-        `;
+        if (pic) return `<img src="${escapeHtml(coverSrc(pic))}" alt="${escapeHtml(u.full_name || u.email || '')}" title="${escapeHtml(u.full_name || u.email || '')}" class="w-6 h-6 rounded-full border border-surface object-cover"/>`;
+        return `<div class="w-6 h-6 rounded-full border border-surface flex items-center justify-center text-[9px] font-bold text-white" style="background-color: ${colorFor(u.email || u.id || u.full_name)};" title="${escapeHtml(u.full_name || u.email)}">${escapeHtml(initials(u.full_name))}</div>`;
       }).join('');
-
-      const overflowBadge = overflow > 0
-        ? `<div class="w-6 h-6 rounded-full bg-primary-fixed flex items-center justify-center text-[10px] font-bold text-on-primary-fixed border border-surface">+${overflow}</div>`
-        : '';
-
+      const overflowBadge = overflow > 0 ? `<div class="w-6 h-6 rounded-full bg-primary-fixed flex items-center justify-center text-[10px] font-bold text-on-primary-fixed border border-surface">+${overflow}</div>` : '';
       const labels = Array.isArray(task.labels) ? task.labels : [];
-      const labelsStrip = labels.length
-        ? `<div class="flex flex-wrap gap-1 mb-2">
-             ${labels.map(l => `
-               <span class="h-2 w-10 rounded-sm" style="background:${escapeHtml(l.color || '#6b7280')}" title="${escapeHtml(l.title || '')}"></span>
-             `).join('')}
-           </div>`
-        : '';
-
+      const labelsStrip = labels.length ? `<div class="flex flex-wrap gap-1 mb-2">${labels.map(l => `<span class="h-2 w-10 rounded-sm" style="background:${escapeHtml(l.color || '#6b7280')}" title="${escapeHtml(l.title || '')}"></span>`).join('')}</div>` : '';
       const dueLabel = formatDueDate(task.due_date);
       let dueBlock = '';
       if (task.is_completed) {
-        dueBlock = `
-          <div class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-500/15 text-green-700">
-            <span class="material-symbols-outlined text-xs">check_circle</span>
-            <span class="text-[10px] font-bold uppercase">${escapeHtml(dueLabel || 'Done')}</span>
-          </div>
-        `;
+        dueBlock = `<div class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-green-500/15 text-green-700"><span class="material-symbols-outlined text-xs">check_circle</span><span class="text-[10px] font-bold uppercase">${escapeHtml(dueLabel || 'Done')}</span></div>`;
       } else if (dueLabel) {
-        dueBlock = `
-          <div class="inline-flex items-center gap-1 text-slate-400">
-            <span class="material-symbols-outlined text-xs">calendar_today</span>
-            <span class="text-[10px] font-medium uppercase">${escapeHtml(dueLabel)}</span>
-          </div>
-        `;
+        dueBlock = `<div class="inline-flex items-center gap-1 text-slate-400"><span class="material-symbols-outlined text-xs">calendar_today</span><span class="text-[10px] font-medium uppercase">${escapeHtml(dueLabel)}</span></div>`;
       }
-
-      const descBlock = task.description
-        ? `<p class="text-xs text-on-surface-variant mb-3 line-clamp-2">${escapeHtml(task.description)}</p>`
-        : '';
-
-
+      const descBlock = task.description ? `<p class="text-xs text-on-surface-variant mb-3 line-clamp-2">${escapeHtml(task.description)}</p>` : '';
       const attachments = Array.isArray(task.attachments) ? task.attachments : [];
-      const cover = attachments.find(a =>
-        a && a.is_cover && a.mimetype && a.mimetype.startsWith('image/')
-      );
-      const coverBlock = cover
-        ? `<div class="-mx-4 -mt-4 mb-3 h-32 rounded-t-xl overflow-hidden bg-surface-container-high">
-             <img src="${escapeHtml(coverSrc(cover.filename_or_url))}" alt="" class="w-full h-full object-cover pointer-events-none"/>
-           </div>`
-        : '';
-
-      return `
-        <div class="task-card bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-transparent hover:border-primary/20 transition-all cursor-grab active:cursor-grabbing overflow-hidden"
-             draggable="true"
-             data-task-id="${escapeHtml(task.id)}"
-             data-column-id="${escapeHtml(task.column_id)}">
-          ${coverBlock}
-          ${labelsStrip}
-          <h4 class="font-bold text-on-surface leading-tight mb-2">${escapeHtml(task.title)}</h4>
-          ${descBlock}
-          <div class="flex justify-between items-center mt-3 gap-2">
-            <div class="flex -space-x-1">${assigneeAvatars}${overflowBadge}</div>
-            ${dueBlock}
-          </div>
-          <div class="file-drop-overlay">Drop files to upload.</div>
-        </div>
-      `;
+      const cover = attachments.find(a => a && a.is_cover && a.mimetype && a.mimetype.startsWith('image/'));
+      const coverBlock = cover ? `<div class="-mx-4 -mt-4 mb-3 h-32 rounded-t-xl overflow-hidden bg-surface-container-high"><img src="${escapeHtml(coverSrc(cover.filename_or_url))}" alt="" class="w-full h-full object-cover pointer-events-none"/></div>` : '';
+      return `<div class="task-card bg-surface-container-lowest p-4 rounded-xl shadow-[0_4px_20px_-4px_rgba(0,0,0,0.06)] border border-transparent hover:border-primary/20 transition-all cursor-grab active:cursor-grabbing overflow-hidden" draggable="true" data-task-id="${escapeHtml(task.id)}" data-column-id="${escapeHtml(task.column_id)}">${coverBlock}${labelsStrip}<h4 class="font-bold text-on-surface leading-tight mb-2">${escapeHtml(task.title)}</h4>${descBlock}<div class="flex justify-between items-center mt-3 gap-2"><div class="flex -space-x-1">${assigneeAvatars}${overflowBadge}</div>${dueBlock}</div><div class="file-drop-overlay">Drop files to upload.</div></div>`;
     }
-
 
     function coverSrc(pathOrUrl) {
       if (!pathOrUrl) return '';
@@ -714,57 +1759,30 @@
     function renderBoard(board) {
       boardTitleEl.textContent = board.title || 'Untitled Board';
       document.title = `${board.title || 'Board'} | Pawtry`;
-
       const columns = Array.isArray(board.columns) ? [...board.columns] : [];
       columns.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-
       if (columns.length === 0) {
-        columnsEl.innerHTML = `
-          <div class="flex-1 flex items-center justify-center text-on-surface-variant">
-            <div class="flex flex-col items-center gap-2">
-              <span class="material-symbols-outlined text-[32px] text-outline">view_kanban</span>
-              <p class="text-sm font-medium">This board has no columns yet.</p>
-            </div>
-          </div>
-        `;
+        columnsEl.innerHTML = `<div class="flex-1 flex items-center justify-center text-on-surface-variant"><div class="flex flex-col items-center gap-2"><span class="material-symbols-outlined text-[32px] text-outline">view_kanban</span><p class="text-sm font-medium">This board has no columns yet.</p></div></div>`;
         return;
       }
-
       taskCache.clear();
       columnCache.clear();
-      columns.forEach(col => {
-        columnCache.set(String(col.id), col);
-        (col.tasks || []).forEach(t => taskCache.set(String(t.id), t));
-      });
-
+      columns.forEach(col => { columnCache.set(String(col.id), col); (col.tasks || []).forEach(t => taskCache.set(String(t.id), t)); });
       columnsEl.innerHTML = columns.map(window.Dashboard.renderColumn).join('');
       window.Dashboard.setupDragAndDrop();
       attachCardClickEvents();
       attachAddTaskEvents();
       window.Dashboard.attachColumnOptionEvents();
-
-      window.dispatchEvent(new CustomEvent('dashboard:board-loaded', {
-        detail: { boardId: state.activeBoardId },
-      }));
+      window.dispatchEvent(new CustomEvent('dashboard:board-loaded', { detail: { boardId: state.activeBoardId } }));
     }
 
     async function uploadTaskAttachment(taskId, file) {
       const fd = new FormData();
       fd.append('file', file);
-      const res = await fetch(`${API_BASE}/tasks/${taskId}/attachments`, {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: fd,
-      });
-      if (res.status === 401) {
-        localStorage.removeItem('token');
-        window.location.replace(LOGIN_PAGE);
-        throw new Error('Unauthorized');
-      }
+      const res = await fetch(`${API_BASE}/tasks/${taskId}/attachments`, { method: 'POST', headers: { 'Authorization': `Bearer ${token}` }, body: fd });
+      if (res.status === 401) { localStorage.removeItem('token'); window.location.replace(LOGIN_PAGE); throw new Error('Unauthorized'); }
       const payload = await res.json().catch(() => ({}));
-      if (!res.ok || payload.status !== 'success') {
-        throw new Error(payload.message || `Upload failed (HTTP ${res.status})`);
-      }
+      if (!res.ok || payload.status !== 'success') throw new Error(payload.message || `Upload failed (HTTP ${res.status})`);
       return payload.data;
     }
 
@@ -778,142 +1796,62 @@
 
     function attachSingleCardFileDrop(card) {
       let depth = 0;
-
-      card.addEventListener('dragenter', (e) => {
-        if (!hasFilesPayload(e.dataTransfer)) return;
-        e.preventDefault();
-        e.stopPropagation();
-        depth++;
-        card.classList.add('is-dragover');
-      });
-
-      card.addEventListener('dragover', (e) => {
-        if (!hasFilesPayload(e.dataTransfer)) return;
-        e.preventDefault();
-        e.stopPropagation();
-        e.dataTransfer.dropEffect = 'copy';
-      });
-
-      card.addEventListener('dragleave', (e) => {
-        if (!hasFilesPayload(e.dataTransfer)) return;
-        depth--;
-        if (depth <= 0) {
-          depth = 0;
-          card.classList.remove('is-dragover');
-        }
-      });
-
+      card.addEventListener('dragenter', (e) => { if (!hasFilesPayload(e.dataTransfer)) return; e.preventDefault(); e.stopPropagation(); depth++; card.classList.add('is-dragover'); });
+      card.addEventListener('dragover', (e) => { if (!hasFilesPayload(e.dataTransfer)) return; e.preventDefault(); e.stopPropagation(); e.dataTransfer.dropEffect = 'copy'; });
+      card.addEventListener('dragleave', (e) => { if (!hasFilesPayload(e.dataTransfer)) return; depth--; if (depth <= 0) { depth = 0; card.classList.remove('is-dragover'); } });
       card.addEventListener('drop', async (e) => {
         if (!hasFilesPayload(e.dataTransfer)) return;
-        e.preventDefault();
-        e.stopPropagation();
-        depth = 0;
-        card.classList.remove('is-dragover');
-
+        e.preventDefault(); e.stopPropagation(); depth = 0; card.classList.remove('is-dragover');
         const files = Array.from((e.dataTransfer && e.dataTransfer.files) || []);
         if (!files.length) return;
-
         const taskId = card.dataset.taskId;
         if (!taskId) return;
-
         let uploaded = 0;
         for (const file of files) {
-          try {
-            await uploadTaskAttachment(taskId, file);
-            uploaded++;
-          } catch (err) {
-            if (err.message === 'Unauthorized') return;
-            console.error('card drop upload failed:', err);
-            showToast(err.message || 'Upload failed', 'error');
-          }
+          try { await uploadTaskAttachment(taskId, file); uploaded++; }
+          catch (err) { if (err.message === 'Unauthorized') return; console.error('card drop upload failed:', err); showToast(err.message || 'Upload failed', 'error'); }
         }
-        if (uploaded) {
-          showToast(`${uploaded} file${uploaded > 1 ? 's' : ''} uploaded`, 'attach_file');
-          if (state.activeBoardId) loadBoardData(state.activeBoardId);
-        }
+        if (uploaded) { showToast(`${uploaded} file${uploaded > 1 ? 's' : ''} uploaded`, 'attach_file'); if (state.activeBoardId) loadBoardData(state.activeBoardId); }
       });
     }
 
     function attachSingleCardEvents(card) {
       let didDrag = false;
-
       card.addEventListener('dragstart', () => { didDrag = true; });
-      card.addEventListener('dragend',   () => {
-        setTimeout(() => { didDrag = false; }, 0);
-      });
-
+      card.addEventListener('dragend', () => { setTimeout(() => { didDrag = false; }, 0); });
       card.addEventListener('click', (e) => {
         if (didDrag) return;
         if (e.target.closest('button, a, input, textarea, select')) return;
-        if (window.Dashboard && window.Dashboard.openTaskModal) {
-          window.Dashboard.openTaskModal(card.dataset.taskId);
-        }
+        if (window.Dashboard && window.Dashboard.openTaskModal) window.Dashboard.openTaskModal(card.dataset.taskId);
       });
-
       attachSingleCardFileDrop(card);
     }
 
     function attachSingleCardDrag(card) {
       card.addEventListener('dragstart', (e) => {
         e.dataTransfer.effectAllowed = 'move';
-        e.dataTransfer.setData('text/plain', JSON.stringify({
-          taskId: card.dataset.taskId,
-          sourceColumnId: card.dataset.columnId,
-        }));
+        e.dataTransfer.setData('text/plain', JSON.stringify({ taskId: card.dataset.taskId, sourceColumnId: card.dataset.columnId }));
         requestAnimationFrame(() => card.classList.add('task-card-dragging'));
       });
-
       card.addEventListener('dragend', () => {
         card.classList.remove('task-card-dragging');
         columnsEl.querySelectorAll('.column-drag-over').forEach(c => c.classList.remove('column-drag-over'));
       });
     }
 
-    function attachCardClickEvents() {
-      columnsEl.querySelectorAll('.task-card').forEach(card => {
-        attachSingleCardEvents(card);
-      });
-    }
-
-    function attachAddTaskEvents() {
-      columnsEl.querySelectorAll('.add-task-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          if (window.Dashboard && window.Dashboard.openCreateModal) {
-            window.Dashboard.openCreateModal(btn.dataset.columnId);
-          }
-        });
-      });
-    }
+    function attachCardClickEvents() { columnsEl.querySelectorAll('.task-card').forEach(card => { attachSingleCardEvents(card); }); }
+    function attachAddTaskEvents() { columnsEl.querySelectorAll('.add-task-btn').forEach(btn => { btn.addEventListener('click', () => { if (window.Dashboard && window.Dashboard.openCreateModal) window.Dashboard.openCreateModal(btn.dataset.columnId); }); }); }
 
     function renderError(message) {
       boardTitleEl.textContent = 'Could not load board';
-      columnsEl.innerHTML = `
-        <div class="flex-1 flex items-center justify-center">
-          <div class="flex flex-col items-center gap-3 max-w-md text-center">
-            <span class="material-symbols-outlined text-error text-[40px]">error</span>
-            <p class="text-sm font-semibold text-on-surface">${escapeHtml(message)}</p>
-            <p class="text-xs text-on-surface-variant">ตรวจสอบว่า backend กำลังทำงานอยู่ที่ ${window.APP_CONFIG.API_ORIGIN} และมี board ในฐานข้อมูล</p>
-          </div>
-        </div>
-      `;
+      columnsEl.innerHTML = `<div class="flex-1 flex items-center justify-center"><div class="flex flex-col items-center gap-3 max-w-md text-center"><span class="material-symbols-outlined text-error text-[40px]">error</span><p class="text-sm font-semibold text-on-surface">${escapeHtml(message)}</p><p class="text-xs text-on-surface-variant">ตรวจสอบว่า backend กำลังทำงานอยู่ที่ ${window.APP_CONFIG.API_ORIGIN} และมี board ในฐานข้อมูล</p></div></div>`;
     }
 
     async function loadBoardData(boardId) {
       if (!boardId) return;
-
-      if (window.Dashboard && window.Dashboard.SocketManager) {
-        window.Dashboard.SocketManager.joinBoardRoom(boardId);
-      }
-
+      if (window.Dashboard && window.Dashboard.SocketManager) window.Dashboard.SocketManager.joinBoardRoom(boardId);
       try {
-        columnsEl.innerHTML = `
-          <div class="flex-1 flex items-center justify-center text-on-surface-variant">
-            <div class="flex flex-col items-center gap-3">
-              <span class="material-symbols-outlined text-primary animate-spin text-[32px]">progress_activity</span>
-              <p class="text-sm font-medium">Loading board...</p>
-            </div>
-          </div>
-        `;
+        columnsEl.innerHTML = `<div class="flex-1 flex items-center justify-center text-on-surface-variant"><div class="flex flex-col items-center gap-3"><span class="material-symbols-outlined text-primary animate-spin text-[32px]">progress_activity</span><p class="text-sm font-medium">Loading board...</p></div></div>`;
         const [detail, labelsData, membersData] = await Promise.all([
           api(`/boards/${boardId}`),
           api(`/boards/${boardId}/labels`).catch(() => ({ labels: [] })),
@@ -934,7 +1872,6 @@
         if (d && d.user) {
           userNameEl.textContent = d.user.full_name || d.user.email;
           state.currentUserId = d.user.id;
-
           const pic = d.user.profile_picture || d.user.avatar_url;
           if (pic) {
             const resolved = coverSrc(pic);
@@ -943,39 +1880,22 @@
             if (headerImg)  headerImg.src  = resolved;
             if (sidebarImg) sidebarImg.src = resolved;
           }
-
-          if (window.Dashboard && window.Dashboard.SocketManager) {
-            window.Dashboard.SocketManager.joinUserRoom(state.currentUserId);
-          }
+          if (window.Dashboard && window.Dashboard.SocketManager) window.Dashboard.SocketManager.joinUserRoom(state.currentUserId);
         }
-      }).catch(() => { /* ignore */ });
+      }).catch(() => {});
       if (window.Dashboard.fetchNotifications) window.Dashboard.fetchNotifications();
-
       await window.Dashboard.loadBoards();
-
       if (state.cachedBoards.length === 0) {
         boardTitleEl.textContent = 'No boards yet';
-        columnsEl.innerHTML = `
-          <div class="flex-1 flex items-center justify-center text-on-surface-variant">
-            <div class="flex flex-col items-center gap-2">
-              <span class="material-symbols-outlined text-[32px] text-outline">dashboard_customize</span>
-              <p class="text-sm font-medium">No boards yet. Click "New Board" to create one.</p>
-            </div>
-          </div>
-        `;
+        columnsEl.innerHTML = `<div class="flex-1 flex items-center justify-center text-on-surface-variant"><div class="flex flex-col items-center gap-2"><span class="material-symbols-outlined text-[32px] text-outline">dashboard_customize</span><p class="text-sm font-medium">No boards yet. Click "New Board" to create one.</p></div></div>`;
         return;
       }
-
       state.activeBoardId = state.cachedBoards[0].id;
       window.Dashboard.renderBoardList();
       await loadBoardData(state.activeBoardId);
     }
 
-    inviteBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      invitePopup.classList.toggle('hidden');
-    });
-
+    inviteBtn.addEventListener('click', (e) => { e.stopPropagation(); invitePopup.classList.toggle('hidden'); });
     document.addEventListener('click', (e) => {
       if (invitePopup.classList.contains('hidden')) return;
       if (invitePopup.contains(e.target) || inviteBtn.contains(e.target)) return;
@@ -984,27 +1904,15 @@
 
     const inviteEmailInput = document.getElementById('invite-email-input');
     const submitInviteBtn  = document.getElementById('submit-invite-btn');
-
     async function submitInvite() {
-      if (!state.activeBoardId) {
-        alert('Please select or create a board first');
-        return;
-      }
+      if (!state.activeBoardId) { alert('Please select or create a board first'); return; }
       const email = inviteEmailInput.value.trim();
-      if (!email) {
-        alert('Please enter an email address');
-        inviteEmailInput.focus();
-        return;
-      }
-
+      if (!email) { alert('Please enter an email address'); inviteEmailInput.focus(); return; }
       submitInviteBtn.disabled = true;
       const originalLabel = submitInviteBtn.textContent;
       submitInviteBtn.textContent = 'Sending...';
       try {
-        await api(`/boards/${state.activeBoardId}/invite`, {
-          method: 'POST',
-          body: { email },
-        });
+        await api(`/boards/${state.activeBoardId}/invite`, { method: 'POST', body: { email } });
         alert('Invitation sent successfully!');
         inviteEmailInput.value = '';
         invitePopup.classList.add('hidden');
@@ -1017,24 +1925,15 @@
         submitInviteBtn.textContent = originalLabel;
       }
     }
-
     submitInviteBtn.addEventListener('click', submitInvite);
-    inviteEmailInput.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') {
-        e.preventDefault();
-        submitInvite();
-      }
-    });
+    inviteEmailInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submitInvite(); } });
 
     const toastContainerEl = document.getElementById('toast-container');
     function showToast(message, icon = 'notifications') {
       if (!toastContainerEl) return;
       const toast = document.createElement('div');
       toast.className = 'pointer-events-auto flex items-center gap-2 bg-on-surface text-surface-container-lowest px-4 py-3 rounded-xl shadow-2xl text-sm font-medium max-w-xs animate-[fadeIn_0.2s_ease-out]';
-      toast.innerHTML = `
-        <span class="material-symbols-outlined text-base shrink-0">${escapeHtml(icon)}</span>
-        <span class="flex-1">${escapeHtml(message)}</span>
-      `;
+      toast.innerHTML = `<span class="material-symbols-outlined text-base shrink-0">${escapeHtml(icon)}</span><span class="flex-1">${escapeHtml(message)}</span>`;
       toastContainerEl.appendChild(toast);
       setTimeout(() => {
         toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
@@ -1044,58 +1943,34 @@
       }, 3000);
     }
 
-
     userMenuBtn.addEventListener('click', () => {
-      if (confirm('Logout from Pawtry?')) {
-        localStorage.removeItem('token');
-        window.location.replace(LOGIN_PAGE);
-      }
+      if (confirm('Logout from Pawtry?')) { localStorage.removeItem('token'); window.location.replace(LOGIN_PAGE); }
     });
 
     window.Dashboard = {
-      api,
-      escapeHtml,
-      showToast,
-      formatDueDate,
-      initials,
-      colorFor,
-      coverSrc,
-
-      LOGIN_PAGE,
-      state,
-
-      loadBoardData,
-
+      api, escapeHtml, showToast, formatDueDate, initials, colorFor, coverSrc,
+      LOGIN_PAGE, state, loadBoardData,
       getActiveBoardId: () => state.activeBoardId,
       getCurrentUserId: () => state.currentUserId,
       getColumnById: (id) => columnCache.get(String(id)) || null,
       getTaskById:   (id) => taskCache.get(String(id)) || null,
       getLabelById:  (id) => state.boardLabelsCache.find(l => String(l.id) === String(id)) || null,
       getMemberById: (id) => state.boardMembersCache.find(u => String(u.id) === String(id)) || null,
-      taskCache,
-      columnCache,
+      taskCache, columnCache,
       getBoardLabelsCache:  () => state.boardLabelsCache,
       getBoardMembersCache: () => state.boardMembersCache,
-
       getColumnsEl:    () => columnsEl,
       getUserNameEl:   () => userNameEl,
       getBoardTitleEl: () => boardTitleEl,
       getBoardListEl:  () => boardListEl,
       getNewBoardBtn:  () => newBoardBtn,
       getAddColumnBtn: () => addColumnBtn,
-      renderTaskCard,
-      attachSingleCardEvents,
-      attachSingleCardDrag,
-      attachSingleCardFileDrop,
-      uploadTaskAttachment,
-      hasFilesPayload,
+      renderTaskCard, attachSingleCardEvents, attachSingleCardDrag, attachSingleCardFileDrop,
+      uploadTaskAttachment, hasFilesPayload,
     };
 
-    if (document.readyState === 'loading') {
-      document.addEventListener('DOMContentLoaded', bootstrapDashboard);
-    } else {
-      setTimeout(bootstrapDashboard, 0);
-    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bootstrapDashboard);
+    else setTimeout(bootstrapDashboard, 0);
   })();
 </script>
 <script src="../components/NotificationManager.js"></script>
@@ -1105,6 +1980,7 @@
 <script src="../components/KanbanDragDrop.js"></script>
 <script src="../components/FilterManager.js"></script>
 <script src="../components/SettingsModal.js"></script>
+<script src="https://cdn.quilljs.com/1.3.7/quill.min.js"></script>
 <script src="../components/TaskModal.js"></script>
 <script src="log_page.js"></script>
 </body></html>

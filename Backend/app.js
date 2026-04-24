@@ -42,12 +42,8 @@ io.use((socket, next) => {
 io.on('connection', (socket) => {
   console.log(`⚡ Socket connected: ${socket.id} (user ${socket.user && socket.user.id})`);
 
-  // Track the current board room per socket so we can leave it cleanly
-  // when the user switches boards. One socket watches one board at a time.
   let currentBoardRoom = null;
 
-  // ── join_user_room ── join a private room for this user's notifications
-  //    Client emits right after fetching /users/me.
   socket.on('join_user_room', (userId) => {
     if (!userId) return;
     const room = `user_${userId}`;
@@ -55,9 +51,6 @@ io.on('connection', (socket) => {
     console.log(`   ↳ ${socket.id} joined ${room}`);
   });
 
-  // ── join_board_room ── join a board's live-update room
-  //    Client emits on initial board load and whenever the user switches boards.
-  //    We auto-leave the previously joined board room to keep the socket clean.
   socket.on('join_board_room', (boardId) => {
     if (!boardId) return;
     const room = `board_${boardId}`;
@@ -95,6 +88,7 @@ app.use('/api/tasks',         require('./routes/taskRoutes'));
 app.use('/api/attachments',   require('./routes/attachmentRoutes'));
 app.use('/api/comments',      require('./routes/commentRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/line',          require('./routes/lineRoutes'));
 
 // ─── Global error handler (must be AFTER all routes) ───
 app.use(require('./middlewares/errorMiddleware'));

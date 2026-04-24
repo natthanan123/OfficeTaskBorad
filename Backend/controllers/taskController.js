@@ -1,15 +1,19 @@
 const {
   Task,
   Column,
+  Board,
   Label,
   TaskLabel,
   TaskComment,
   User,
+  BoardMember,
   Notification,
   ActivityLog,
   sequelize,
 } = require('../models');
 const { parseUrlsToAttachments } = require('../utils/parseUrlsToAttachments');
+const { processMentionsForComment } = require('../utils/mentionUtil');
+const { sanitizeHtml } = require('../utils/sanitizeHtml');
 
 function emitBoardUpdate(req, boardId, type) {
   if (!boardId) return;
@@ -33,6 +37,17 @@ async function resolveBoardIdForTask(task) {
   if (!task) return null;
   const column = await Column.findByPk(task.column_id);
   return column ? column.board_id : null;
+}
+
+async function userHasBoardAccess(userId, boardId, userRole) {
+  if (!boardId) return false;
+  if (userRole === 'admin') return true;
+  const [member, board] = await Promise.all([
+    BoardMember.findOne({ where: { user_id: userId, board_id: boardId, status: 'accepted' } }),
+    Board.findByPk(boardId),
+  ]);
+  if (member) return true;
+  return !!(board && String(board.creator_id) === String(userId));
 }
 
 exports.createTask = async (req, res) => {
@@ -214,19 +229,35 @@ exports.addTaskComment = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Task not found' });
     }
 
-    const { content } = req.body;
+    const { content, parent_id } = req.body;
     if (!content || typeof content !== 'string' || !content.trim()) {
       return res.status(400).json({ status: 'error', message: 'content is required' });
+    }
+
+    const clean = sanitizeHtml(content.trim());
+    if (!clean) {
+      return res.status(400).json({ status: 'error', message: 'content is empty after sanitization' });
+    }
+
+    if (parent_id) {
+      const parent = await TaskComment.findByPk(parent_id);
+      if (!parent) {
+        return res.status(404).json({ status: 'error', message: 'Parent comment not found' });
+      }
+      if (String(parent.task_id) !== String(task.id)) {
+        return res.status(400).json({ status: 'error', message: 'Parent comment does not belong to this task' });
+      }
     }
 
     const created = await TaskComment.create({
       task_id: task.id,
       user_id: req.user.id,
-      content: content.trim(),
+      content: clean,
+      parent_id: parent_id || null,
     });
 
     const comment = await TaskComment.findByPk(created.id, {
-      include: { model: User, as: 'author', attributes: ['id', 'full_name', 'email'] },
+      include: { model: User, as: 'author', attributes: ['id', 'full_name', 'email', 'profile_picture', 'avatar_url'] },
     });
 
     const boardId = await resolveBoardIdForTask(task);
@@ -240,7 +271,14 @@ exports.addTaskComment = async (req, res) => {
       details:     { comment_id: created.id },
     });
 
-    await parseUrlsToAttachments(content.trim(), task.id, 'comment', req.user.id);
+    await parseUrlsToAttachments(clean, task.id, 'comment', req.user.id);
+
+    await processMentionsForComment({
+      content: clean,
+      commentId: created.id,
+      authorId: req.user.id,
+      req,
+    });
 
     return res.status(201).json({ status: 'success', data: { comment } });
   } catch (err) {
@@ -406,5 +444,167 @@ exports.deleteTask = async (req, res) => {
   } catch (err) {
     console.error('deleteTask error:', err);
     return res.status(500).json({ status: 'error', message: 'Could not delete task' });
+  }
+};
+
+exports.copyTask = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const original = await Task.findByPk(req.params.id, { transaction: t });
+    if (!original) {
+      await t.rollback();
+      return res.status(404).json({ status: 'error', message: 'Task not found' });
+    }
+
+    const sourceColumn = await Column.findByPk(original.column_id, { transaction: t });
+    const sourceBoardId = sourceColumn ? sourceColumn.board_id : null;
+    if (!(await userHasBoardAccess(req.user.id, sourceBoardId, req.user.role))) {
+      await t.rollback();
+      return res.status(403).json({ status: 'error', message: 'Forbidden' });
+    }
+
+    const targetColumnId = req.body.column_id || original.column_id;
+    const targetColumn = await Column.findByPk(targetColumnId, { transaction: t });
+    if (!targetColumn) {
+      await t.rollback();
+      return res.status(404).json({ status: 'error', message: 'Target column not found' });
+    }
+
+    if (String(targetColumn.board_id) !== String(sourceBoardId)) {
+      if (!(await userHasBoardAccess(req.user.id, targetColumn.board_id, req.user.role))) {
+        await t.rollback();
+        return res.status(403).json({ status: 'error', message: 'Forbidden on target board' });
+      }
+    }
+
+    const maxPos = await Task.max('position', { where: { column_id: targetColumnId }, transaction: t });
+    const finalPosition = (maxPos ?? -1) + 1;
+
+    const rawTitle = typeof req.body.title === 'string' ? req.body.title.trim() : '';
+    const newTitle = rawTitle || `${original.title} (copy)`;
+
+    const copy = await Task.create({
+      column_id: targetColumnId,
+      title: newTitle,
+      description: original.description,
+      due_date: original.due_date,
+      position: finalPosition,
+    }, { transaction: t });
+
+    const originalLabels = await TaskLabel.findAll({
+      where: { task_id: original.id },
+      transaction: t,
+    });
+    for (const tl of originalLabels) {
+      await TaskLabel.create(
+        { task_id: copy.id, label_id: tl.label_id },
+        { transaction: t }
+      );
+    }
+
+    const origAssignees = await original.getAssignees({ transaction: t });
+    for (const u of origAssignees) {
+      await copy.addAssignee(u, { transaction: t });
+    }
+
+    await t.commit();
+
+    const fresh = await Task.findByPk(copy.id, {
+      include: [
+        { model: User, as: 'assignees', attributes: ['id', 'full_name', 'email'], through: { attributes: [] } },
+        { model: Label, as: 'labels', through: { attributes: [] } },
+      ],
+    });
+
+    emitBoardUpdate(req, targetColumn.board_id, 'task_copied');
+
+    await logActivity({
+      board_id:    targetColumn.board_id,
+      user_id:     req.user.id,
+      task_id:     copy.id,
+      action_type: 'COPY_TASK',
+      details:     { source_task_id: original.id, title: newTitle },
+    });
+
+    return res.status(201).json({ status: 'success', data: { task: fresh } });
+  } catch (err) {
+    try { await t.rollback(); } catch (_) {}
+    console.error('copyTask error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not copy task' });
+  }
+};
+
+exports.toggleTaskWatch = async (req, res) => {
+  try {
+    const task = await Task.findByPk(req.params.id);
+    if (!task) {
+      return res.status(404).json({ status: 'error', message: 'Task not found' });
+    }
+
+    const boardId = await resolveBoardIdForTask(task);
+    if (!(await userHasBoardAccess(req.user.id, boardId, req.user.role))) {
+      return res.status(403).json({ status: 'error', message: 'Forbidden' });
+    }
+
+    const currentWatchers = await task.getWatchers();
+    const isWatching = currentWatchers.some(u => String(u.id) === String(req.user.id));
+
+    if (isWatching) {
+      await task.removeWatcher(req.user);
+    } else {
+      await task.addWatcher(req.user);
+    }
+
+    const updated = await task.getWatchers({ attributes: ['id'] });
+    const watchers = updated.map(u => String(u.id));
+
+    await logActivity({
+      board_id:    boardId,
+      user_id:     req.user.id,
+      task_id:     task.id,
+      action_type: isWatching ? 'UNWATCH_TASK' : 'WATCH_TASK',
+      details:     {},
+    });
+
+    return res.json({ status: 'success', data: { watching: !isWatching, watchers } });
+  } catch (err) {
+    console.error('toggleTaskWatch error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not toggle watch' });
+  }
+};
+
+/**
+ * POST /api/tasks/:id/archive
+ * Soft-deletes a task by setting archived_at. Only board members can archive.
+ */
+exports.archiveTask = async (req, res) => {
+  try {
+    const task = await Task.findByPk(req.params.id);
+    if (!task) {
+      return res.status(404).json({ status: 'error', message: 'Task not found' });
+    }
+
+    const boardId = await resolveBoardIdForTask(task);
+    if (!(await userHasBoardAccess(req.user.id, boardId, req.user.role))) {
+      return res.status(403).json({ status: 'error', message: 'Forbidden' });
+    }
+
+    task.archived_at = new Date();
+    await task.save();
+
+    emitBoardUpdate(req, boardId, 'task_archived');
+
+    await logActivity({
+      board_id:    boardId,
+      user_id:     req.user.id,
+      task_id:     task.id,
+      action_type: 'ARCHIVE_TASK',
+      details:     { title: task.title },
+    });
+
+    return res.json({ status: 'success', data: { task_id: task.id, archived_at: task.archived_at } });
+  } catch (err) {
+    console.error('archiveTask error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not archive task' });
   }
 };

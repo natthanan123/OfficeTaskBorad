@@ -8,6 +8,7 @@ const {
   Label,
   TaskComment,
   Attachment,
+  CommentReaction,
   sequelize,
 } = require('../models');
 
@@ -120,11 +121,18 @@ exports.getBoardById = async (req, res) => {
                 as: 'comments',
                 separate: true,
                 order: [['created_at', 'ASC']],
-                include: {
-                  model: User,
-                  as: 'author',
-                  attributes: ['id', 'full_name', 'email'],
-                },
+                include: [
+                  {
+                    model: User,
+                    as: 'author',
+                    attributes: ['id', 'full_name', 'email', 'profile_picture', 'avatar_url'],
+                  },
+                  {
+                    model: CommentReaction,
+                    as: 'reactions',
+                    attributes: ['id', 'emoji', 'user_id'],
+                  },
+                ],
               },
               {
                 model: Attachment,
@@ -150,10 +158,21 @@ exports.getBoardById = async (req, res) => {
         assignees:   task?.assignees   || task?.Assignees   || [],
         labels:      task?.labels      || task?.Labels      || [],
         attachments: task?.attachments || task?.Attachments || [],
-        comments:  (task?.comments || task?.Comments || []).map((c) => ({
-          ...c,
-          author: c?.author || c?.Author || null,
-        })),
+        comments:  (task?.comments || task?.Comments || []).map((c) => {
+          const rawReactions = c?.reactions || c?.Reactions || [];
+          const grouped = {};
+          rawReactions.forEach(r => {
+            const emoji = r.emoji;
+            if (!grouped[emoji]) grouped[emoji] = { emoji, count: 0, user_ids: [] };
+            grouped[emoji].count++;
+            grouped[emoji].user_ids.push(r.user_id);
+          });
+          return {
+            ...c,
+            author: c?.author || c?.Author || null,
+            reactions: Object.values(grouped),
+          };
+        }),
       }));
       return { ...column, tasks };
     });

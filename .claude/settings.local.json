@@ -1,7 +1,8 @@
 {
   "permissions": {
     "allow": [
-      "Bash(wc:*)"
+      "Bash(wc:*)",
+      "Bash(awk 'NR==1 || /\\\\\\\\0/')"
     ]
   }
 }

@@ -29,6 +29,10 @@ module.exports = (sequelize) => {
       allowNull: false,
       defaultValue: false,
     },
+    archived_at: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   }, {
     tableName: 'tasks',
   });

@@ -10,6 +10,9 @@ const {
   addTaskComment,
   toggleTaskLabel,
   assignTaskUser,
+  copyTask,
+  toggleTaskWatch,
+  archiveTask,
 } = require('../controllers/taskController');
 const {
   uploadAttachment,
@@ -28,6 +31,10 @@ router.put('/:id/due_date',  setTaskDueDate);
 router.post('/:id/comments', addTaskComment);
 router.post('/:id/labels',   toggleTaskLabel);
 router.post('/:id/assign',   assignTaskUser);
+
+router.post('/:id/copy',    copyTask);
+router.post('/:id/watch',   toggleTaskWatch);
+router.post('/:id/archive', archiveTask);
 
 router.get('/:task_id/attachments',       listAttachments);
 router.post('/:task_id/attachments',      attachmentUpload.single('file'), uploadAttachment);
