@@ -1,5 +1,5 @@
 (function () {
-  const API_ORIGIN = 'http://localhost:3000';
+  const API_ORIGIN = 'http://192.168.1.135:3000';
 
   window.APP_CONFIG = {
     API_ORIGIN: API_ORIGIN,
