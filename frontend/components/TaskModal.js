@@ -2303,6 +2303,7 @@
       modalDeleteBtn.innerHTML = '<span class="material-symbols-outlined text-base">delete</span>Delete';
       modalDeleteBtn.disabled = false;
     }
+    modalSaveBtn.classList.remove('hidden');
     modalSaveBtn.innerHTML = '<span class="material-symbols-outlined text-base">save</span> Save Changes';
     modalSaveBtn.disabled = false;
     closeAllPopups();
@@ -2333,6 +2334,7 @@
     if (modalSidebar) modalSidebar.classList.remove('hidden');
 
     if (modalDeleteBtn) modalDeleteBtn.classList.add('hidden');
+    modalSaveBtn.classList.remove('hidden');
     modalSaveBtn.innerHTML = '<span class="material-symbols-outlined text-base">add_task</span> Create Task';
     modalSaveBtn.disabled = false;
 
