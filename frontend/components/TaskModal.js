@@ -195,10 +195,7 @@
       setupCustomToolbar();
     }
 
-    // Enable @mention on main comment editor
-    if (typeof attachMentionSupport === 'function') {
-      attachMentionSupport(quillEditor);
-    }
+    if (D.attachMentionSupport) D.attachMentionSupport(quillEditor);
   }
 
   function updateToolbarActive() {
@@ -541,7 +538,7 @@
         placeholder: 'Add a more detailed description...',
         modules: { toolbar: false },
       });
-      if (typeof attachMentionSupport === 'function') attachMentionSupport(descQuill);
+      if (D.attachMentionSupport) D.attachMentionSupport(descQuill);
 
       // Wire description toolbar
       wireDescToolbar(descQuill);
@@ -1001,7 +998,7 @@
       if (empty) empty.remove();
 
       const wrapper = document.createElement('div');
-      wrapper.innerHTML = renderCommentItem(comment);
+      wrapper.innerHTML = D.renderCommentItem(comment);
       const li = wrapper.firstElementChild;
       if (li) modalCommentsList.appendChild(li);
 
@@ -1356,167 +1353,14 @@
       : '<span class="text-xs text-gray-400 italic">No members yet</span>';
   }
 
-  function renderCommentContent(content) {
-    if (!content) return '';
-    if (content.startsWith('<')) return content;
-    return escapeHtml(content);
-  }
-
-  // ─────────────────────────────────────────────
-  // Comment item rendering (own vs other)
-  // ─────────────────────────────────────────────
-  function isOwnComment(comment) {
-    const D2 = window.Dashboard;
-    const currentUserId = D2.getCurrentUserId && D2.getCurrentUserId();
-    if (!comment) return false;
-
-    if (comment.author && comment.author.id && currentUserId) {
-      if (String(comment.author.id) === String(currentUserId)) return true;
-    }
-    if (comment.user_id && currentUserId) {
-      if (String(comment.user_id) === String(currentUserId)) return true;
-    }
-    if (comment.author && comment.author.email) {
-      const userNameEl = D2.getUserNameEl && D2.getUserNameEl();
-      const me = D2.state && D2.state.currentUser;
-      if (me && me.email && String(comment.author.email).toLowerCase() === String(me.email).toLowerCase()) return true;
-      if (userNameEl && comment.author.full_name && userNameEl.textContent.trim() === comment.author.full_name.trim()) return true;
-      if (userNameEl && comment.author.email && userNameEl.textContent.trim() === comment.author.email.trim()) return true;
-    }
-    return false;
-  }
-
-  function renderCommentThread(comments) {
-    if (!Array.isArray(comments) || !comments.length) return '';
-
-    // Index by id and group children by parent_id
-    const byId = new Map();
-    const childrenByParent = new Map();
-    comments.forEach(c => {
-      byId.set(String(c.id), c);
-      const pid = c.parent_id ? String(c.parent_id) : null;
-      if (!childrenByParent.has(pid)) childrenByParent.set(pid, []);
-      childrenByParent.get(pid).push(c);
-    });
-
-    childrenByParent.forEach(arr => arr.sort((a, b) => {
-      const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return ta - tb;
-    }));
-
-    function renderBranch(c, depth) {
-      const cappedDepth = Math.min(depth, 2);
-      let html = renderCommentItem(c, cappedDepth);
-      const kids = childrenByParent.get(String(c.id)) || [];
-      kids.forEach(k => { html += renderBranch(k, depth + 1); });
-      return html;
-    }
-
-    const roots = childrenByParent.get(null) || [];
-    comments.forEach(c => {
-      if (c.parent_id && !byId.has(String(c.parent_id))) {
-        if (!roots.includes(c)) roots.push(c);
-      }
-    });
-    roots.sort((a, b) => {
-      const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
-      const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
-      return ta - tb;
-    });
-
-    return roots.map(r => renderBranch(r, 0)).join('');
-  }
-
-  function renderCommentItem(c, depth = 0) {
-    const author = (c.author && (c.author.full_name || c.author.email)) || 'Unknown';
-    const when = formatCommentTimestamp(c.created_at);
-    const whenIso = c.created_at || '';
-    const pic = c.author && (c.author.profile_picture || c.author.avatar_url);
-    const avatarSize = depth > 0 ? 'w-6 h-6 text-[10px]' : 'w-8 h-8 text-[11px]';
-    const avatar = pic
-      ? `<img src="${escapeHtml(coverSrc(pic))}" alt="${escapeHtml(author)}" class="${avatarSize} rounded-full object-cover flex-shrink-0"/>`
-      : `<div class="${avatarSize} rounded-full flex items-center justify-center font-bold text-white flex-shrink-0" style="background:${colorFor(author)}">${escapeHtml(initials(author))}</div>`;
-
-    const isOwn = isOwnComment(c);
-    const isEdited = !!c.updated_at && c.updated_at !== c.created_at;
-    const editedBadge = isEdited ? ' <span class="pawtry-comment-edited">(edited)</span>' : '';
-    const editedTooltip = isEdited && c.updated_at ? ` title="Edited ${escapeHtml(formatCommentTimestamp(c.updated_at))}"` : '';
-    const reactionsHtml = renderReactionsRow(c);
-    const actionsHtml = isOwn
-      ? `<div class="pawtry-comment-actions">
-           <button type="button" class="pawtry-comment-action-btn" data-comment-action="edit" data-comment-id="${escapeHtml(String(c.id))}">แก้ไข</button>
-           <span class="pawtry-comment-action-sep">•</span>
-           <button type="button" class="pawtry-comment-action-btn is-danger" data-comment-action="delete" data-comment-id="${escapeHtml(String(c.id))}">ลบ</button>
-         </div>`
-      : `<div class="pawtry-comment-actions">
-           <button type="button" class="pawtry-comment-action-btn" data-comment-action="reply" data-comment-id="${escapeHtml(String(c.id))}">ตอบกลับ</button>
-         </div>`;
-
-    const depthClass = depth > 0 ? `pawtry-reply-item pawtry-reply-depth-${depth}` : '';
-    const indentPx = depth >= 3 ? 144 : depth * 48;  // 0, 48, 96, 144
-    const indentStyle = depth > 0 ? ` style="margin-left:${indentPx}px"` : '';
-
-    return `<li class="flex gap-3 ${depthClass}"${indentStyle} data-comment-item="${escapeHtml(String(c.id))}" data-comment-depth="${depth}">
-        ${avatar}
-        <div class="flex-1 min-w-0">
-          <div class="flex items-baseline gap-2 flex-wrap">
-            <span class="text-sm font-semibold text-gray-800">${escapeHtml(author)}</span>
-            <a href="#comment-${escapeHtml(String(c.id))}" class="pawtry-comment-timestamp" data-comment-id="${escapeHtml(String(c.id))}"${editedTooltip}>${escapeHtml(when)}</a>${editedBadge}
-          </div>
-          <div class="mt-1 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-700 break-words overflow-visible" data-comment-body="${escapeHtml(String(c.id))}">${renderCommentContent(c.content)}</div>
-          <div class="pawtry-comment-footer">
-            ${reactionsHtml}
-            ${actionsHtml}
-          </div>
-        </div>
-      </li>`;
-  }
-
-  function formatCommentTimestamp(iso) {
-    if (!iso) return '';
-    try {
-      const d = new Date(iso);
-      if (isNaN(d.getTime())) return '';
-      return d.toLocaleString('en-US', {
-        month: 'short',
-        day: 'numeric',
-        year: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        hour12: true,
-      });
-    } catch (e) { return ''; }
-  }
-
-  // ─────────────────────────────────────────────
-  // Reactions rendering
-  // ─────────────────────────────────────────────
-  function renderReactionsRow(c) {
-    const currentUserId = D.getCurrentUserId && D.getCurrentUserId();
-    const reactions = Array.isArray(c.reactions) ? c.reactions : [];
-    const pills = reactions.map(r => {
-      const isMine = currentUserId && Array.isArray(r.user_ids) && r.user_ids.some(uid => String(uid) === String(currentUserId));
-      return `<button type="button" class="pawtry-reaction-pill ${isMine ? 'is-mine' : ''}" data-reaction-toggle data-comment-id="${escapeHtml(String(c.id))}" data-emoji="${escapeHtml(r.emoji)}">
-        <span class="pawtry-reaction-emoji">${escapeHtml(r.emoji)}</span>
-        <span class="pawtry-reaction-count">${r.count}</span>
-      </button>`;
-    }).join('');
-
-    const pickerBtn = `<button type="button" class="pawtry-reaction-picker-btn" data-reaction-picker data-comment-id="${escapeHtml(String(c.id))}" title="Add reaction">
-      <span class="material-symbols-outlined">mood</span>
-    </button>`;
-
-    return `<div class="pawtry-reactions-row">${pills}${pickerBtn}</div>`;
-  }
-
+  // Reactions live-refresh
   function refreshReactionsRow(commentId, reactions) {
     const item = modalCommentsList.querySelector(`[data-comment-item="${commentId}"]`);
     if (!item) return;
     const row = item.querySelector('.pawtry-reactions-row');
     if (!row) return;
     const fake = { id: commentId, reactions: reactions || [] };
-    const newHtml = renderReactionsRow(fake);
+    const newHtml = D.renderReactionsRow(fake);
     const tmp = document.createElement('div');
     tmp.innerHTML = newHtml;
     const newRow = tmp.firstElementChild;
@@ -1664,7 +1508,7 @@
         });
         replyQuills.set(commentId, replyQuill);
 
-        attachMentionSupport(replyQuill);
+        if (D.attachMentionSupport) D.attachMentionSupport(replyQuill);
 
         wireReplyToolbar(commentId, replyQuill, form);
 
@@ -1828,7 +1672,7 @@
       const parentDepth = parseInt(item.dataset.commentDepth || '0', 10);
       const replyDepth = Math.min(parentDepth + 1, 2);
       const wrapper = document.createElement('div');
-      wrapper.innerHTML = renderCommentItem(comment, replyDepth);
+      wrapper.innerHTML = D.renderCommentItem(comment, replyDepth);
       const li = wrapper.firstElementChild;
       if (li) {
         let insertAfter = item;
@@ -1850,176 +1694,7 @@
     }
   }
 
-  // ─────────────────────────────────────────────
-  // Mention support — works for any Quill instance
-  // ─────────────────────────────────────────────
-  const mentionMenu = document.getElementById('pawtry-mention-menu');
-  let mentionActiveQuill = null;
-  let mentionStartIndex  = -1;
-  let mentionQuery       = '';
-  let mentionFocusedIdx  = 0;
-  let mentionFilteredUsers = [];
-
-  function attachMentionSupport(quillInstance) {
-    if (!quillInstance || quillInstance._pawtryMentionWired) return;
-    quillInstance._pawtryMentionWired = true;
-
-    quillInstance.on('text-change', (delta, oldDelta, source) => {
-      if (source !== 'user') return;
-      onMentionTextChange(quillInstance);
-    });
-
-    // Handle Enter/ArrowUp/ArrowDown/Esc inside the picker
-    quillInstance.keyboard.addBinding({ key: 'Enter' }, () => {
-      if (mentionMenu.classList.contains('is-open') && mentionActiveQuill === quillInstance) {
-        selectFocusedMention();
-        return false;
-      }
-      return true;
-    });
-    quillInstance.keyboard.addBinding({ key: 'ArrowDown' }, () => {
-      if (mentionMenu.classList.contains('is-open') && mentionActiveQuill === quillInstance) {
-        moveMentionFocus(1);
-        return false;
-      }
-      return true;
-    });
-    quillInstance.keyboard.addBinding({ key: 'ArrowUp' }, () => {
-      if (mentionMenu.classList.contains('is-open') && mentionActiveQuill === quillInstance) {
-        moveMentionFocus(-1);
-        return false;
-      }
-      return true;
-    });
-    quillInstance.keyboard.addBinding({ key: 'Escape' }, () => {
-      if (mentionMenu.classList.contains('is-open') && mentionActiveQuill === quillInstance) {
-        closeMentionMenu();
-        return false;
-      }
-      return true;
-    });
-  }
-
-  function onMentionTextChange(quillInstance) {
-    const sel = quillInstance.getSelection();
-    if (!sel) return;
-    const text = quillInstance.getText(0, sel.index);
-    const atMatch = text.match(/(^|[\s\n\r])@([a-zA-Z0-9ก-๙\u0E00-\u0E7F._\- ]{0,30})$/);
-    if (!atMatch) { closeMentionMenu(); return; }
-
-    const query = atMatch[2];
-    mentionActiveQuill = quillInstance;
-    const prefixLen = atMatch[1] ? atMatch[1].length : 0;
-    mentionStartIndex = atMatch.index + prefixLen;  // points exactly to '@'
-    mentionQuery = query;
-
-    openMentionMenu(query);
-  }
-
-  function openMentionMenu(query) {
-    const members = (D.getBoardMembersCache && D.getBoardMembersCache()) || [];
-    const q = (query || '').toLowerCase().trim();
-    mentionFilteredUsers = members.filter(u => {
-      const name = (u.full_name || '').toLowerCase();
-      const email = (u.email || '').toLowerCase();
-      return !q || name.includes(q) || email.includes(q);
-    }).slice(0, 8);
-
-    if (!mentionFilteredUsers.length) { closeMentionMenu(); return; }
-    mentionFocusedIdx = 0;
-    renderMentionMenu();
-    positionMentionMenu();
-    mentionMenu.classList.add('is-open');
-  }
-
-  function renderMentionMenu() {
-    mentionMenu.innerHTML = mentionFilteredUsers.map((u, idx) => {
-      const name = escapeHtml(u.full_name || u.email || '');
-      return `<div class="pawtry-mention-item ${idx === mentionFocusedIdx ? 'is-focused' : ''}" data-mention-user-id="${escapeHtml(String(u.id))}">
-        <span class="pawtry-mention-item__avatar" style="background:${colorFor(u.email || u.id || u.full_name)}">${escapeHtml(initials(u.full_name || u.email))}</span>
-        <span class="pawtry-mention-item__name">${name}</span>
-      </div>`;
-    }).join('');
-  }
-
-  function positionMentionMenu() {
-    if (!mentionActiveQuill) return;
-    try {
-      const bounds = mentionActiveQuill.getBounds(mentionStartIndex);
-      const rootRect = mentionActiveQuill.root.getBoundingClientRect();
-      mentionMenu.style.top = `${rootRect.top + bounds.top + bounds.height + 4}px`;
-      mentionMenu.style.left = `${rootRect.left + bounds.left}px`;
-      const vw = window.innerWidth;
-      const menuW = mentionMenu.offsetWidth || 220;
-      if (rootRect.left + bounds.left + menuW > vw - 16) {
-        mentionMenu.style.left = `${Math.max(8, vw - menuW - 16)}px`;
-      }
-    } catch (e) { /* ignore */ }
-  }
-
-  function moveMentionFocus(dir) {
-    if (!mentionFilteredUsers.length) return;
-    mentionFocusedIdx = (mentionFocusedIdx + dir + mentionFilteredUsers.length) % mentionFilteredUsers.length;
-    renderMentionMenu();
-  }
-
-  function selectFocusedMention() {
-    const user = mentionFilteredUsers[mentionFocusedIdx];
-    if (!user) return;
-    insertMentionIntoQuill(user);
-    closeMentionMenu();
-  }
-
-  function insertMentionIntoQuill(user) {
-    if (!mentionActiveQuill || mentionStartIndex < 0) return;
-    const q = mentionActiveQuill;
-    const sel = q.getSelection();
-    if (!sel) return;
-
-    const queryLen = sel.index - mentionStartIndex;
-    q.deleteText(mentionStartIndex, queryLen, Quill.sources.USER);
-
-    const name = escapeHtml(user.full_name || user.email || '');
-    const uid  = escapeHtml(String(user.id));
-    const html = `<span class="pawtry-mention" data-mention="${uid}">@${name}</span>&nbsp;`;
-
-    const delta = q.clipboard.convert(html);
-    q.updateContents(
-      new (Quill.import('delta'))()
-        .retain(mentionStartIndex)
-        .concat(delta),
-      Quill.sources.USER
-    );
-    q.setSelection(mentionStartIndex + (delta.length() || 1), Quill.sources.SILENT);
-  }
-
-  function closeMentionMenu() {
-    mentionMenu.classList.remove('is-open');
-    mentionMenu.innerHTML = '';
-    mentionActiveQuill = null;
-    mentionStartIndex  = -1;
-    mentionQuery       = '';
-    mentionFilteredUsers = [];
-  }
-
-  // Click on mention menu item
-  mentionMenu.addEventListener('mousedown', (e) => {
-    e.preventDefault();
-    const item = e.target.closest('[data-mention-user-id]');
-    if (!item) return;
-    const user = mentionFilteredUsers.find(u => String(u.id) === item.dataset.mentionUserId);
-    if (user) { insertMentionIntoQuill(user); closeMentionMenu(); }
-  });
-
-  // Close mention menu if clicking elsewhere
-  document.addEventListener('click', (e) => {
-    if (e.target.closest('#pawtry-mention-menu')) return;
-    if (e.target.closest('#modal-comment-quill')) return;
-    if (e.target.closest('[data-reply-editor]')) return;
-    if (e.target.closest('.pawtry-reply-toolbar')) return;
-    if (e.target.closest('.pawtry-popup')) return;
-    closeMentionMenu();
-  });
+  // Mention system lives in TaskMentions.js
 
   // ─────────────────────────────────────────────
   // Comment edit mode
@@ -2121,7 +1796,7 @@
 
       // update DOM
       const body = item.querySelector(`[data-comment-body="${commentId}"]`);
-      if (body) body.innerHTML = renderCommentContent(newContentHtml);
+      if (body) body.innerHTML = D.renderCommentContent(newContentHtml);
       const headerRow = item.querySelector('.flex.items-baseline');
       if (headerRow && !headerRow.querySelector('.pawtry-comment-edited')) {
         const tsLink = headerRow.querySelector('.pawtry-comment-timestamp');
@@ -2287,7 +1962,7 @@
 
     const comments = Array.isArray(task.comments) ? task.comments : [];
     modalCommentsList.innerHTML = comments.length
-      ? renderCommentThread(comments)
+      ? D.renderCommentThread(comments)
       : '<li class="text-xs text-gray-400 italic pl-11">No comments yet</li>';
 
     const userNameEl = getUserNameEl();
@@ -2362,329 +2037,7 @@
   });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTaskModal(); });
 
-  // ─────────────────────────────────────────────
-  // More actions dropdown (⋯ button)
-  // ─────────────────────────────────────────────
-  const modalMoreBtn  = document.getElementById('modal-more-btn');
-  const modalMoreMenu = document.getElementById('modal-more-menu');
-  const modalMoveMenu = document.getElementById('modal-move-menu');
-  const modalMoveList = document.getElementById('modal-move-list');
-  const modalMoveBack = document.getElementById('modal-move-back');
-  const modalCopyMenu   = document.getElementById('modal-copy-menu');
-  const modalCopyBack   = document.getElementById('modal-copy-back');
-  const modalCopyTitle  = document.getElementById('modal-copy-title');
-  const modalCopyColumn = document.getElementById('modal-copy-column');
-  const modalCopySubmit = document.getElementById('modal-copy-submit');
-  const modalShareMenu  = document.getElementById('modal-share-menu');
-  const modalShareBack  = document.getElementById('modal-share-back');
-  const modalShareUrl   = document.getElementById('modal-share-url');
-  const modalShareCopy  = document.getElementById('modal-share-copy');
-  const modalShareFeedback = document.getElementById('modal-share-feedback');
-
-  function closeMoreMenu() {
-    if (modalMoreMenu) modalMoreMenu.classList.add('hidden');
-    if (modalMoveMenu) modalMoveMenu.classList.add('hidden');
-    if (modalCopyMenu) modalCopyMenu.classList.add('hidden');
-    if (modalShareMenu) modalShareMenu.classList.add('hidden');
-  }
-  function openMoreMenu() {
-    if (!modalMoreMenu) return;
-    closeMoreMenu();
-    modalMoreMenu.classList.remove('hidden');
-    updateJoinLabel();
-    updateWatchLabel();
-  }
-
-  function openCopyMenu() {
-    if (!modalCopyMenu || !activeTaskId) return;
-    const task = taskCache.get(activeTaskId);
-    if (!task) return;
-    if (modalCopyTitle) modalCopyTitle.value = task.title || '';
-    const columnsEl = getColumnsEl();
-    const columnEls = columnsEl.querySelectorAll('.kanban-column');
-    if (modalCopyColumn) {
-      const opts = [];
-      columnEls.forEach(colEl => {
-        const colId = colEl.dataset.columnId;
-        const titleEl = colEl.querySelector('h3');
-        const title = titleEl ? titleEl.textContent.trim() : colId;
-        const sel = String(colId) === String(task.column_id) ? ' selected' : '';
-        opts.push(`<option value="${escapeHtml(String(colId))}"${sel}>${escapeHtml(title)}</option>`);
-      });
-      modalCopyColumn.innerHTML = opts.join('');
-    }
-    if (modalMoreMenu) modalMoreMenu.classList.add('hidden');
-    modalCopyMenu.classList.remove('hidden');
-  }
-
-  function openShareMenu() {
-    if (!modalShareMenu || !activeTaskId) return;
-    const url = `${window.location.origin}${window.location.pathname}?task=${encodeURIComponent(activeTaskId)}`;
-    if (modalShareUrl) modalShareUrl.value = url;
-    if (modalShareFeedback) modalShareFeedback.classList.add('hidden');
-    if (modalMoreMenu) modalMoreMenu.classList.add('hidden');
-    modalShareMenu.classList.remove('hidden');
-    setTimeout(() => modalShareUrl && modalShareUrl.select(), 50);
-  }
-
-  function isUserJoined(task) {
-    const me = D.getCurrentUserId && D.getCurrentUserId();
-    if (!me || !task || !Array.isArray(task.assignees)) return false;
-    return task.assignees.some(u => String(u.id) === String(me));
-  }
-  function isUserWatching(task) {
-    const me = D.getCurrentUserId && D.getCurrentUserId();
-    if (!me || !task || !Array.isArray(task.watchers)) return false;
-    return task.watchers.some(uid => String(uid) === String(me));
-  }
-  function updateJoinLabel() {
-    const label = document.querySelector('[data-join-label]');
-    if (!label || !activeTaskId) return;
-    const task = taskCache.get(activeTaskId);
-    label.textContent = isUserJoined(task) ? 'Leave' : 'Join';
-  }
-  function updateWatchLabel() {
-    const label = document.querySelector('[data-watch-label]');
-    if (!label || !activeTaskId) return;
-    const task = taskCache.get(activeTaskId);
-    label.textContent = isUserWatching(task) ? 'Unwatch' : 'Watch';
-  }
-  function openMoveMenu() {
-    if (!modalMoveMenu || !activeTaskId) return;
-    const task = taskCache.get(activeTaskId);
-    if (!task) return;
-    const columnsEl = getColumnsEl();
-    const columnEls = columnsEl.querySelectorAll('.kanban-column');
-    const options = [];
-    columnEls.forEach(colEl => {
-      const colId = colEl.dataset.columnId;
-      const titleEl = colEl.querySelector('h3');
-      const title = titleEl ? titleEl.textContent.trim() : colId;
-      const isCurrent = String(colId) === String(task.column_id);
-      options.push(`<button type="button" class="pawtry-move-option ${isCurrent ? 'is-current' : ''}" data-column-id="${escapeHtml(String(colId))}">
-        <span class="material-symbols-outlined" style="font-size:16px">${isCurrent ? 'check' : 'view_column'}</span>
-        <span>${escapeHtml(title)}</span>
-      </button>`);
-    });
-    if (modalMoveList) modalMoveList.innerHTML = options.join('');
-    if (modalMoreMenu) modalMoreMenu.classList.add('hidden');
-    modalMoveMenu.classList.remove('hidden');
-  }
-
-  if (modalMoreBtn) {
-    modalMoreBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const anyOpen = (
-        (modalMoreMenu && !modalMoreMenu.classList.contains('hidden')) ||
-        (modalMoveMenu && !modalMoveMenu.classList.contains('hidden')) ||
-        (modalCopyMenu && !modalCopyMenu.classList.contains('hidden')) ||
-        (modalShareMenu && !modalShareMenu.classList.contains('hidden'))
-      );
-      if (anyOpen) closeMoreMenu(); else openMoreMenu();
-    });
-  }
-  if (modalMoveBack) {
-    modalMoveBack.addEventListener('click', () => {
-      if (modalMoveMenu) modalMoveMenu.classList.add('hidden');
-      openMoreMenu();
-    });
-  }
-  if (modalCopyBack) {
-    modalCopyBack.addEventListener('click', () => {
-      if (modalCopyMenu) modalCopyMenu.classList.add('hidden');
-      openMoreMenu();
-    });
-  }
-  if (modalShareBack) {
-    modalShareBack.addEventListener('click', () => {
-      if (modalShareMenu) modalShareMenu.classList.add('hidden');
-      openMoreMenu();
-    });
-  }
-  // Close on outside click
-  document.addEventListener('click', (e) => {
-    if (e.target.closest('#modal-more-btn')) return;
-    if (e.target.closest('#modal-more-menu')) return;
-    if (e.target.closest('#modal-move-menu')) return;
-    if (e.target.closest('#modal-copy-menu')) return;
-    if (e.target.closest('#modal-share-menu')) return;
-    closeMoreMenu();
-  });
-
-  // Wire menu actions
-  if (modalMoreMenu) {
-    modalMoreMenu.addEventListener('click', async (e) => {
-      const btn = e.target.closest('[data-action]');
-      if (!btn) return;
-      const action = btn.dataset.action;
-
-      if (action === 'move') {
-        openMoveMenu();
-      } else if (action === 'copy') {
-        openCopyMenu();
-      } else if (action === 'join') {
-        if (!activeTaskId) { closeMoreMenu(); return; }
-        const me = D.getCurrentUserId && D.getCurrentUserId();
-        if (!me) { closeMoreMenu(); return; }
-        closeMoreMenu();
-        try {
-          await api(`/tasks/${activeTaskId}/assignees`, { method: 'POST', body: { user_id: me } });
-          const task = taskCache.get(activeTaskId);
-          if (task) {
-            task.assignees = Array.isArray(task.assignees) ? task.assignees : [];
-            const already = task.assignees.find(u => String(u.id) === String(me));
-            if (already) {
-              task.assignees = task.assignees.filter(u => String(u.id) !== String(me));
-            } else {
-              const members = D.getBoardMembersCache && D.getBoardMembersCache();
-              const self = members && members.find(u => String(u.id) === String(me));
-              task.assignees.push(self || { id: me, full_name: 'Me' });
-            }
-            if (window.Dashboard.renderAssignees) window.Dashboard.renderAssignees(task);
-          }
-          if (showToast) showToast('Updated card members', 'check');
-        } catch (err) {
-          console.error('join failed:', err);
-          if (showToast) showToast('Could not update membership', 'error');
-        }
-      } else if (action === 'watch') {
-        if (!activeTaskId) { closeMoreMenu(); return; }
-        closeMoreMenu();
-        try {
-          const data = await api(`/tasks/${activeTaskId}/watch`, { method: 'POST' });
-          const task = taskCache.get(activeTaskId);
-          if (task && data && Array.isArray(data.watchers)) task.watchers = data.watchers;
-          if (showToast) showToast(
-            (data && data.watching) ? 'Watching this card' : 'Stopped watching',
-            'check'
-          );
-        } catch (err) {
-          console.error('watch toggle failed:', err);
-          if (showToast) showToast('Could not toggle watch', 'error');
-        }
-      } else if (action === 'archive') {
-        if (!activeTaskId) { closeMoreMenu(); return; }
-        if (!confirm('Archive this card? You can restore it later from the board archive.')) return;
-        closeMoreMenu();
-        try {
-          await api(`/tasks/${activeTaskId}/archive`, { method: 'POST' });
-          const columnsEl = getColumnsEl();
-          const card = columnsEl.querySelector(`.task-card[data-task-id="${activeTaskId}"]`);
-          if (card) {
-            const columnEl = card.closest('.kanban-column');
-            card.remove();
-            if (columnEl && updateColumnBadge) updateColumnBadge(columnEl);
-          }
-          taskCache.delete(activeTaskId);
-          closeTaskModal();
-          if (showToast) showToast('Card archived', 'archive');
-        } catch (err) {
-          console.error('archive failed:', err);
-          if (showToast) showToast('Could not archive card', 'error');
-        }
-      } else if (action === 'share') {
-        if (!activeTaskId) { closeMoreMenu(); return; }
-        openShareMenu();
-      }
-    });
-  }
-
-  // Copy dialog submit
-  if (modalCopySubmit) {
-    modalCopySubmit.addEventListener('click', async () => {
-      if (!activeTaskId) return;
-      const title = (modalCopyTitle && modalCopyTitle.value.trim()) || 'Copy of card';
-      const targetColumnId = modalCopyColumn && modalCopyColumn.value;
-      if (!targetColumnId) return;
-      modalCopySubmit.disabled = true;
-      try {
-        const data = await api(`/tasks/${activeTaskId}/copy`, {
-          method: 'POST',
-          body: { title, column_id: targetColumnId },
-        });
-        const newTask = data && data.task;
-        if (newTask) {
-          taskCache.set(String(newTask.id), newTask);
-          const columnsEl = getColumnsEl();
-          const colEl = columnsEl.querySelector(`.kanban-column[data-column-id="${targetColumnId}"]`);
-          if (colEl) {
-            const dropZone = colEl.querySelector('.kanban-drop-zone');
-            const placeholder = dropZone && dropZone.querySelector('.empty-placeholder, p.italic');
-            if (placeholder) placeholder.remove();
-            const wrapper = document.createElement('div');
-            wrapper.innerHTML = renderTaskCard(newTask);
-            const cardEl = wrapper.firstElementChild;
-            if (dropZone && cardEl) {
-              dropZone.appendChild(cardEl);
-              if (attachSingleCardEvents) attachSingleCardEvents(cardEl);
-              if (attachSingleCardDrag) attachSingleCardDrag(cardEl);
-              if (updateColumnBadge) updateColumnBadge(colEl);
-            }
-          }
-        }
-        closeMoreMenu();
-        if (showToast) showToast('Card copied', 'check');
-      } catch (err) {
-        console.error('copy failed:', err);
-        if (showToast) showToast('Could not copy card', 'error');
-      } finally {
-        modalCopySubmit.disabled = false;
-      }
-    });
-  }
-
-  // Share dialog — copy link button
-  if (modalShareCopy) {
-    modalShareCopy.addEventListener('click', async () => {
-      if (!modalShareUrl) return;
-      const url = modalShareUrl.value;
-      try {
-        await navigator.clipboard.writeText(url);
-        if (modalShareFeedback) modalShareFeedback.classList.remove('hidden');
-        setTimeout(() => modalShareFeedback && modalShareFeedback.classList.add('hidden'), 2000);
-      } catch (err) {
-        modalShareUrl.select();
-        try { document.execCommand('copy'); if (modalShareFeedback) modalShareFeedback.classList.remove('hidden'); } catch (e) {}
-      }
-    });
-  }
-
-  // Move menu — pick a column
-  if (modalMoveList) {
-    modalMoveList.addEventListener('click', async (e) => {
-      const btn = e.target.closest('[data-column-id]');
-      if (!btn || !activeTaskId) return;
-      const newColumnId = btn.dataset.columnId;
-      const task = taskCache.get(activeTaskId);
-      if (!task || String(task.column_id) === String(newColumnId)) {
-        closeMoreMenu();
-        return;
-      }
-      closeMoreMenu();
-      try {
-        await api(`/tasks/${activeTaskId}`, { method: 'PUT', body: { column_id: newColumnId } });
-        task.column_id = newColumnId;
-        const columnsEl = getColumnsEl();
-        const card = columnsEl.querySelector(`.task-card[data-task-id="${activeTaskId}"]`);
-        const targetCol = columnsEl.querySelector(`.kanban-column[data-column-id="${newColumnId}"]`);
-        const dropZone = targetCol ? targetCol.querySelector('.kanban-drop-zone') : null;
-        if (card && dropZone) {
-          const oldCol = card.closest('.kanban-column');
-          dropZone.appendChild(card);
-          if (updateColumnBadge) {
-            if (oldCol) updateColumnBadge(oldCol);
-            updateColumnBadge(targetCol);
-          }
-          const colTitle = targetCol.querySelector('h3');
-          if (modalStatus && colTitle) modalStatus.textContent = colTitle.textContent.trim();
-        }
-        if (showToast) showToast('Task moved', 'check');
-      } catch (err) {
-        console.error('Failed to move task:', err);
-        alert('Move failed: ' + (err.message || 'Unknown error'));
-      }
-    });
-  }
+  // More actions dropdown lives in TaskModalActions.js
 
   // ─────────────────────────────────────────────
   // Save / Delete task
@@ -2998,4 +2351,12 @@
   window.Dashboard.openTaskModal        = openTaskModal;
   window.Dashboard.openCreateModal      = openCreateModal;
   window.Dashboard.closeTaskModal       = closeTaskModal;
+  window.Dashboard.renderAssignees      = refreshAssigneesDisplay;
+
+  // TaskModal public handle
+  window.Dashboard.TaskModal = {
+    getActiveTaskId:   () => activeTaskId,
+    getActiveColumnId: () => activeColumnId,
+    close: closeTaskModal,
+  };
 })();

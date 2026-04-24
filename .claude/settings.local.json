@@ -2,7 +2,12 @@
   "permissions": {
     "allow": [
       "Bash(wc:*)",
-      "Bash(awk 'NR==1 || /\\\\\\\\0/')"
+      "Bash(awk 'NR==1 || /\\\\\\\\0/')",
+      "Bash(grep -n \"^  // ─\\\\|^  //-\\\\|//────\\\\|// ──\" \"C:/6630300289/OfficeTaskBorad/frontend/components/TaskModal.js\")",
+      "Bash(node -c \"C:/6630300289/OfficeTaskBorad/frontend/components/TaskModal.js\")",
+      "Bash(node -c \"C:/6630300289/OfficeTaskBorad/frontend/components/TaskCommentRender.js\")",
+      "Bash(node -c \"C:/6630300289/OfficeTaskBorad/frontend/components/TaskMentions.js\")",
+      "Bash(node -c \"C:/6630300289/OfficeTaskBorad/frontend/components/TaskModalActions.js\")"
     ]
   }
 }
