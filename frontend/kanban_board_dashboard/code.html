@@ -1184,6 +1184,9 @@
 <div id="toast-container" class="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 items-end pointer-events-none"></div>
 
 <div id="board-context-menu" class="hidden fixed z-[150] min-w-[180px] bg-surface-container-highest border border-outline/20 rounded-xl shadow-2xl py-1 text-sm">
+  <button id="ctx-duplicate-board" class="w-full text-left px-4 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2 transition-colors">
+    <span class="material-symbols-outlined text-base">content_copy</span><span>Duplicate Board</span>
+  </button>
   <button id="ctx-delete-board" class="hidden w-full text-left px-4 py-2 text-error hover:bg-error/10 flex items-center gap-2 transition-colors">
     <span class="material-symbols-outlined text-base">delete</span><span>Delete Board</span>
   </button>
@@ -1690,7 +1693,7 @@
     const taskCache = new Map();
     const columnCache = new Map();
 
-    const state = { activeBoardId: null, cachedBoards: [], boardLabelsCache: [], boardMembersCache: [], currentUserId: null };
+    const state = { activeBoardId: null, cachedBoards: [], boardLabelsCache: [], boardMembersCache: [], currentUserId: null, currentUserRole: null };
 
     async function api(path, { method = 'GET', body } = {}) {
       const opts = { method, headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` } };
@@ -1872,6 +1875,7 @@
         if (d && d.user) {
           userNameEl.textContent = d.user.full_name || d.user.email;
           state.currentUserId = d.user.id;
+          state.currentUserRole = d.user.role || null;
           const pic = d.user.profile_picture || d.user.avatar_url;
           if (pic) {
             const resolved = coverSrc(pic);

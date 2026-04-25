@@ -186,6 +186,136 @@ exports.getBoardById = async (req, res) => {
   }
 };
 
+// PUT /:id — Update board fields (currently: title)
+exports.updateBoard = async (req, res) => {
+  try {
+    const board = await Board.findByPk(req.params.id);
+    if (!board) {
+      return res.status(404).json({ status: 'error', message: 'Board not found' });
+    }
+
+    if (req.user.role !== 'admin' && board.creator_id !== req.user.id) {
+      return res.status(403).json({
+        status: 'error',
+        message: 'Only the board creator can update this board',
+      });
+    }
+
+    const { title, description } = req.body || {};
+    const updates = {};
+    if (typeof title === 'string' && title.trim()) updates.title = title.trim();
+    if (typeof description === 'string') updates.description = description;
+
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ status: 'error', message: 'Nothing to update' });
+    }
+
+    await board.update(updates);
+
+    try {
+      req.app.get('io')
+        .to(`board_${board.id}`)
+        .emit('board_updated', { type: 'board_updated', board_id: board.id });
+    } catch (socketErr) {
+      console.error('socket emit (board_updated) failed:', socketErr);
+    }
+
+    return res.json({ status: 'success', data: { board } });
+  } catch (err) {
+    console.error('updateBoard error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not update board' });
+  }
+};
+
+// POST /:id/duplicate — Clone a board with all columns, labels and tasks
+exports.duplicateBoard = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const original = await Board.findByPk(req.params.id, {
+      include: [
+        {
+          model: Column,
+          as: 'columns',
+          include: [{
+            model: Task,
+            as: 'tasks',
+            include: [{ model: Label, as: 'labels', through: { attributes: [] } }],
+          }],
+        },
+        { model: Label, as: 'labels' },
+      ],
+    });
+
+    if (!original) {
+      await t.rollback();
+      return res.status(404).json({ status: 'error', message: 'Board not found' });
+    }
+
+    const newBoard = await Board.create({
+      title: `${original.title} (copy)`,
+      description: original.description,
+      background: original.background,
+      creator_id: req.user.id,
+    }, { transaction: t });
+
+    await BoardMember.create({
+      user_id: req.user.id,
+      board_id: newBoard.id,
+      role: 'owner',
+      status: 'accepted',
+    }, { transaction: t });
+
+    // Clone labels and keep an old->new id map for re-association on tasks
+    const labelIdMap = new Map();
+    const originalLabels = original.labels || [];
+    for (const lbl of originalLabels) {
+      const newLbl = await Label.create({
+        board_id: newBoard.id,
+        title: lbl.title,
+        color: lbl.color,
+      }, { transaction: t });
+      labelIdMap.set(String(lbl.id), newLbl.id);
+    }
+
+    // Clone columns and their tasks (positions preserved)
+    const originalColumns = (original.columns || []).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+    for (const col of originalColumns) {
+      const newCol = await Column.create({
+        board_id: newBoard.id,
+        title: col.title,
+        position: col.position,
+        color: col.color,
+      }, { transaction: t });
+
+      const tasks = (col.tasks || []).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      for (const task of tasks) {
+        const newTask = await Task.create({
+          column_id: newCol.id,
+          title: task.title,
+          description: task.description,
+          position: task.position,
+          due_date: task.due_date,
+          is_completed: task.is_completed,
+        }, { transaction: t });
+
+        const taskLabels = (task.labels || [])
+          .map(l => labelIdMap.get(String(l.id)))
+          .filter(Boolean);
+        if (taskLabels.length && typeof newTask.setLabels === 'function') {
+          await newTask.setLabels(taskLabels, { transaction: t });
+        }
+      }
+    }
+
+    await t.commit();
+    return res.status(201).json({ status: 'success', data: { board: newBoard } });
+  } catch (err) {
+    await t.rollback();
+    console.error('duplicateBoard error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not duplicate board' });
+  }
+};
+
 exports.deleteBoard = async (req, res) => {
   try {
     const board = await Board.findByPk(req.params.id);

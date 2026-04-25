@@ -14,6 +14,9 @@
   const columnsEl      = D.getColumnsEl();
   const addColumnBtn   = D.getAddColumnBtn();
 
+  // Preset palette mirrors the label color picker
+  const COLUMN_COLOR_PRESETS = ['#3525cd', '#58579b', '#7e3000', '#a44100', '#4f46e5', '#454386', '#16a34a', '#dc2626', '#0891b2', '#ca8a04'];
+
   function renderColumn(column) {
     const tasks = Array.isArray(column.tasks) ? [...column.tasks] : [];
     tasks.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
@@ -21,11 +24,15 @@
       ? tasks.map(renderTaskCard).join('')
       : `<p class="text-xs text-on-surface-variant/50 italic text-center py-4">No tasks yet</p>`;
 
+    // Optional column accent color (left border)
+    const color = (column.color && /^#[0-9a-fA-F]{3,8}$/.test(column.color)) ? column.color : '';
+    const colorStyle = color ? `border-left:4px solid ${color};` : '';
+
     return `
-      <div class="kanban-column flex flex-col h-full bg-surface-container-low rounded-xl p-3" data-column-id="${escapeHtml(column.id)}">
+      <div class="kanban-column flex flex-col self-start max-h-full bg-surface-container-low rounded-xl p-3" data-column-id="${escapeHtml(column.id)}" data-column-color="${escapeHtml(color)}" style="${colorStyle}">
         <div class="flex justify-between items-center px-2 py-3 mb-2">
           <div class="flex items-center space-x-2">
-            <h3 class="column-title font-bold text-on-surface-variant tracking-tight">${escapeHtml(column.title)}</h3>
+            <h3 class="column-title font-bold text-on-surface-variant tracking-tight" ${color ? `style="color:${color}"` : ''}>${escapeHtml(column.title)}</h3>
             <span class="bg-surface-container-highest px-2 py-0.5 rounded-full text-[10px] font-bold text-on-surface-variant">${tasks.length}</span>
           </div>
           <div class="relative">
@@ -36,15 +43,37 @@
                     aria-expanded="false">
               <span class="material-symbols-outlined">more_horiz</span>
             </button>
-            <div class="column-options-menu hidden absolute right-0 top-full mt-1 z-40 min-w-[180px] bg-surface-container-highest border border-outline/20 rounded-xl shadow-2xl py-1 text-sm">
+            <div class="column-options-menu hidden absolute right-0 top-full mt-1 z-40 min-w-[200px] bg-surface-container-highest border border-outline/20 rounded-xl shadow-2xl py-1 text-sm">
               <button type="button"
                       class="column-edit-btn w-full text-left px-4 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2 transition-colors"
                       data-column-id="${escapeHtml(column.id)}">
                 <span class="material-symbols-outlined text-base">edit</span>
                 <span>Edit Column Name</span>
               </button>
+              <div class="column-color-section px-4 py-2 border-t border-outline/10">
+                <p class="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5">Column color</p>
+                <div class="flex flex-wrap gap-1.5 mb-2">
+                  ${COLUMN_COLOR_PRESETS.map(c => `
+                    <button type="button"
+                            class="column-color-swatch w-5 h-5 rounded-full border-2 ${color.toLowerCase() === c.toLowerCase() ? 'border-on-surface' : 'border-transparent'} hover:scale-110 transition-transform"
+                            data-column-id="${escapeHtml(column.id)}"
+                            data-color="${c}"
+                            style="background:${c}"
+                            title="${c}"></button>
+                  `).join('')}
+                </div>
+                <div class="flex items-center gap-2">
+                  <input type="color"
+                         class="column-color-input w-8 h-8 rounded-md border-0 p-0 cursor-pointer"
+                         data-column-id="${escapeHtml(column.id)}"
+                         value="${color || '#3525cd'}"/>
+                  <button type="button"
+                          class="column-color-clear text-[11px] text-on-surface-variant hover:text-error underline"
+                          data-column-id="${escapeHtml(column.id)}">Clear</button>
+                </div>
+              </div>
               <button type="button"
-                      class="column-delete-btn w-full text-left px-4 py-2 text-error hover:bg-error/10 flex items-center gap-2 transition-colors"
+                      class="column-delete-btn w-full text-left px-4 py-2 text-error hover:bg-error/10 flex items-center gap-2 transition-colors border-t border-outline/10"
                       data-column-id="${escapeHtml(column.id)}">
                 <span class="material-symbols-outlined text-base">delete</span>
                 <span>Delete Column</span>
@@ -52,7 +81,7 @@
             </div>
           </div>
         </div>
-        <div class="kanban-drop-zone space-y-4 flex-1 overflow-y-auto pr-1 transition-all duration-150">
+        <div class="kanban-drop-zone space-y-4 overflow-y-auto pr-1 transition-all duration-150">
           ${cardsHtml}
         </div>
         <button class="add-task-btn mt-3 w-full py-2 text-sm text-on-surface-variant/50 hover:text-primary hover:bg-primary/5 rounded-lg transition-all flex items-center justify-center space-x-1 group"
@@ -62,6 +91,23 @@
         </button>
       </div>
     `;
+  }
+
+  // Persist column color via API and refresh the board to render the new accent
+  async function updateColumnColor(columnId, color) {
+    if (!columnId) return;
+    try {
+      await api(`/columns/${columnId}`, {
+        method: 'PUT',
+        body: { color: color || null },
+      });
+      await loadBoardData(state.activeBoardId);
+      showToast(color ? 'Column color updated' : 'Column color cleared', 'palette');
+    } catch (err) {
+      if (err.message === 'Unauthorized') return;
+      console.error('Failed to update column color:', err);
+      showToast(err.message || 'Could not update column color', 'error');
+    }
   }
 
   function closeAllColumnMenus() {
@@ -114,6 +160,34 @@
       });
     });
 
+    // Color preset swatches
+    columnsEl.querySelectorAll('.column-color-swatch').forEach(swatch => {
+      swatch.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        closeAllColumnMenus();
+        await updateColumnColor(swatch.dataset.columnId, swatch.dataset.color);
+      });
+    });
+
+    // Custom hex color picker
+    columnsEl.querySelectorAll('.column-color-input').forEach(input => {
+      input.addEventListener('click', (e) => e.stopPropagation());
+      input.addEventListener('change', async (e) => {
+        e.stopPropagation();
+        closeAllColumnMenus();
+        await updateColumnColor(input.dataset.columnId, input.value);
+      });
+    });
+
+    // Clear column color
+    columnsEl.querySelectorAll('.column-color-clear').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        closeAllColumnMenus();
+        await updateColumnColor(btn.dataset.columnId, null);
+      });
+    });
+
     columnsEl.querySelectorAll('.column-delete-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         e.stopPropagation();
@@ -156,6 +230,8 @@
   }
 
   document.addEventListener('click', (e) => {
+    // Keep menu open while interacting with the color section's swatches/picker
+    if (e.target.closest('.column-color-section')) return;
     if (e.target.closest('.column-options-menu') || e.target.closest('.column-options-btn')) return;
     closeAllColumnMenus();
   });
@@ -163,7 +239,8 @@
     if (e.key === 'Escape') closeAllColumnMenus();
   });
 
-  addColumnBtn.addEventListener('click', async () => {
+  // Shared helper used by the Add Column button and the empty-area dblclick
+  async function createColumnPrompt() {
     if (!state.activeBoardId) {
       alert('Please select or create a board first');
       return;
@@ -173,7 +250,6 @@
     const title = raw.trim();
     if (!title) return;
 
-    addColumnBtn.disabled = true;
     try {
       await api('/columns', {
         method: 'POST',
@@ -184,6 +260,20 @@
       if (err.message === 'Unauthorized') return;
       console.error('Failed to create column:', err);
       alert('Could not create column: ' + (err.message || 'Unknown error'));
+    }
+  }
+
+  // Double-click empty area inside the kanban board → create a new column
+  columnsEl.addEventListener('dblclick', (e) => {
+    if (e.target.closest('.kanban-column')) return;
+    if (e.target.closest('button, input, textarea, a')) return;
+    createColumnPrompt();
+  });
+
+  addColumnBtn.addEventListener('click', async () => {
+    addColumnBtn.disabled = true;
+    try {
+      await createColumnPrompt();
     } finally {
       addColumnBtn.disabled = false;
     }

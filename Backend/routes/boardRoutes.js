@@ -7,6 +7,8 @@ const {
   createBoard,
   getBoards,
   getBoardById,
+  updateBoard,
+  duplicateBoard,
   deleteBoard,
   leaveBoard,
   listBoardLabels,
@@ -27,6 +29,8 @@ router.use(authMiddleware);
 router.post('/', validate(createBoardSchema), createBoard);
 router.get('/', getBoards);
 router.get('/:id', getBoardById);
+router.put('/:id', updateBoard);
+router.post('/:id/duplicate', duplicateBoard);
 router.delete('/:id', deleteBoard);
 router.delete('/:id/leave', leaveBoard);
 

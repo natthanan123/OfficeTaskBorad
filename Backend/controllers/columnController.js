@@ -22,7 +22,7 @@ async function logActivity({ board_id, user_id, task_id = null, action_type, det
 // POST / — Create a column for a board.
 exports.createColumn = async (req, res) => {
   try {
-    const { board_id, title, position } = req.body;
+    const { board_id, title, position, color } = req.body;
 
     if (!board_id || !title) {
       return res.status(400).json({ status: 'error', message: 'board_id and title are required' });
@@ -39,7 +39,12 @@ exports.createColumn = async (req, res) => {
       finalPosition = (maxPos ?? -1) + 1;
     }
 
-    const column = await Column.create({ board_id, title, position: finalPosition });
+    const column = await Column.create({
+      board_id,
+      title,
+      position: finalPosition,
+      color: typeof color === 'string' && color.trim() ? color.trim() : null,
+    });
 
     emitBoardUpdate(req, board_id, 'column_created');
 
@@ -58,10 +63,12 @@ exports.updateColumn = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Column not found' });
     }
 
-    const { title, position } = req.body;
+    const { title, position, color } = req.body;
 
     if (title !== undefined) column.title = title;
     if (position !== undefined) column.position = position;
+    // Allow null/empty to clear the color
+    if (color !== undefined) column.color = (typeof color === 'string' && color.trim()) ? color.trim() : null;
 
     await column.save();
 

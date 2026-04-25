@@ -125,7 +125,8 @@ exports.forgotPassword = async (req, res) => {
       reset_password_expires: resetExpiry,
     });
 
-    const frontendBase = process.env.FRONTEND_URL || 'http://127.0.0.1:5500/frontend';
+    // Reset link points to the LAN/NAS frontend (override via FRONTEND_URL env)
+    const frontendBase = process.env.FRONTEND_URL || 'http://192.168.1.135:5500';
     const resetLink = `${frontendBase}/ResetPassword_Page/code.html?token=${resetToken}`;
 
     const transporter = nodemailer.createTransport({
