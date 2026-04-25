@@ -11,6 +11,7 @@ const {
   CommentReaction,
   sequelize,
 } = require('../models');
+const { parseTrelloExport } = require('../utils/trelloImporter');
 
 exports.createBoard = async (req, res) => {
   const t = await sequelize.transaction();
@@ -227,7 +228,7 @@ exports.updateBoard = async (req, res) => {
   }
 };
 
-// POST /:id/duplicate — Clone a board with all columns, labels and tasks
+//Duplicate Board
 exports.duplicateBoard = async (req, res) => {
   const t = await sequelize.transaction();
   try {
@@ -239,7 +240,16 @@ exports.duplicateBoard = async (req, res) => {
           include: [{
             model: Task,
             as: 'tasks',
-            include: [{ model: Label, as: 'labels', through: { attributes: [] } }],
+            include: [
+              { model: Label, as: 'labels', through: { attributes: [] } },
+              { model: User,  as: 'assignees', attributes: ['id'], through: { attributes: [] } },
+              { model: Attachment, as: 'attachments' },
+              {
+                model: TaskComment,
+                as: 'comments',
+                include: [{ model: CommentReaction, as: 'reactions' }],
+              },
+            ],
           }],
         },
         { model: Label, as: 'labels' },
@@ -265,10 +275,9 @@ exports.duplicateBoard = async (req, res) => {
       status: 'accepted',
     }, { transaction: t });
 
-    // Clone labels and keep an old->new id map for re-association on tasks
+    //Labels
     const labelIdMap = new Map();
-    const originalLabels = original.labels || [];
-    for (const lbl of originalLabels) {
+    for (const lbl of (original.labels || [])) {
       const newLbl = await Label.create({
         board_id: newBoard.id,
         title: lbl.title,
@@ -277,7 +286,7 @@ exports.duplicateBoard = async (req, res) => {
       labelIdMap.set(String(lbl.id), newLbl.id);
     }
 
-    // Clone columns and their tasks (positions preserved)
+    //Columns + tasks
     const originalColumns = (original.columns || []).slice().sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
     for (const col of originalColumns) {
       const newCol = await Column.create({
@@ -298,11 +307,77 @@ exports.duplicateBoard = async (req, res) => {
           is_completed: task.is_completed,
         }, { transaction: t });
 
+        //Labels
         const taskLabels = (task.labels || [])
           .map(l => labelIdMap.get(String(l.id)))
           .filter(Boolean);
         if (taskLabels.length && typeof newTask.setLabels === 'function') {
           await newTask.setLabels(taskLabels, { transaction: t });
+        }
+
+        //Assignees
+        const assigneeIds = (task.assignees || []).map(u => u.id).filter(Boolean);
+        if (assigneeIds.length && typeof newTask.setAssignees === 'function') {
+          await newTask.setAssignees(assigneeIds, { transaction: t });
+        }
+
+        //Attachments
+        for (const att of (task.attachments || [])) {
+          await Attachment.create({
+            task_id:          newTask.id,
+            user_id:          att.user_id || null,
+            filename_or_url:  att.filename_or_url,
+            mimetype:         att.mimetype,
+            size:             att.size,
+            is_cover:         att.is_cover,
+            source:           att.source || 'direct_upload',
+          }, { transaction: t });
+        }
+
+        //Comments
+        const commentIdMap = new Map();
+        const orderedComments = (task.comments || []).slice().sort((a, b) => {
+          const ad = new Date(a.created_at || 0).getTime();
+          const bd = new Date(b.created_at || 0).getTime();
+          return ad - bd;
+        });
+        //Top-level
+        for (const c of orderedComments) {
+          if (c.parent_id) continue;
+          const newC = await TaskComment.create({
+            task_id: newTask.id,
+            user_id: c.user_id,
+            content: c.content,
+            parent_id: null,
+          }, { transaction: t });
+          commentIdMap.set(String(c.id), newC.id);
+          for (const r of (c.reactions || [])) {
+            await CommentReaction.create({
+              comment_id: newC.id,
+              user_id:    r.user_id,
+              emoji:      r.emoji,
+            }, { transaction: t });
+          }
+        }
+        //Replies
+        for (const c of orderedComments) {
+          if (!c.parent_id) continue;
+          const newParent = commentIdMap.get(String(c.parent_id));
+          if (!newParent) continue;
+          const newC = await TaskComment.create({
+            task_id: newTask.id,
+            user_id: c.user_id,
+            content: c.content,
+            parent_id: newParent,
+          }, { transaction: t });
+          commentIdMap.set(String(c.id), newC.id);
+          for (const r of (c.reactions || [])) {
+            await CommentReaction.create({
+              comment_id: newC.id,
+              user_id:    r.user_id,
+              emoji:      r.emoji,
+            }, { transaction: t });
+          }
         }
       }
     }
@@ -313,6 +388,111 @@ exports.duplicateBoard = async (req, res) => {
     await t.rollback();
     console.error('duplicateBoard error:', err);
     return res.status(500).json({ status: 'error', message: 'Could not duplicate board' });
+  }
+};
+
+//Trello import
+exports.importFromTrello = async (req, res) => {
+  let payload = null;
+
+  if (req.file && req.file.buffer) {
+    try {
+      payload = JSON.parse(req.file.buffer.toString('utf8'));
+    } catch (e) {
+      return res.status(400).json({ status: 'error', message: 'Uploaded file is not valid JSON' });
+    }
+  } else if (req.body && typeof req.body === 'object' && Object.keys(req.body).length) {
+    payload = req.body;
+  } else {
+    return res.status(400).json({ status: 'error', message: 'No Trello JSON provided' });
+  }
+
+  let parsed;
+  try {
+    parsed = parseTrelloExport(payload);
+  } catch (e) {
+    return res.status(400).json({ status: 'error', message: e.message || 'Could not parse Trello export' });
+  }
+
+  //Override title
+  const overrideTitle = (req.body && typeof req.body.title === 'string' && req.body.title.trim())
+    || (req.query && typeof req.query.title === 'string' && req.query.title.trim())
+    || null;
+
+  const t = await sequelize.transaction();
+  try {
+    const newBoard = await Board.create({
+      title: overrideTitle || parsed.board.title,
+      description: parsed.board.description,
+      creator_id: req.user.id,
+    }, { transaction: t });
+
+    await BoardMember.create({
+      user_id: req.user.id,
+      board_id: newBoard.id,
+      role: 'owner',
+      status: 'accepted',
+    }, { transaction: t });
+
+    //Labels
+    const labelIdMap = new Map();
+    for (const lbl of parsed.labels) {
+      const created = await Label.create({
+        board_id: newBoard.id,
+        title: lbl.title,
+        color: lbl.color,
+      }, { transaction: t });
+      labelIdMap.set(lbl.trelloId, created.id);
+    }
+
+    let columnsCreated = 0;
+    let tasksCreated   = 0;
+
+    for (const col of parsed.columns) {
+      const newCol = await Column.create({
+        board_id: newBoard.id,
+        title: col.title,
+        position: col.position,
+        color: col.color || null,
+      }, { transaction: t });
+      columnsCreated++;
+
+      for (const card of col.cards) {
+        const newTask = await Task.create({
+          column_id: newCol.id,
+          title: card.title,
+          description: card.description,
+          position: card.position,
+          due_date: card.due_date,
+          is_completed: card.is_completed,
+        }, { transaction: t });
+        tasksCreated++;
+
+        const taskLabelIds = (card.labelTrelloIds || [])
+          .map(tid => labelIdMap.get(tid))
+          .filter(Boolean);
+        if (taskLabelIds.length && typeof newTask.setLabels === 'function') {
+          await newTask.setLabels(taskLabelIds, { transaction: t });
+        }
+      }
+    }
+
+    await t.commit();
+    return res.status(201).json({
+      status: 'success',
+      data: {
+        board: newBoard,
+        stats: {
+          columns: columnsCreated,
+          tasks:   tasksCreated,
+          labels:  parsed.labels.length,
+        },
+      },
+    });
+  } catch (err) {
+    await t.rollback();
+    console.error('importFromTrello error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not import Trello board' });
   }
 };
 

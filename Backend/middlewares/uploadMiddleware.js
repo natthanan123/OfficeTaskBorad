@@ -39,6 +39,19 @@ const attachmentUpload = multer({
   limits: { fileSize: 25 * 1024 * 1024 },
 });
 
+//JSON upload (in-memory)
+const jsonUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const okMime = file.mimetype === 'application/json' || file.mimetype === 'text/plain' || file.mimetype === 'application/octet-stream';
+    const okExt  = /\.json$/i.test(file.originalname || '');
+    if (okMime || okExt) return cb(null, true);
+    cb(new Error('Only .json files are allowed'), false);
+  },
+});
+
 module.exports = avatarUpload;
 module.exports.avatarUpload     = avatarUpload;
 module.exports.attachmentUpload = attachmentUpload;
+module.exports.jsonUpload       = jsonUpload;

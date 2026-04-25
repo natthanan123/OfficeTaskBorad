@@ -1183,6 +1183,69 @@
 </div>
 <div id="toast-container" class="fixed bottom-6 right-6 z-[200] flex flex-col gap-2 items-end pointer-events-none"></div>
 
+<!-- New Board modal -->
+<div id="new-board-modal" class="fixed inset-0 z-[180] hidden">
+  <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" data-nb-close></div>
+  <div class="absolute inset-0 flex items-start justify-center p-4 overflow-y-auto">
+    <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md my-8 overflow-hidden">
+      <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-gray-50">
+        <h3 class="font-semibold text-gray-800">New Board</h3>
+        <button type="button" data-nb-close class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100" title="Close">
+          <span class="material-symbols-outlined text-xl">close</span>
+        </button>
+      </div>
+
+      <div class="border-b border-gray-200 bg-white flex">
+        <button type="button" data-nb-tab="create" class="nb-tab flex-1 px-4 py-2.5 text-sm font-medium border-b-2 border-indigo-600 text-indigo-700">
+          <span class="material-symbols-outlined text-base align-middle mr-1">add</span>Create new
+        </button>
+        <button type="button" data-nb-tab="import" class="nb-tab flex-1 px-4 py-2.5 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-indigo-600">
+          <span class="material-symbols-outlined text-base align-middle mr-1">upload_file</span>Import from Trello
+        </button>
+      </div>
+
+      <!-- Create tab -->
+      <div data-nb-panel="create" class="p-5 space-y-4">
+        <label class="block">
+          <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Board title</span>
+          <input id="nb-create-title" type="text" maxlength="120"
+                 class="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none text-sm"
+                 placeholder="e.g. Marketing Sprint Q2"/>
+        </label>
+        <button id="nb-create-submit" type="button"
+                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+          Create board
+        </button>
+      </div>
+
+      <!-- Import tab -->
+      <div data-nb-panel="import" class="p-5 space-y-4 hidden">
+        <p class="text-xs text-gray-500 leading-relaxed">
+          Upload a Trello board JSON file (Show menu → More → Print and Export → Export as JSON).
+          We'll create columns, cards, labels and dates. Members and attachments are skipped.
+        </p>
+        <label id="nb-import-drop" class="block border-2 border-dashed border-gray-300 hover:border-indigo-400 rounded-xl p-6 text-center cursor-pointer transition-colors">
+          <input id="nb-import-file" type="file" accept=".json,application/json" class="hidden"/>
+          <span class="material-symbols-outlined text-3xl text-gray-400">cloud_upload</span>
+          <p id="nb-import-filename" class="mt-2 text-sm text-gray-600 break-all">Click to choose a .json file</p>
+          <p class="text-[11px] text-gray-400 mt-1">Max 25 MB</p>
+        </label>
+        <label class="block">
+          <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Override board title (optional)</span>
+          <input id="nb-import-title" type="text" maxlength="120"
+                 class="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none text-sm"
+                 placeholder="Leave blank to use Trello board name"/>
+        </label>
+        <button id="nb-import-submit" type="button" disabled
+                class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+          Import board
+        </button>
+        <p id="nb-import-status" class="text-xs text-gray-500 hidden"></p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div id="board-context-menu" class="hidden fixed z-[150] min-w-[180px] bg-surface-container-highest border border-outline/20 rounded-xl shadow-2xl py-1 text-sm">
   <button id="ctx-duplicate-board" class="w-full text-left px-4 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2 transition-colors">
     <span class="material-symbols-outlined text-base">content_copy</span><span>Duplicate Board</span>
@@ -1765,13 +1828,26 @@
       const columns = Array.isArray(board.columns) ? [...board.columns] : [];
       columns.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
       if (columns.length === 0) {
-        columnsEl.innerHTML = `<div class="flex-1 flex items-center justify-center text-on-surface-variant"><div class="flex flex-col items-center gap-2"><span class="material-symbols-outlined text-[32px] text-outline">view_kanban</span><p class="text-sm font-medium">This board has no columns yet.</p></div></div>`;
+        columnsEl.innerHTML = `
+          <button type="button" id="kanban-empty-add-column" class="flex-1 flex items-center justify-center text-on-surface-variant hover:text-primary transition-colors cursor-pointer group">
+            <div class="flex flex-col items-center gap-2 border-2 border-dashed border-outline/30 group-hover:border-primary/40 rounded-2xl px-12 py-10 transition-colors">
+              <span class="material-symbols-outlined text-[40px] text-outline group-hover:text-primary">add_circle</span>
+              <p class="text-sm font-semibold">Click to add your first column</p>
+              <p class="text-[11px] opacity-60">or double-click anywhere on the empty area</p>
+            </div>
+          </button>`;
         return;
       }
       taskCache.clear();
       columnCache.clear();
       columns.forEach(col => { columnCache.set(String(col.id), col); (col.tasks || []).forEach(t => taskCache.set(String(t.id), t)); });
-      columnsEl.innerHTML = columns.map(window.Dashboard.renderColumn).join('');
+      const addColumnPlaceholder = `
+        <button type="button" id="kanban-add-column-placeholder" class="kanban-add-column-placeholder shrink-0 self-start w-72 h-32 flex flex-col items-center justify-center gap-1 rounded-xl border-2 border-dashed border-outline/30 hover:border-primary/50 hover:bg-primary/5 text-on-surface-variant/60 hover:text-primary transition-colors group" title="Click or double-click to add a new column">
+          <span class="material-symbols-outlined text-[28px] group-hover:scale-110 transition-transform">add</span>
+          <span class="text-xs font-medium">Add Column</span>
+          <span class="text-[10px] opacity-60">(double-click empty area)</span>
+        </button>`;
+      columnsEl.innerHTML = columns.map(window.Dashboard.renderColumn).join('') + addColumnPlaceholder;
       window.Dashboard.setupDragAndDrop();
       attachCardClickEvents();
       attachAddTaskEvents();

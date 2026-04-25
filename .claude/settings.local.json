@@ -7,7 +7,12 @@
       "Bash(node -c \"C:/6630300289/OfficeTaskBorad/frontend/components/TaskModal.js\")",
       "Bash(node -c \"C:/6630300289/OfficeTaskBorad/frontend/components/TaskCommentRender.js\")",
       "Bash(node -c \"C:/6630300289/OfficeTaskBorad/frontend/components/TaskMentions.js\")",
-      "Bash(node -c \"C:/6630300289/OfficeTaskBorad/frontend/components/TaskModalActions.js\")"
+      "Bash(node -c \"C:/6630300289/OfficeTaskBorad/frontend/components/TaskModalActions.js\")",
+      "Bash(node -c Backend/utils/trelloImporter.js)",
+      "Bash(node -c Backend/controllers/boardController.js)",
+      "Bash(node -c Backend/routes/boardRoutes.js)",
+      "Bash(node -c Backend/middlewares/uploadMiddleware.js)",
+      "Bash(node -c frontend/components/BoardController.js)"
     ]
   }
 }
