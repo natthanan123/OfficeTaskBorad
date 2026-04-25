@@ -16,6 +16,11 @@ module.exports = (sequelize) => {
       allowNull: false,
       defaultValue: 0,
     },
+    // Hex color for the column header accent (same palette as labels)
+    color: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
     // board_id FK is added automatically by the association
   }, {
     tableName: 'columns',

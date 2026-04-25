@@ -76,10 +76,11 @@
     }
   }
 
-  const boardCtxMenuEl   = document.getElementById('board-context-menu');
-  const ctxDeleteBoardEl = document.getElementById('ctx-delete-board');
-  const ctxLeaveBoardEl  = document.getElementById('ctx-leave-board');
-  let   ctxMenuBoardId   = null;
+  const boardCtxMenuEl      = document.getElementById('board-context-menu');
+  const ctxDeleteBoardEl    = document.getElementById('ctx-delete-board');
+  const ctxLeaveBoardEl     = document.getElementById('ctx-leave-board');
+  const ctxDuplicateBoardEl = document.getElementById('ctx-duplicate-board');
+  let   ctxMenuBoardId      = null;
 
   function closeBoardContextMenu() {
     if (!boardCtxMenuEl) return;
@@ -94,8 +95,12 @@
 
     ctxMenuBoardId = boardId;
 
+    // Admins can delete any board; others must be the creator
     const isCreator = state.currentUserId != null && String(board.creator_id) === String(state.currentUserId);
-    ctxDeleteBoardEl.classList.toggle('hidden', !isCreator);
+    const isAdmin   = state.currentUserRole === 'admin';
+    const canDelete = isCreator || isAdmin;
+    ctxDeleteBoardEl.classList.toggle('hidden', !canDelete);
+    // Only non-creators see "Leave"; admins on someone else's board still see Delete (and may see Leave too if they joined)
     ctxLeaveBoardEl.classList.toggle('hidden',   isCreator);
 
     boardCtxMenuEl.style.left = '0px';
@@ -139,6 +144,34 @@
       } catch (err) {
         console.error('deleteBoard failed:', err);
         showToast(err.message || 'Could not delete board', 'error');
+      }
+    });
+  }
+
+  // Duplicate Board context-menu action
+  if (ctxDuplicateBoardEl) {
+    ctxDuplicateBoardEl.addEventListener('click', async () => {
+      const boardId = ctxMenuBoardId;
+      closeBoardContextMenu();
+      if (!boardId) return;
+
+      const board = state.cachedBoards.find(b => String(b.id) === String(boardId));
+      const title = (board && board.title) || 'this board';
+
+      try {
+        const data = await api(`/boards/${boardId}/duplicate`, { method: 'POST' });
+        showToast(`Duplicated "${title}"`, 'content_copy');
+        const newBoard = data && data.board;
+        await loadBoards();
+        if (newBoard && newBoard.id) {
+          state.activeBoardId = newBoard.id;
+          renderBoardList();
+          await loadBoardData(newBoard.id);
+        }
+      } catch (err) {
+        if (err.message === 'Unauthorized') return;
+        console.error('duplicateBoard failed:', err);
+        showToast(err.message || 'Could not duplicate board', 'error');
       }
     });
   }
@@ -192,6 +225,40 @@
   });
   window.addEventListener('resize',  closeBoardContextMenu);
   window.addEventListener('scroll',  closeBoardContextMenu, true);
+
+  // Double-click board title in header to rename it
+  if (boardTitleEl) {
+    boardTitleEl.style.cursor = 'pointer';
+    boardTitleEl.title = 'Double-click to rename board';
+    boardTitleEl.addEventListener('dblclick', async () => {
+      const boardId = state.activeBoardId;
+      if (!boardId) return;
+
+      const current = boardTitleEl.textContent.trim();
+      const raw = prompt('Rename board:', current);
+      if (raw === null) return;
+      const title = raw.trim();
+      if (!title || title === current) return;
+
+      try {
+        const data = await api(`/boards/${boardId}`, { method: 'PUT', body: { title } });
+        const updated = data && data.board;
+        if (updated) {
+          boardTitleEl.textContent = updated.title;
+          document.title = `${updated.title} | Pawtry`;
+          // Sync sidebar list
+          const cached = state.cachedBoards.find(b => String(b.id) === String(boardId));
+          if (cached) cached.title = updated.title;
+          renderBoardList();
+        }
+        showToast('Board renamed', 'edit');
+      } catch (err) {
+        if (err.message === 'Unauthorized') return;
+        console.error('Failed to rename board:', err);
+        showToast(err.message || 'Could not rename board', 'error');
+      }
+    });
+  }
 
   newBoardBtn.addEventListener('click', async () => {
     const raw = prompt('Enter new board title:');
