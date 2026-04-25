@@ -9,6 +9,8 @@ services:
       POSTGRES_USER: MIX_admin
       POSTGRES_PASSWORD: Golden168$
       POSTGRES_DB: office_task_board
+    ports:
+      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
 

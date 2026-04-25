@@ -24,6 +24,11 @@
   const hasFilesPayload   = D.hasFilesPayload;
   const showToast         = D.showToast;
 
+  const U = window.PawtryUtil || {};
+  const htmlToMarkdown    = U.htmlToMarkdown;
+  const descToHtml        = U.descToHtml;
+  const descPlainFromHtml = U.descPlainFromHtml;
+
   const modalEl               = document.getElementById('task-modal');
   const modalPanel            = document.getElementById('modal-panel');
   const modalCloseBtn         = document.getElementById('modal-close');
@@ -649,53 +654,6 @@
   // ─────────────────────────────────────────────
   // Description — Markdown view + Help modal
   // ─────────────────────────────────────────────
-  function htmlToMarkdown(html) {
-    if (!html) return '';
-    let md = html;
-    // normalize breaks
-    md = md.replace(/<br\s*\/?>/gi, '\n');
-    // strong / bold
-    md = md.replace(/<(strong|b)\b[^>]*>(.*?)<\/\1>/gis, '**$2**');
-    // em / italic
-    md = md.replace(/<(em|i)\b[^>]*>(.*?)<\/\1>/gis, '*$2*');
-    // links
-    md = md.replace(/<a\b[^>]*href=["']([^"']+)["'][^>]*>(.*?)<\/a>/gis, '[$2]($1)');
-    // images
-    md = md.replace(/<img\b[^>]*src=["']([^"']+)["'][^>]*\/?>/gis, '![]($1)');
-    // headings
-    md = md.replace(/<h1\b[^>]*>(.*?)<\/h1>/gis, '# $1\n');
-    md = md.replace(/<h2\b[^>]*>(.*?)<\/h2>/gis, '## $1\n');
-    md = md.replace(/<h3\b[^>]*>(.*?)<\/h3>/gis, '### $1\n');
-    // blockquote
-    md = md.replace(/<blockquote\b[^>]*>(.*?)<\/blockquote>/gis, '> $1\n');
-    // code
-    md = md.replace(/<pre\b[^>]*>([\s\S]*?)<\/pre>/gi, '```\n$1\n```\n');
-    md = md.replace(/<code\b[^>]*>(.*?)<\/code>/gi, '`$1`');
-    // lists — simple handling
-    md = md.replace(/<ul\b[^>]*>([\s\S]*?)<\/ul>/gi, (_, inner) =>
-      inner.replace(/<li\b[^>]*>(.*?)<\/li>/gis, '- $1\n'));
-    md = md.replace(/<ol\b[^>]*>([\s\S]*?)<\/ol>/gi, (_, inner) => {
-      let i = 0;
-      return inner.replace(/<li\b[^>]*>(.*?)<\/li>/gis, () => `${++i}. $1\n`)
-        .replace(/\$1/g, '');  // safety
-    });
-    // mention spans — preserve as @name
-    md = md.replace(/<span\b[^>]*data-mention[^>]*>@?(.*?)<\/span>/gis, '@$1');
-    // paragraphs → double newline
-    md = md.replace(/<\/p>\s*<p\b[^>]*>/gi, '\n\n');
-    md = md.replace(/<p\b[^>]*>/gi, '');
-    md = md.replace(/<\/p>/gi, '');
-    // strip remaining tags
-    md = md.replace(/<[^>]+>/g, '');
-    md = md.replace(/&nbsp;/g, ' ')
-           .replace(/&amp;/g, '&')
-           .replace(/&lt;/g, '<')
-           .replace(/&gt;/g, '>')
-           .replace(/&quot;/g, '"');
-    md = md.replace(/\n{3,}/g, '\n\n').trim();
-    return md;
-  }
-
   function toggleMarkdownView(q) {
     const mdPre  = document.getElementById('modal-desc-markdown');
     const qEl    = document.getElementById('modal-desc-quill');
@@ -734,20 +692,6 @@
       if (e.key === 'Escape' && !help.classList.contains('hidden')) closeEditorHelp();
     });
   })();
-
-  function descToHtml(text) {
-    if (!text) return '';
-    const t = String(text);
-    if (/<\w+[^>]*>/.test(t)) return t;
-    return t.split(/\n+/).map(line => `<p>${escapeHtml(line)}</p>`).join('');
-  }
-
-  function descPlainFromHtml(html) {
-    if (!html) return '';
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    return (tmp.textContent || tmp.innerText || '').trim();
-  }
 
   function setDescriptionView(text) {
     const html = descToHtml(text);
@@ -2201,6 +2145,9 @@
             <div class="mt-0.5 text-[11px] text-gray-400">${source}</div>
             <div class="mt-1 flex items-center gap-3">
               ${makeCoverBtn}
+              <button type="button" data-att-action="download" data-att-id="${escapeHtml(String(a.id))}" data-att-href="${escapeHtml(href)}" data-att-name="${name}" class="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-600 hover:underline">
+                <span class="material-symbols-outlined text-sm">download</span>Download
+              </button>
               <button type="button" data-att-action="delete" data-att-id="${escapeHtml(String(a.id))}" class="text-[11px] font-semibold text-red-500 hover:underline">Delete</button>
             </div>
           </div>
@@ -2305,7 +2252,28 @@
       if (!attId) return;
       btn.disabled = true;
       try {
-        if (action === 'delete') {
+        if (action === 'download') {
+          //File Download
+          const href = btn.dataset.attHref || '';
+          const name = btn.dataset.attName || 'download';
+          if (!href) throw new Error('Missing attachment URL');
+          try {
+            const res = await fetch(href);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = blobUrl;
+            a.download = name;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+          } catch (fetchErr) {
+            console.warn('Direct download failed, opening in new tab:', fetchErr);
+            window.open(href, '_blank', 'noopener');
+          }
+        } else if (action === 'delete') {
           if (!confirm('Delete this attachment?')) { btn.disabled = false; return; }
           await api(`/attachments/${attId}`, { method: 'DELETE' });
           const cached = taskCache.get(activeTaskId);
@@ -2324,7 +2292,8 @@
       } catch (err) {
         if (err.message === 'Unauthorized') return;
         console.error('attachment action failed:', err);
-        alert((action === 'delete' ? 'Delete' : 'Set cover') + ' failed: ' + (err.message || 'Unknown error'));
+        const label = action === 'delete' ? 'Delete' : action === 'download' ? 'Download' : 'Set cover';
+        alert(label + ' failed: ' + (err.message || 'Unknown error'));
       } finally { btn.disabled = false; }
     });
   }

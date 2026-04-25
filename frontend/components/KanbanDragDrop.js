@@ -15,6 +15,7 @@
       card.addEventListener('dragstart', (e) => {
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', JSON.stringify({
+          kind: 'task',
           taskId: card.dataset.taskId,
           sourceColumnId: card.dataset.columnId,
         }));
@@ -27,6 +28,9 @@
       });
     });
 
+    //Drag Column setup
+    setupColumnDragHandles();
+
     columnsEl.querySelectorAll('.kanban-column').forEach(colEl => {
       const dropZone = colEl.querySelector('.kanban-drop-zone');
       if (!dropZone) return;
@@ -34,21 +38,40 @@
       colEl.addEventListener('dragover', (e) => {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
-        colEl.classList.add('column-drag-over');
+        if (draggingColumnId && String(draggingColumnId) !== String(colEl.dataset.columnId)) {
+          colEl.classList.add('column-drop-indicator');
+        } else if (!draggingColumnId) {
+          colEl.classList.add('column-drag-over');
+        }
       });
 
       colEl.addEventListener('dragleave', (e) => {
         if (!colEl.contains(e.relatedTarget)) {
           colEl.classList.remove('column-drag-over');
+          colEl.classList.remove('column-drop-indicator');
         }
       });
 
       colEl.addEventListener('drop', async (e) => {
         e.preventDefault();
         colEl.classList.remove('column-drag-over');
+        colEl.classList.remove('column-drop-indicator');
 
         let data;
         try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
+
+        //Drag Column drop
+        if (data.kind === 'column') {
+          const sourceId = data.columnId;
+          const targetId = colEl.dataset.columnId;
+          if (!sourceId || !targetId || String(sourceId) === String(targetId)) return;
+          const rect = colEl.getBoundingClientRect();
+          const dropBefore = (e.clientX - rect.left) < (rect.width / 2);
+          await applyColumnReorder(sourceId, targetId, dropBefore);
+          return;
+        }
+
+        //Task drop
         const { taskId, sourceColumnId } = data;
         const targetColumnId = colEl.dataset.columnId;
 
@@ -81,9 +104,72 @@
     });
   }
 
+  //Drag Column
+  let draggingColumnId = null;
+
+  function setupColumnDragHandles() {
+    columnsEl.querySelectorAll('.kanban-column').forEach(colEl => {
+      const handle = colEl.querySelector('.column-drag-handle');
+      if (!handle) return;
+
+      handle.addEventListener('mousedown', (e) => {
+        if (e.target.closest('button, .column-options-menu, input, a')) return;
+        colEl.setAttribute('draggable', 'true');
+      });
+
+      const releaseDraggable = () => colEl.setAttribute('draggable', 'false');
+      handle.addEventListener('mouseup',    releaseDraggable);
+      handle.addEventListener('mouseleave', releaseDraggable);
+
+      colEl.addEventListener('dragstart', (e) => {
+        if (e.target.closest('.task-card')) return;
+        if (colEl.getAttribute('draggable') !== 'true') { e.preventDefault(); return; }
+        draggingColumnId = colEl.dataset.columnId;
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+          kind: 'column',
+          columnId: draggingColumnId,
+        }));
+        requestAnimationFrame(() => colEl.classList.add('column-dragging'));
+      });
+
+      colEl.addEventListener('dragend', () => {
+        draggingColumnId = null;
+        colEl.classList.remove('column-dragging');
+        colEl.setAttribute('draggable', 'false');
+        columnsEl.querySelectorAll('.column-drop-indicator').forEach(c => c.classList.remove('column-drop-indicator'));
+      });
+    });
+  }
+
+  async function applyColumnReorder(sourceId, targetId, dropBefore) {
+    const allCols = [...columnsEl.querySelectorAll('.kanban-column')];
+    const source = allCols.find(c => c.dataset.columnId === String(sourceId));
+    const target = allCols.find(c => c.dataset.columnId === String(targetId));
+    if (!source || !target || source === target) return;
+
+    if (dropBefore) {
+      target.parentNode.insertBefore(source, target);
+    } else {
+      target.parentNode.insertBefore(source, target.nextSibling);
+    }
+
+    const newOrder = [...columnsEl.querySelectorAll('.kanban-column')];
+    try {
+      for (let i = 0; i < newOrder.length; i++) {
+        const id = newOrder[i].dataset.columnId;
+        await api(`/columns/${id}`, { method: 'PUT', body: { position: i } });
+      }
+    } catch (err) {
+      console.error('Failed to reorder columns:', err);
+      alert('จัดเรียงคอลัมน์ไม่สำเร็จ: ' + (err.message || 'Unknown error') + '\nจะโหลดบอร์ดใหม่');
+      loadBoardData(state.activeBoardId);
+    }
+  }
+
   (function setupBoardPan() {
     const PAN_THRESHOLD = 5;
-    const INTERACTIVE_SELECTOR = '.task-card, button, a, input, textarea, select, [draggable="true"]';
+    const INTERACTIVE_SELECTOR = '.task-card, button, a, input, textarea, select, [draggable="true"], .column-drag-handle';
 
     let pointerDown    = false;
     let isPanning      = false;

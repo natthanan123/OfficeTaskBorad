@@ -17,20 +17,33 @@
   //Color presets
   const COLUMN_COLOR_PRESETS = ['#3525cd', '#58579b', '#7e3000', '#a44100', '#4f46e5', '#454386', '#16a34a', '#dc2626', '#0891b2', '#ca8a04'];
 
+  //Hex → rgba helper
+  function hexToRgba(hex, alpha) {
+    if (!hex) return '';
+    let h = hex.replace('#', '');
+    if (h.length === 3) h = h.split('').map(c => c + c).join('');
+    if (h.length !== 6) return '';
+    const r = parseInt(h.slice(0, 2), 16);
+    const g = parseInt(h.slice(2, 4), 16);
+    const b = parseInt(h.slice(4, 6), 16);
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
   function renderColumn(column) {
     const tasks = Array.isArray(column.tasks) ? [...column.tasks] : [];
     tasks.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
     const cardsHtml = tasks.length
       ? tasks.map(renderTaskCard).join('')
-      : `<p class="text-xs text-on-surface-variant/50 italic text-center py-4">No tasks yet</p>`;
+      : `<p class="empty-placeholder text-xs text-on-surface-variant/50 italic text-center py-4">No tasks yet</p>`;
 
-    //Accent color
+    //Accent color + background tint
     const color = (column.color && /^#[0-9a-fA-F]{3,8}$/.test(column.color)) ? column.color : '';
-    const colorStyle = color ? `border-left:4px solid ${color};` : '';
+    const bgTint = color ? hexToRgba(color, 0.12) : '';
+    const colorStyle = color ? `border-left:4px solid ${color};${bgTint ? ` background-color:${bgTint};` : ''}` : '';
 
     return `
       <div class="kanban-column flex flex-col self-start max-h-full bg-surface-container-low rounded-xl p-3" data-column-id="${escapeHtml(column.id)}" data-column-color="${escapeHtml(color)}" style="${colorStyle}">
-        <div class="flex justify-between items-center px-2 py-3 mb-2">
+        <div class="column-drag-handle flex justify-between items-center px-2 py-3 mb-2">
           <div class="flex items-center space-x-2">
             <h3 class="column-title font-bold text-on-surface-variant tracking-tight" ${color ? `style="color:${color}"` : ''}>${escapeHtml(column.title)}</h3>
             <span class="bg-surface-container-highest px-2 py-0.5 rounded-full text-[10px] font-bold text-on-surface-variant">${tasks.length}</span>
