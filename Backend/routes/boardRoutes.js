@@ -2,6 +2,7 @@ const router = require('express').Router();
 const authMiddleware = require('../middlewares/authMiddleware');
 const validate = require('../middlewares/validateMiddleware');
 const upload = require('../middlewares/uploadMiddleware');
+const { jsonUpload } = require('../middlewares/uploadMiddleware');
 const { createBoardSchema } = require('../validators/boardValidator');
 const {
   createBoard,
@@ -9,6 +10,7 @@ const {
   getBoardById,
   updateBoard,
   duplicateBoard,
+  importFromTrello,
   deleteBoard,
   leaveBoard,
   listBoardLabels,
@@ -27,6 +29,7 @@ const { getBoardLogs } = require('../controllers/activityLogController');
 router.use(authMiddleware);
 
 router.post('/', validate(createBoardSchema), createBoard);
+router.post('/import/trello', jsonUpload.single('trello_json'), importFromTrello);
 router.get('/', getBoards);
 router.get('/:id', getBoardById);
 router.put('/:id', updateBoard);
