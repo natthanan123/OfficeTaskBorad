@@ -24,6 +24,8 @@ services:
       - db
     env_file:
       - ./Backend/.env
+    environment:
+      DB_HOST: db
     volumes:
       - ./Backend/uploads:/app/uploads
 
