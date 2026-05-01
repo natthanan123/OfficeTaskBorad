@@ -9,6 +9,8 @@ const {
   BoardMember,
   Notification,
   ActivityLog,
+  Attachment,
+  CommentReaction,
   sequelize,
 } = require('../models');
 const { parseUrlsToAttachments } = require('../utils/parseUrlsToAttachments');
@@ -450,7 +452,18 @@ exports.deleteTask = async (req, res) => {
 exports.copyTask = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const original = await Task.findByPk(req.params.id, { transaction: t });
+    const original = await Task.findByPk(req.params.id, {
+      include: [
+        { model: Label, as: 'labels', through: { attributes: [] } },
+        { model: Attachment, as: 'attachments' },
+        {
+          model: TaskComment,
+          as: 'comments',
+          include: [{ model: CommentReaction, as: 'reactions' }],
+        },
+      ],
+      transaction: t,
+    });
     if (!original) {
       await t.rollback();
       return res.status(404).json({ status: 'error', message: 'Task not found' });
@@ -477,6 +490,8 @@ exports.copyTask = async (req, res) => {
       }
     }
 
+    const isCrossBoard = String(targetColumn.board_id) !== String(sourceBoardId);
+
     const maxPos = await Task.max('position', { where: { column_id: targetColumnId }, transaction: t });
     const finalPosition = (maxPos ?? -1) + 1;
 
@@ -491,20 +506,102 @@ exports.copyTask = async (req, res) => {
       position: finalPosition,
     }, { transaction: t });
 
-    const originalLabels = await TaskLabel.findAll({
-      where: { task_id: original.id },
-      transaction: t,
-    });
-    for (const tl of originalLabels) {
-      await TaskLabel.create(
-        { task_id: copy.id, label_id: tl.label_id },
-        { transaction: t }
-      );
+    //Labels
+    if (isCrossBoard) {
+      const targetLabels = await Label.findAll({ where: { board_id: targetColumn.board_id }, transaction: t });
+      const labelKey = (l) => `${(l.title || '').trim().toLowerCase()}|${(l.color || '').trim().toLowerCase()}`;
+      const targetLabelMap = new Map(targetLabels.map(l => [labelKey(l), l.id]));
+      const matched = (original.labels || [])
+        .map(l => targetLabelMap.get(labelKey(l)))
+        .filter(Boolean);
+      if (matched.length && typeof copy.setLabels === 'function') {
+        await copy.setLabels(matched, { transaction: t });
+      }
+    } else {
+      const originalLabels = await TaskLabel.findAll({
+        where: { task_id: original.id },
+        transaction: t,
+      });
+      for (const tl of originalLabels) {
+        await TaskLabel.create(
+          { task_id: copy.id, label_id: tl.label_id },
+          { transaction: t }
+        );
+      }
     }
 
+    //Assignees
     const origAssignees = await original.getAssignees({ transaction: t });
-    for (const u of origAssignees) {
+    let allowedUserIds;
+    if (isCrossBoard) {
+      const targetMembers = await BoardMember.findAll({
+        where: { board_id: targetColumn.board_id, status: 'accepted' },
+        transaction: t,
+      });
+      const targetMemberIds = new Set(targetMembers.map(m => String(m.user_id)));
+      allowedUserIds = origAssignees.filter(u => targetMemberIds.has(String(u.id)));
+    } else {
+      allowedUserIds = origAssignees;
+    }
+    for (const u of allowedUserIds) {
       await copy.addAssignee(u, { transaction: t });
+    }
+
+    //Attachments
+    for (const att of (original.attachments || [])) {
+      await Attachment.create({
+        task_id: copy.id,
+        user_id: att.user_id || null,
+        filename_or_url: att.filename_or_url,
+        mimetype: att.mimetype,
+        size: att.size,
+        is_cover: att.is_cover,
+        source: att.source || 'direct_upload',
+      }, { transaction: t });
+    }
+
+    //Comments
+    const commentIdMap = new Map();
+    const orderedComments = (original.comments || []).slice().sort((a, b) => {
+      const ad = new Date(a.created_at || 0).getTime();
+      const bd = new Date(b.created_at || 0).getTime();
+      return ad - bd;
+    });
+    for (const c of orderedComments) {
+      if (c.parent_id) continue;
+      const newC = await TaskComment.create({
+        task_id: copy.id,
+        user_id: c.user_id,
+        content: c.content,
+        parent_id: null,
+      }, { transaction: t });
+      commentIdMap.set(String(c.id), newC.id);
+      for (const r of (c.reactions || [])) {
+        await CommentReaction.create({
+          comment_id: newC.id,
+          user_id: r.user_id,
+          emoji: r.emoji,
+        }, { transaction: t });
+      }
+    }
+    for (const c of orderedComments) {
+      if (!c.parent_id) continue;
+      const newParent = commentIdMap.get(String(c.parent_id));
+      if (!newParent) continue;
+      const newC = await TaskComment.create({
+        task_id: copy.id,
+        user_id: c.user_id,
+        content: c.content,
+        parent_id: newParent,
+      }, { transaction: t });
+      commentIdMap.set(String(c.id), newC.id);
+      for (const r of (c.reactions || [])) {
+        await CommentReaction.create({
+          comment_id: newC.id,
+          user_id: r.user_id,
+          emoji: r.emoji,
+        }, { transaction: t });
+      }
     }
 
     await t.commit();

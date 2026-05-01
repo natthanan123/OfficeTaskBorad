@@ -27,6 +27,7 @@
   const modalCopyMenu      = document.getElementById('modal-copy-menu');
   const modalCopyBack      = document.getElementById('modal-copy-back');
   const modalCopyTitle     = document.getElementById('modal-copy-title');
+  const modalCopyBoard     = document.getElementById('modal-copy-board');
   const modalCopyColumn    = document.getElementById('modal-copy-column');
   const modalCopySubmit    = document.getElementById('modal-copy-submit');
   const modalShareMenu     = document.getElementById('modal-share-menu');
@@ -54,26 +55,74 @@
     updateWatchLabel();
   }
 
+  function fillCurrentBoardColumns() {
+    if (!modalCopyColumn) return;
+    const task = currentTask();
+    const columnsEl = getColumnsEl();
+    const columnEls = columnsEl.querySelectorAll('.kanban-column');
+    const opts = [];
+    columnEls.forEach(colEl => {
+      const colId = colEl.dataset.columnId;
+      const titleEl = colEl.querySelector('h3');
+      const title = titleEl ? titleEl.textContent.trim() : colId;
+      const sel = task && String(colId) === String(task.column_id) ? ' selected' : '';
+      opts.push(`<option value="${escapeHtml(String(colId))}"${sel}>${escapeHtml(title)}</option>`);
+    });
+    modalCopyColumn.innerHTML = opts.join('');
+  }
+
+  async function loadColumnsForBoard(boardId) {
+    if (!modalCopyColumn) return;
+    if (String(boardId) === String(D.getActiveBoardId && D.getActiveBoardId())) {
+      fillCurrentBoardColumns();
+      return;
+    }
+    modalCopyColumn.innerHTML = '<option value="">Loading…</option>';
+    modalCopyColumn.disabled = true;
+    try {
+      const data = await api(`/boards/${boardId}`);
+      const columns = (data && data.board && data.board.columns) || [];
+      columns.sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
+      if (!columns.length) {
+        modalCopyColumn.innerHTML = '<option value="">(no columns on this board)</option>';
+      } else {
+        modalCopyColumn.innerHTML = columns.map(c =>
+          `<option value="${escapeHtml(String(c.id))}">${escapeHtml(c.title || '(untitled)')}</option>`
+        ).join('');
+      }
+    } catch (err) {
+      console.error('load columns for board failed:', err);
+      modalCopyColumn.innerHTML = '<option value="">(failed to load)</option>';
+    } finally {
+      modalCopyColumn.disabled = false;
+    }
+  }
+
   function openCopyMenu() {
     if (!modalCopyMenu) return;
     const task = currentTask();
     if (!task) return;
     if (modalCopyTitle) modalCopyTitle.value = task.title || '';
-    const columnsEl = getColumnsEl();
-    const columnEls = columnsEl.querySelectorAll('.kanban-column');
-    if (modalCopyColumn) {
-      const opts = [];
-      columnEls.forEach(colEl => {
-        const colId = colEl.dataset.columnId;
-        const titleEl = colEl.querySelector('h3');
-        const title = titleEl ? titleEl.textContent.trim() : colId;
-        const sel = String(colId) === String(task.column_id) ? ' selected' : '';
-        opts.push(`<option value="${escapeHtml(String(colId))}"${sel}>${escapeHtml(title)}</option>`);
-      });
-      modalCopyColumn.innerHTML = opts.join('');
+
+    if (modalCopyBoard) {
+      const boards = (D.state && D.state.cachedBoards) || [];
+      const activeId = D.getActiveBoardId && D.getActiveBoardId();
+      modalCopyBoard.innerHTML = boards.map(b => {
+        const sel = String(b.id) === String(activeId) ? ' selected' : '';
+        return `<option value="${escapeHtml(String(b.id))}"${sel}>${escapeHtml(b.title || 'Untitled')}</option>`;
+      }).join('');
     }
+
+    fillCurrentBoardColumns();
+
     if (modalMoreMenu) modalMoreMenu.classList.add('hidden');
     modalCopyMenu.classList.remove('hidden');
+  }
+
+  if (modalCopyBoard) {
+    modalCopyBoard.addEventListener('change', () => {
+      loadColumnsForBoard(modalCopyBoard.value);
+    });
   }
 
   function openShareMenu() {
@@ -253,6 +302,7 @@
       if (!id) return;
       const title = (modalCopyTitle && modalCopyTitle.value.trim()) || 'Copy of card';
       const targetColumnId = modalCopyColumn && modalCopyColumn.value;
+      const targetBoardId  = modalCopyBoard && modalCopyBoard.value;
       if (!targetColumnId) return;
       modalCopySubmit.disabled = true;
       try {
@@ -261,7 +311,9 @@
           body: { title, column_id: targetColumnId },
         });
         const newTask = data && data.task;
-        if (newTask) {
+        const activeBoardId = D.getActiveBoardId && D.getActiveBoardId();
+        const targetIsActive = !targetBoardId || String(targetBoardId) === String(activeBoardId);
+        if (newTask && targetIsActive) {
           taskCache.set(String(newTask.id), newTask);
           const columnsEl = getColumnsEl();
           const colEl = columnsEl.querySelector(`.kanban-column[data-column-id="${targetColumnId}"]`);
@@ -281,10 +333,10 @@
           }
         }
         closeMoreMenu();
-        if (showToast) showToast('Card copied', 'check');
+        if (showToast) showToast(targetIsActive ? 'Card copied' : 'Card copied to another board', 'check');
       } catch (err) {
         console.error('copy failed:', err);
-        if (showToast) showToast('Could not copy card', 'error');
+        if (showToast) showToast(err.message || 'Could not copy card', 'error');
       } finally {
         modalCopySubmit.disabled = false;
       }

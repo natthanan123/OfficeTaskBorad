@@ -94,15 +94,34 @@
         .kanban-scroll::-webkit-scrollbar { height: 8px; }
         .kanban-scroll::-webkit-scrollbar-track { background: #f3f4f5; }
         .kanban-scroll::-webkit-scrollbar-thumb { background: #c7c4d8; border-radius: 10px; }
-        .kanban-column { min-width: 288px; max-width: 288px; }
+        .kanban-column { min-width: 288px; max-width: 288px; transition: min-width 0.18s ease, max-width 0.18s ease, padding 0.18s ease; }
+        /* Collapsed Column */
+        .kanban-column.kanban-column-collapsed { min-width: 44px; max-width: 44px; padding: 0.4rem 0.25rem; }
+        .kanban-column.kanban-column-collapsed .kanban-drop-zone,
+        .kanban-column.kanban-column-collapsed .add-task-btn,
+        .kanban-column.kanban-column-collapsed .column-options-btn,
+        .kanban-column.kanban-column-collapsed .column-count-badge { display: none; }
+        .kanban-column.kanban-column-collapsed .column-drag-handle { padding: 0; margin: 0; flex-direction: column; align-items: center; gap: 0.5rem; }
+        .kanban-column.kanban-column-collapsed .column-header-info { flex-direction: column; align-items: center; gap: 0.4rem; }
+        .kanban-column.kanban-column-collapsed .column-title {
+          writing-mode: vertical-rl;
+          transform: rotate(180deg);
+          white-space: nowrap;
+          font-size: 0.85rem;
+          padding: 0.5rem 0;
+          letter-spacing: 0.04em;
+        }
+        /* Fast Scroll — JS-controlled, no CSS smooth to avoid wheel lag */
         #kanban-columns { cursor: grab; zoom: 0.8; }
-        #kanban-columns.is-panning { cursor: grabbing; user-select: none; }
+        #kanban-columns.is-panning { cursor: grabbing; user-select: none; scroll-behavior: auto !important; }
         #kanban-columns.is-panning * { cursor: grabbing !important; }
         .column-drag-handle { cursor: grab; }
         .column-drag-handle:active { cursor: grabbing; }
         .kanban-column.column-dragging { opacity: 0.4; }
         .column-drop-indicator { background: rgba(53,37,205,0.15); border: 2px dashed rgba(53,37,205,0.4); border-radius: 0.75rem; }
         .task-card-dragging { opacity: 0.4; transform: scale(0.96); }
+        .task-card.task-drop-before { box-shadow: 0 -3px 0 0 #4f46e5 inset; }
+        .task-card.task-drop-after  { box-shadow: 0 3px 0 0 #4f46e5 inset; }
         .column-drag-over > .kanban-drop-zone {
           background-color: rgba(53,37,205,0.06);
           border: 2px dashed rgba(53,37,205,0.25);
@@ -1345,8 +1364,11 @@
         <div class="pawtry-copy-body">
           <label class="pawtry-copy-label">Title</label>
           <input id="modal-copy-title" type="text" class="pawtry-copy-input"/>
-          <label class="pawtry-copy-label">Copy to</label>
+          <label class="pawtry-copy-label">Target board</label>
+          <select id="modal-copy-board" class="pawtry-copy-input"></select>
+          <label class="pawtry-copy-label">Target column</label>
           <select id="modal-copy-column" class="pawtry-copy-input"></select>
+          <p class="text-[11px] text-gray-500 italic mt-1 mb-2">Labels and assignees that don't exist on the target board will be removed.</p>
           <button id="modal-copy-submit" type="button" class="pawtry-copy-submit">Create card</button>
         </div>
       </div>

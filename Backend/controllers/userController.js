@@ -243,3 +243,28 @@ exports.getMe = async (req, res) => {
     return res.status(500).json({ status: 'error', message: 'Could not fetch profile' });
   }
 };
+
+//Update profile (full_name)
+exports.updateMe = async (req, res) => {
+  try {
+    const { full_name } = req.body || {};
+    const updates = {};
+    if (typeof full_name === 'string') {
+      const trimmed = full_name.trim();
+      if (!trimmed) {
+        return res.status(400).json({ status: 'error', message: 'full_name cannot be empty' });
+      }
+      updates.full_name = trimmed;
+    }
+    if (!Object.keys(updates).length) {
+      return res.status(400).json({ status: 'error', message: 'Nothing to update' });
+    }
+
+    await req.user.update(updates);
+    const safeUser = await User.findByPk(req.user.id);
+    return res.json({ status: 'success', data: { user: safeUser } });
+  } catch (err) {
+    console.error('updateMe error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not update profile' });
+  }
+};

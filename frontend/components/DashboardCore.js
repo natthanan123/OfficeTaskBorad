@@ -206,9 +206,38 @@
     columnsEl.innerHTML = `<div class="flex-1 flex items-center justify-center"><div class="flex flex-col items-center gap-3 max-w-md text-center"><span class="material-symbols-outlined text-error text-[40px]">error</span><p class="text-sm font-semibold text-on-surface">${escapeHtml(message)}</p><p class="text-xs text-on-surface-variant">ตรวจสอบว่า backend กำลังทำงานอยู่ที่ ${window.APP_CONFIG.API_ORIGIN} และมี board ในฐานข้อมูล</p></div></div>`;
   }
 
+  //Retain scroll position across re-renders
+  function snapshotScrollPositions() {
+    const snap = {
+      boardLeft: columnsEl.scrollLeft,
+      boardTop:  columnsEl.scrollTop,
+      columns:   {},
+    };
+    columnsEl.querySelectorAll('.kanban-column').forEach(colEl => {
+      const id = colEl.dataset.columnId;
+      const dz = colEl.querySelector('.kanban-drop-zone');
+      if (id && dz) snap.columns[id] = dz.scrollTop;
+    });
+    return snap;
+  }
+
+  function restoreScrollPositions(snap) {
+    if (!snap) return;
+    requestAnimationFrame(() => {
+      columnsEl.scrollLeft = snap.boardLeft || 0;
+      columnsEl.scrollTop  = snap.boardTop  || 0;
+      Object.keys(snap.columns || {}).forEach(id => {
+        const colEl = columnsEl.querySelector(`.kanban-column[data-column-id="${id}"]`);
+        const dz = colEl && colEl.querySelector('.kanban-drop-zone');
+        if (dz) dz.scrollTop = snap.columns[id];
+      });
+    });
+  }
+
   async function loadBoardData(boardId) {
     if (!boardId) return;
     if (window.Dashboard && window.Dashboard.SocketManager) window.Dashboard.SocketManager.joinBoardRoom(boardId);
+    const scrollSnap = snapshotScrollPositions();
     try {
       columnsEl.innerHTML = `<div class="flex-1 flex items-center justify-center text-on-surface-variant"><div class="flex flex-col items-center gap-3"><span class="material-symbols-outlined text-primary animate-spin text-[32px]">progress_activity</span><p class="text-sm font-medium">Loading board...</p></div></div>`;
       const [detail, labelsData, membersData] = await Promise.all([
@@ -219,6 +248,7 @@
       state.boardLabelsCache  = Array.isArray(labelsData.labels)  ? labelsData.labels  : [];
       state.boardMembersCache = Array.isArray(membersData.members) ? membersData.members : [];
       renderBoard(detail.board);
+      restoreScrollPositions(scrollSnap);
     } catch (err) {
       if (err.message === 'Unauthorized') return;
       console.error('Failed to load board data:', err);

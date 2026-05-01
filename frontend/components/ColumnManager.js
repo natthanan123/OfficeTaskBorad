@@ -17,8 +17,8 @@
   //Color presets
   const COLUMN_COLOR_PRESETS = ['#3525cd', '#58579b', '#7e3000', '#a44100', '#4f46e5', '#454386', '#16a34a', '#dc2626', '#0891b2', '#ca8a04'];
 
-  //Hex → rgba helper
-  function hexToRgba(hex, alpha) {
+  //Contrast helper — pick black/white text based on hex bg
+  function contrastTextColor(hex) {
     if (!hex) return '';
     let h = hex.replace('#', '');
     if (h.length === 3) h = h.split('').map(c => c + c).join('');
@@ -26,7 +26,8 @@
     const r = parseInt(h.slice(0, 2), 16);
     const g = parseInt(h.slice(2, 4), 16);
     const b = parseInt(h.slice(4, 6), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    const yiq = (r * 299 + g * 587 + b * 114) / 1000;
+    return yiq >= 160 ? '#0f172a' : '#ffffff';
   }
 
   function renderColumn(column) {
@@ -36,17 +37,27 @@
       ? tasks.map(renderTaskCard).join('')
       : `<p class="empty-placeholder text-xs text-on-surface-variant/50 italic text-center py-4">No tasks yet</p>`;
 
-    //Accent color + background tint
+    //Solid accent color + readable text
     const color = (column.color && /^#[0-9a-fA-F]{3,8}$/.test(column.color)) ? column.color : '';
-    const bgTint = color ? hexToRgba(color, 0.12) : '';
-    const colorStyle = color ? `border-left:4px solid ${color};${bgTint ? ` background-color:${bgTint};` : ''}` : '';
+    const textColor = color ? contrastTextColor(color) : '';
+    const colorStyle = color ? `background-color:${color};color:${textColor};` : '';
+    const titleStyle = color ? `color:${textColor};` : '';
+    const badgeStyle = color
+      ? `background-color:rgba(255,255,255,${textColor === '#ffffff' ? '0.18' : '0.55'});color:${textColor};`
+      : '';
+
+    const isCollapsed = !!column._collapsed;
+    const collapsedClass = isCollapsed ? ' kanban-column-collapsed' : '';
 
     return `
-      <div class="kanban-column flex flex-col self-start max-h-full bg-surface-container-low rounded-xl p-3" data-column-id="${escapeHtml(column.id)}" data-column-color="${escapeHtml(color)}" style="${colorStyle}">
+      <div class="kanban-column flex flex-col self-start max-h-full bg-surface-container-low rounded-xl p-3${collapsedClass}" data-column-id="${escapeHtml(column.id)}" data-column-color="${escapeHtml(color)}" data-column-title="${escapeHtml(column.title)}" style="${colorStyle}">
         <div class="column-drag-handle flex justify-between items-center px-2 py-3 mb-2">
-          <div class="flex items-center space-x-2">
-            <h3 class="column-title font-bold text-on-surface-variant tracking-tight" ${color ? `style="color:${color}"` : ''}>${escapeHtml(column.title)}</h3>
-            <span class="bg-surface-container-highest px-2 py-0.5 rounded-full text-[10px] font-bold text-on-surface-variant">${tasks.length}</span>
+          <div class="flex items-center space-x-2 column-header-info">
+            <button type="button" class="column-collapse-toggle text-on-surface-variant/60 hover:text-on-surface" data-column-id="${escapeHtml(column.id)}" title="${isCollapsed ? 'Expand column' : 'Collapse column'}" style="${color ? `color:${textColor};` : ''}">
+              <span class="material-symbols-outlined text-base">${isCollapsed ? 'chevron_right' : 'unfold_less'}</span>
+            </button>
+            <h3 class="column-title font-bold text-on-surface-variant tracking-tight cursor-pointer" data-column-id="${escapeHtml(column.id)}" style="${titleStyle}" title="Click to collapse/expand">${escapeHtml(column.title)}</h3>
+            <span class="column-count-badge bg-surface-container-highest px-2 py-0.5 rounded-full text-[10px] font-bold text-on-surface-variant" style="${badgeStyle}">${tasks.length}</span>
           </div>
           <div class="relative">
             <button type="button"
@@ -62,6 +73,12 @@
                       data-column-id="${escapeHtml(column.id)}">
                 <span class="material-symbols-outlined text-base">edit</span>
                 <span>Edit Column Name</span>
+              </button>
+              <button type="button"
+                      class="column-copy-btn w-full text-left px-4 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2 transition-colors border-t border-outline/10"
+                      data-column-id="${escapeHtml(column.id)}">
+                <span class="material-symbols-outlined text-base">content_copy</span>
+                <span>Copy Column to Board…</span>
               </button>
               <button type="button"
                       class="column-color-toggle w-full text-left px-4 py-2 text-on-surface hover:bg-surface-container-low flex items-center gap-2 transition-colors border-t border-outline/10"
@@ -136,6 +153,35 @@
     columnsEl.querySelectorAll('.column-options-btn').forEach(b => b.setAttribute('aria-expanded', 'false'));
   }
 
+  if (!state.collapsedColumns) state.collapsedColumns = new Set();
+
+  //Collapse Column toggle
+  function toggleCollapseColumn(columnId) {
+    if (!columnId) return;
+    const colEl = columnsEl.querySelector(`.kanban-column[data-column-id="${columnId}"]`);
+    if (!colEl) return;
+    const willCollapse = !colEl.classList.contains('kanban-column-collapsed');
+    colEl.classList.toggle('kanban-column-collapsed', willCollapse);
+    if (willCollapse) state.collapsedColumns.add(String(columnId));
+    else state.collapsedColumns.delete(String(columnId));
+    const toggleBtn = colEl.querySelector('.column-collapse-toggle .material-symbols-outlined');
+    if (toggleBtn) toggleBtn.textContent = willCollapse ? 'chevron_right' : 'unfold_less';
+    const toggleWrap = colEl.querySelector('.column-collapse-toggle');
+    if (toggleWrap) toggleWrap.title = willCollapse ? 'Expand column' : 'Collapse column';
+  }
+
+  function applyCollapsedStateAfterRender() {
+    if (!state.collapsedColumns || !state.collapsedColumns.size) return;
+    state.collapsedColumns.forEach(id => {
+      const colEl = columnsEl.querySelector(`.kanban-column[data-column-id="${id}"]`);
+      if (colEl) {
+        colEl.classList.add('kanban-column-collapsed');
+        const icon = colEl.querySelector('.column-collapse-toggle .material-symbols-outlined');
+        if (icon) icon.textContent = 'chevron_right';
+      }
+    });
+  }
+
   function attachColumnOptionEvents() {
     columnsEl.querySelectorAll('.column-options-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
@@ -150,6 +196,22 @@
         }
       });
     });
+
+    columnsEl.querySelectorAll('.column-collapse-toggle').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleCollapseColumn(btn.dataset.columnId);
+      });
+    });
+
+    columnsEl.querySelectorAll('.column-title').forEach(t => {
+      t.addEventListener('click', (e) => {
+        e.stopPropagation();
+        toggleCollapseColumn(t.dataset.columnId);
+      });
+    });
+
+    applyCollapsedStateAfterRender();
 
     columnsEl.querySelectorAll('.column-edit-btn').forEach(btn => {
       btn.addEventListener('click', async (e) => {
@@ -218,6 +280,21 @@
         e.stopPropagation();
         closeAllColumnMenus();
         await updateColumnColor(btn.dataset.columnId, null);
+      });
+    });
+
+    //Copy Column
+    columnsEl.querySelectorAll('.column-copy-btn').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        closeAllColumnMenus();
+        const columnId = btn.dataset.columnId;
+        if (!columnId) return;
+        const colEl = columnsEl.querySelector(`.kanban-column[data-column-id="${columnId}"]`);
+        const sourceTitle = colEl?.querySelector('.column-title')?.textContent?.trim() || '';
+        if (D.openCopyColumnDialog) {
+          D.openCopyColumnDialog({ columnId, sourceTitle });
+        }
       });
     });
 
@@ -324,6 +401,86 @@
     }
   });
 
+  //Copy Column dialog
+  function ensureCopyColumnDialog() {
+    let dlg = document.getElementById('copy-column-dialog');
+    if (dlg) return dlg;
+    dlg = document.createElement('div');
+    dlg.id = 'copy-column-dialog';
+    dlg.className = 'fixed inset-0 z-[180] hidden';
+    dlg.innerHTML = `
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" data-cc-close></div>
+      <div class="absolute inset-0 flex items-center justify-center p-4">
+        <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
+          <div class="flex items-center justify-between px-5 py-3 border-b border-gray-200 bg-gray-50">
+            <h3 class="font-semibold text-gray-800">Copy Column to Board</h3>
+            <button type="button" data-cc-close class="text-gray-400 hover:text-gray-600 p-1 rounded-lg hover:bg-gray-100" title="Close">
+              <span class="material-symbols-outlined text-xl">close</span>
+            </button>
+          </div>
+          <div class="p-5 space-y-4">
+            <label class="block">
+              <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">New column title</span>
+              <input id="cc-title" type="text" maxlength="120" class="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none text-sm"/>
+            </label>
+            <label class="block">
+              <span class="text-xs font-semibold text-gray-600 uppercase tracking-wide">Target board</span>
+              <select id="cc-board" class="mt-1 w-full px-3 py-2 rounded-lg border border-gray-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none text-sm bg-white"></select>
+            </label>
+            <p class="text-[11px] text-gray-500 italic">Labels and assignees that don't exist on the target board will be removed from copied tasks.</p>
+            <button id="cc-submit" type="button" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-colors disabled:opacity-50">Copy Column</button>
+          </div>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(dlg);
+    dlg.querySelectorAll('[data-cc-close]').forEach(el => el.addEventListener('click', () => dlg.classList.add('hidden')));
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && !dlg.classList.contains('hidden')) dlg.classList.add('hidden');
+    });
+    return dlg;
+  }
+
+  function openCopyColumnDialog({ columnId, sourceTitle }) {
+    const dlg = ensureCopyColumnDialog();
+    const titleInput = dlg.querySelector('#cc-title');
+    const boardSel   = dlg.querySelector('#cc-board');
+    const submitBtn  = dlg.querySelector('#cc-submit');
+    titleInput.value = `${sourceTitle || 'Column'} (copy)`;
+    const boards = state.cachedBoards || [];
+    boardSel.innerHTML = boards.map(b => {
+      const sel = String(b.id) === String(state.activeBoardId) ? ' selected' : '';
+      return `<option value="${escapeHtml(b.id)}"${sel}>${escapeHtml(b.title || 'Untitled')}</option>`;
+    }).join('');
+    dlg.classList.remove('hidden');
+    setTimeout(() => titleInput.focus(), 50);
+
+    submitBtn.onclick = async () => {
+      const targetBoardId = boardSel.value;
+      const newTitle = titleInput.value.trim();
+      if (!targetBoardId) return;
+      submitBtn.disabled = true;
+      try {
+        await api(`/columns/${columnId}/copy`, {
+          method: 'POST',
+          body: { target_board_id: targetBoardId, title: newTitle },
+        });
+        showToast('Column copied', 'content_copy');
+        dlg.classList.add('hidden');
+        if (String(targetBoardId) === String(state.activeBoardId)) {
+          await loadBoardData(state.activeBoardId);
+        }
+      } catch (err) {
+        if (err.message === 'Unauthorized') return;
+        console.error('copy column failed:', err);
+        showToast(err.message || 'Could not copy column', 'error');
+      } finally {
+        submitBtn.disabled = false;
+      }
+    };
+  }
+
+  D.openCopyColumnDialog      = openCopyColumnDialog;
   D.renderColumn              = renderColumn;
   D.attachColumnOptionEvents  = attachColumnOptionEvents;
   D.updateColumnBadge         = updateColumnBadge;
