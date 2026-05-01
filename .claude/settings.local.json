@@ -25,7 +25,8 @@
       "Bash(node -c components/DashboardCore.js)",
       "Bash(node -c components/TaskModal.js)",
       "Bash(node -c components/TaskModalActions.js)",
-      "Bash(node -c C:/6630300289/OfficeTaskBorad/frontend/components/KanbanDragDrop.js)"
+      "Bash(node -c C:/6630300289/OfficeTaskBorad/frontend/components/KanbanDragDrop.js)",
+      "Bash(git *)"
     ]
   }
 }
