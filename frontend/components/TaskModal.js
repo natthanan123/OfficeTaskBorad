@@ -551,8 +551,51 @@
       // Highlight active formatting buttons (B, I)
       descQuill.on('selection-change', () => updateDescToolbarActive(descQuill));
       descQuill.on('text-change', () => updateDescToolbarActive(descQuill));
+
+      //Auto-save description (debounce 1.5s after typing)
+      descQuill.on('text-change', (_d, _o, source) => {
+        if (source !== 'user') return;
+        scheduleDescAutosave();
+      });
+      if (descQuill.root) {
+        descQuill.root.addEventListener('blur', () => {
+          if (descAutosaveTimer) {
+            clearTimeout(descAutosaveTimer);
+            descAutosaveTimer = null;
+          }
+          if (window._pawtryIsDescEditing && window._pawtryIsDescEditing()) {
+            silentSaveDescription();
+          }
+        });
+      }
     } catch (err) {
       console.error('desc Quill init failed:', err);
+    }
+  }
+
+  let descAutosaveTimer = null;
+  function scheduleDescAutosave() {
+    if (descAutosaveTimer) clearTimeout(descAutosaveTimer);
+    descAutosaveTimer = setTimeout(() => {
+      descAutosaveTimer = null;
+      silentSaveDescription();
+    }, 1500);
+  }
+
+  async function silentSaveDescription() {
+    if (!descQuill || !activeTaskId) return;
+    if (!(window._pawtryIsDescEditing && window._pawtryIsDescEditing())) return;
+    let html = descQuill.root.innerHTML;
+    if (html === '<p><br></p>') html = '';
+    if (html === descOriginalContent) return;
+    try {
+      await api(`/tasks/${activeTaskId}`, { method: 'PUT', body: { description: html } });
+      const cached = taskCache.get(activeTaskId);
+      if (cached) cached.description = html;
+      if (modalDesc) modalDesc.value = descPlainFromHtml(html);
+      descOriginalContent = html;
+    } catch (err) {
+      console.error('autosave description failed:', err);
     }
   }
   setTimeout(initDescQuill, 300);

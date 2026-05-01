@@ -1,4 +1,16 @@
-const { Column, Board, ActivityLog } = require('../models');
+const {
+  Column,
+  Board,
+  ActivityLog,
+  Task,
+  Label,
+  TaskLabel,
+  TaskComment,
+  Attachment,
+  CommentReaction,
+  BoardMember,
+  sequelize,
+} = require('../models');
 
 function emitBoardUpdate(req, boardId, type) {
   if (!boardId) return;
@@ -111,5 +123,197 @@ exports.deleteColumn = async (req, res) => {
   } catch (err) {
     console.error('deleteColumn error:', err);
     return res.status(500).json({ status: 'error', message: 'Could not delete column' });
+  }
+};
+
+async function userHasBoardAccess(userId, boardId, userRole) {
+  if (!boardId) return false;
+  if (userRole === 'admin') return true;
+  const [member, board] = await Promise.all([
+    BoardMember.findOne({ where: { user_id: userId, board_id: boardId, status: 'accepted' } }),
+    Board.findByPk(boardId),
+  ]);
+  if (member) return true;
+  return !!(board && String(board.creator_id) === String(userId));
+}
+
+//Copy Column across boards
+exports.copyColumn = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const sourceColumn = await Column.findByPk(req.params.id, { transaction: t });
+    if (!sourceColumn) {
+      await t.rollback();
+      return res.status(404).json({ status: 'error', message: 'Column not found' });
+    }
+
+    if (!(await userHasBoardAccess(req.user.id, sourceColumn.board_id, req.user.role))) {
+      await t.rollback();
+      return res.status(403).json({ status: 'error', message: 'Forbidden' });
+    }
+
+    const targetBoardId = req.body.target_board_id || sourceColumn.board_id;
+    const targetBoard = await Board.findByPk(targetBoardId, { transaction: t });
+    if (!targetBoard) {
+      await t.rollback();
+      return res.status(404).json({ status: 'error', message: 'Target board not found' });
+    }
+    if (!(await userHasBoardAccess(req.user.id, targetBoard.id, req.user.role))) {
+      await t.rollback();
+      return res.status(403).json({ status: 'error', message: 'Forbidden on target board' });
+    }
+
+    const rawTitle = typeof req.body.title === 'string' ? req.body.title.trim() : '';
+    const newTitle = rawTitle || `${sourceColumn.title} (copy)`;
+
+    const maxPos = await Column.max('position', { where: { board_id: targetBoardId }, transaction: t });
+    const finalPosition = (maxPos ?? -1) + 1;
+
+    const newColumn = await Column.create({
+      board_id: targetBoardId,
+      title: newTitle,
+      position: finalPosition,
+      color: sourceColumn.color,
+    }, { transaction: t });
+
+    const targetLabels = await Label.findAll({ where: { board_id: targetBoardId }, transaction: t });
+    const labelKey = (l) => `${(l.title || '').trim().toLowerCase()}|${(l.color || '').trim().toLowerCase()}`;
+    const targetLabelMap = new Map(targetLabels.map(l => [labelKey(l), l.id]));
+
+    const targetMembers = await BoardMember.findAll({
+      where: { board_id: targetBoardId, status: 'accepted' },
+      transaction: t,
+    });
+    const targetMemberIds = new Set(targetMembers.map(m => String(m.user_id)));
+
+    const sourceTasks = await Task.findAll({
+      where: { column_id: sourceColumn.id },
+      include: [
+        { model: Label, as: 'labels', through: { attributes: [] } },
+        { model: Attachment, as: 'attachments' },
+        {
+          model: TaskComment,
+          as: 'comments',
+          include: [{ model: CommentReaction, as: 'reactions' }],
+        },
+      ],
+      order: [['position', 'ASC']],
+      transaction: t,
+    });
+
+    const taskAssignees = await Promise.all(
+      sourceTasks.map(task => task.getAssignees({ attributes: ['id'], transaction: t }))
+    );
+
+    for (let i = 0; i < sourceTasks.length; i++) {
+      const task = sourceTasks[i];
+      const newTask = await Task.create({
+        column_id: newColumn.id,
+        title: task.title,
+        description: task.description,
+        position: task.position,
+        due_date: task.due_date,
+        is_completed: task.is_completed,
+      }, { transaction: t });
+
+      const isSameBoard = String(targetBoardId) === String(sourceColumn.board_id);
+
+      const labelIdsToAttach = [];
+      for (const lbl of (task.labels || [])) {
+        if (isSameBoard) {
+          labelIdsToAttach.push(lbl.id);
+        } else {
+          const matchId = targetLabelMap.get(labelKey(lbl));
+          if (matchId) labelIdsToAttach.push(matchId);
+        }
+      }
+      if (labelIdsToAttach.length && typeof newTask.setLabels === 'function') {
+        await newTask.setLabels(labelIdsToAttach, { transaction: t });
+      }
+
+      const assignees = taskAssignees[i] || [];
+      const assigneeIdsToAttach = assignees
+        .map(u => u.id)
+        .filter(id => isSameBoard || targetMemberIds.has(String(id)));
+      if (assigneeIdsToAttach.length && typeof newTask.setAssignees === 'function') {
+        await newTask.setAssignees(assigneeIdsToAttach, { transaction: t });
+      }
+
+      for (const att of (task.attachments || [])) {
+        await Attachment.create({
+          task_id: newTask.id,
+          user_id: att.user_id || null,
+          filename_or_url: att.filename_or_url,
+          mimetype: att.mimetype,
+          size: att.size,
+          is_cover: att.is_cover,
+          source: att.source || 'direct_upload',
+        }, { transaction: t });
+      }
+
+      const commentIdMap = new Map();
+      const orderedComments = (task.comments || []).slice().sort((a, b) => {
+        const ad = new Date(a.created_at || 0).getTime();
+        const bd = new Date(b.created_at || 0).getTime();
+        return ad - bd;
+      });
+      for (const c of orderedComments) {
+        if (c.parent_id) continue;
+        const newC = await TaskComment.create({
+          task_id: newTask.id,
+          user_id: c.user_id,
+          content: c.content,
+          parent_id: null,
+        }, { transaction: t });
+        commentIdMap.set(String(c.id), newC.id);
+        for (const r of (c.reactions || [])) {
+          await CommentReaction.create({
+            comment_id: newC.id,
+            user_id: r.user_id,
+            emoji: r.emoji,
+          }, { transaction: t });
+        }
+      }
+      for (const c of orderedComments) {
+        if (!c.parent_id) continue;
+        const newParent = commentIdMap.get(String(c.parent_id));
+        if (!newParent) continue;
+        const newC = await TaskComment.create({
+          task_id: newTask.id,
+          user_id: c.user_id,
+          content: c.content,
+          parent_id: newParent,
+        }, { transaction: t });
+        commentIdMap.set(String(c.id), newC.id);
+        for (const r of (c.reactions || [])) {
+          await CommentReaction.create({
+            comment_id: newC.id,
+            user_id: r.user_id,
+            emoji: r.emoji,
+          }, { transaction: t });
+        }
+      }
+    }
+
+    await t.commit();
+
+    emitBoardUpdate(req, targetBoardId, 'column_copied');
+    if (String(targetBoardId) !== String(sourceColumn.board_id)) {
+      emitBoardUpdate(req, sourceColumn.board_id, 'column_copied');
+    }
+
+    await logActivity({
+      board_id: targetBoardId,
+      user_id: req.user.id,
+      task_id: null,
+      action_type: 'COPY_COLUMN',
+      details: { source_column_id: sourceColumn.id, source_board_id: sourceColumn.board_id, title: newTitle },
+    });
+
+    return res.status(201).json({ status: 'success', data: { column: newColumn } });
+  } catch (err) {
+    try { await t.rollback(); } catch (_) {}
+    console.error('copyColumn error:', err);
+    return res.status(500).json({ status: 'error', message: 'Could not copy column' });
   }
 };

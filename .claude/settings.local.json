@@ -14,7 +14,18 @@
       "Bash(node -c Backend/middlewares/uploadMiddleware.js)",
       "Bash(node -c frontend/components/BoardController.js)",
       "Bash(git -C C:/6630300289/OfficeTaskBorad log --oneline -3)",
-      "Bash(git -C C:/6630300289/OfficeTaskBorad ls-files Backend/utils/trelloImporter.js Backend/routes/boardRoutes.js)"
+      "Bash(git -C C:/6630300289/OfficeTaskBorad ls-files Backend/utils/trelloImporter.js Backend/routes/boardRoutes.js)",
+      "Bash(node -c controllers/columnController.js)",
+      "Bash(node -c controllers/taskController.js)",
+      "Bash(node -c controllers/boardController.js)",
+      "Bash(node -c controllers/userController.js)",
+      "Bash(node -c routes/columnRoutes.js)",
+      "Bash(node -c components/ColumnManager.js)",
+      "Bash(node -c components/KanbanDragDrop.js)",
+      "Bash(node -c components/DashboardCore.js)",
+      "Bash(node -c components/TaskModal.js)",
+      "Bash(node -c components/TaskModalActions.js)",
+      "Bash(node -c C:/6630300289/OfficeTaskBorad/frontend/components/KanbanDragDrop.js)"
     ]
   }
 }

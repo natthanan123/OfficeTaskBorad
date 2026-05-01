@@ -40,8 +40,11 @@
         e.dataTransfer.dropEffect = 'move';
         if (draggingColumnId && String(draggingColumnId) !== String(colEl.dataset.columnId)) {
           colEl.classList.add('column-drop-indicator');
-        } else if (!draggingColumnId) {
+          return;
+        }
+        if (!draggingColumnId) {
           colEl.classList.add('column-drag-over');
+          updateTaskDropIndicator(dropZone, e.clientY);
         }
       });
 
@@ -49,6 +52,7 @@
         if (!colEl.contains(e.relatedTarget)) {
           colEl.classList.remove('column-drag-over');
           colEl.classList.remove('column-drop-indicator');
+          clearTaskDropIndicator(dropZone);
         }
       });
 
@@ -56,6 +60,7 @@
         e.preventDefault();
         colEl.classList.remove('column-drag-over');
         colEl.classList.remove('column-drop-indicator');
+        clearTaskDropIndicator(dropZone);
 
         let data;
         try { data = JSON.parse(e.dataTransfer.getData('text/plain')); } catch { return; }
@@ -75,33 +80,99 @@
         const { taskId, sourceColumnId } = data;
         const targetColumnId = colEl.dataset.columnId;
 
-        if (String(sourceColumnId) === String(targetColumnId)) return;
-
         const card = columnsEl.querySelector(`.task-card[data-task-id="${taskId}"]`);
         if (!card) return;
 
         const targetPlaceholder = dropZone.querySelector('.empty-placeholder');
         if (targetPlaceholder) targetPlaceholder.remove();
 
-        card.dataset.columnId = targetColumnId;
-        dropZone.appendChild(card);
+        const referenceCard = findInsertReference(dropZone, e.clientY, card);
+        const sameColumn = String(sourceColumnId) === String(targetColumnId);
 
-        const sourceColEl = columnsEl.querySelector(`.kanban-column[data-column-id="${sourceColumnId}"]`);
-        if (sourceColEl && D.updateColumnBadge) D.updateColumnBadge(sourceColEl);
+        if (referenceCard) {
+          dropZone.insertBefore(card, referenceCard);
+        } else {
+          dropZone.appendChild(card);
+        }
+        card.dataset.columnId = targetColumnId;
+
+        if (!sameColumn) {
+          const sourceColEl = columnsEl.querySelector(`.kanban-column[data-column-id="${sourceColumnId}"]`);
+          if (sourceColEl && D.updateColumnBadge) D.updateColumnBadge(sourceColEl);
+        }
         if (D.updateColumnBadge) D.updateColumnBadge(colEl);
 
-        try {
-          await api(`/tasks/${taskId}`, {
-            method: 'PUT',
-            body: { column_id: targetColumnId },
-          });
-        } catch (err) {
-          console.error('Failed to move task:', err);
-          alert('ย้าย Task ไม่สำเร็จ: ' + (err.message || 'Unknown error') + '\nจะโหลดบอร์ดใหม่เพื่อให้ตรงกับฐานข้อมูล');
-          loadBoardData(state.activeBoardId);
-        }
+        await persistTaskOrder(taskId, targetColumnId, dropZone, sameColumn ? null : sourceColumnId);
       });
     });
+  }
+
+  //Task vertical reorder helpers
+  function findInsertReference(dropZone, clientY, draggingCard) {
+    const cards = [...dropZone.querySelectorAll('.task-card')].filter(c => c !== draggingCard);
+    for (const c of cards) {
+      const rect = c.getBoundingClientRect();
+      if (clientY < rect.top + rect.height / 2) return c;
+    }
+    return null;
+  }
+
+  function updateTaskDropIndicator(dropZone, clientY) {
+    clearTaskDropIndicator(dropZone);
+    const dragging = dropZone.querySelector('.task-card-dragging') || columnsEl.querySelector('.task-card-dragging');
+    const ref = findInsertReference(dropZone, clientY, dragging);
+    if (ref) ref.classList.add('task-drop-before');
+    else {
+      const cards = dropZone.querySelectorAll('.task-card');
+      const last = cards[cards.length - 1];
+      if (last) last.classList.add('task-drop-after');
+    }
+  }
+
+  function clearTaskDropIndicator(dropZone) {
+    dropZone.querySelectorAll('.task-drop-before, .task-drop-after').forEach(el => {
+      el.classList.remove('task-drop-before');
+      el.classList.remove('task-drop-after');
+    });
+  }
+
+  async function persistTaskOrder(taskId, targetColumnId, dropZone, sourceColumnIdToReorder) {
+    const cards = [...dropZone.querySelectorAll('.task-card')];
+    const idx = cards.findIndex(c => c.dataset.taskId === String(taskId));
+    if (idx === -1) return;
+    try {
+      await api(`/tasks/${taskId}`, {
+        method: 'PUT',
+        body: { column_id: targetColumnId, position: idx },
+      });
+      //Renumber siblings to keep contiguous
+      for (let i = 0; i < cards.length; i++) {
+        if (i === idx) continue;
+        const id = cards[i].dataset.taskId;
+        if (!id) continue;
+        try {
+          await api(`/tasks/${id}`, { method: 'PUT', body: { position: i } });
+        } catch (e) { console.error('renumber sibling failed:', e); }
+      }
+      if (sourceColumnIdToReorder) {
+        const sourceCol = columnsEl.querySelector(`.kanban-column[data-column-id="${sourceColumnIdToReorder}"]`);
+        const sourceDz = sourceCol && sourceCol.querySelector('.kanban-drop-zone');
+        if (sourceDz) {
+          const sourceCards = [...sourceDz.querySelectorAll('.task-card')];
+          for (let i = 0; i < sourceCards.length; i++) {
+            const id = sourceCards[i].dataset.taskId;
+            if (!id) continue;
+            try {
+              await api(`/tasks/${id}`, { method: 'PUT', body: { position: i } });
+            } catch (e) { console.error('source renumber failed:', e); }
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Failed to move task:', err);
+      alert('ย้าย Task ไม่สำเร็จ: ' + (err.message || 'Unknown error') + '\nจะโหลดบอร์ดใหม่เพื่อให้ตรงกับฐานข้อมูล');
+      loadBoardData(state.activeBoardId);
+    }
   }
 
   //Drag Column
@@ -167,9 +238,34 @@
     }
   }
 
+  //Fast Scroll — wheel → horizontal scroll on board
+  (function setupHorizontalWheel() {
+    const SCROLL_MULTIPLIER = 2;
+    columnsEl.addEventListener('wheel', (e) => {
+      if (e.ctrlKey || e.shiftKey) return;
+      const target = e.target;
+      const dropZone = target.closest && target.closest('.kanban-drop-zone');
+      if (dropZone) {
+        const canScrollVertical = dropZone.scrollHeight > dropZone.clientHeight + 1;
+        if (canScrollVertical) return;
+      }
+      if (target.closest && target.closest('.mini-popup, .pawtry-popup, #task-modal, #settings-modal, #copy-column-dialog, #copy-task-dialog, #new-board-modal')) {
+        return;
+      }
+      let delta = e.deltaY || e.deltaX;
+      if (!delta) return;
+      if (e.deltaMode === 1) delta *= 16;
+      else if (e.deltaMode === 2) delta *= columnsEl.clientWidth;
+      e.preventDefault();
+      columnsEl.scrollLeft += delta * SCROLL_MULTIPLIER;
+    }, { passive: false });
+  })();
+
+  //Fast Pan Scroll
   (function setupBoardPan() {
-    const PAN_THRESHOLD = 5;
-    const INTERACTIVE_SELECTOR = '.task-card, button, a, input, textarea, select, [draggable="true"], .column-drag-handle';
+    const PAN_THRESHOLD   = 5;
+    const PAN_MULTIPLIER  = 2;
+    const INTERACTIVE_SELECTOR = '.task-card, button, a, input, textarea, select, label, [contenteditable="true"], [draggable="true"], .column-drag-handle';
 
     let pointerDown    = false;
     let isPanning      = false;
@@ -189,16 +285,16 @@
     columnsEl.addEventListener('mousemove', (e) => {
       if (!pointerDown) return;
 
-      const dx = e.pageX - startPageX;
+      const rawDx = e.pageX - startPageX;
 
       if (!isPanning) {
-        if (Math.abs(dx) < PAN_THRESHOLD) return;
+        if (Math.abs(rawDx) < PAN_THRESHOLD) return;
         isPanning = true;
         columnsEl.classList.add('is-panning');
       }
 
       e.preventDefault();
-      columnsEl.scrollLeft = startScrollLeft - dx;
+      columnsEl.scrollLeft = startScrollLeft - rawDx * PAN_MULTIPLIER;
     });
 
     function endPan() {
@@ -212,6 +308,7 @@
 
     columnsEl.addEventListener('mouseup',    endPan);
     columnsEl.addEventListener('mouseleave', endPan);
+    window.addEventListener('blur',          endPan);
   })();
 
   D.setupDragAndDrop = setupDragAndDrop;

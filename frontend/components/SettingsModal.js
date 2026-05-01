@@ -75,6 +75,19 @@
                 </div>
               </div>
 
+              <div class="space-y-2">
+                <label class="block text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Full Name</label>
+                <input id="settings-profile-fullname" type="text" maxlength="120"
+                       class="w-full bg-surface-container-low border border-outline-variant/40 rounded-lg px-3 py-2 text-sm text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:ring-2 focus:ring-primary focus:border-primary transition-all"
+                       placeholder="Your name"/>
+                <div class="flex justify-end">
+                  <button id="settings-profile-name-save" type="button"
+                          class="bg-primary text-on-primary font-semibold px-4 py-1.5 rounded-lg text-xs hover:opacity-90 active:scale-[0.98] transition-all disabled:opacity-50">
+                    Save Name
+                  </button>
+                </div>
+              </div>
+
               <div class="space-y-3">
                 <label class="block text-[11px] font-bold text-on-surface-variant uppercase tracking-wider">Upload new picture</label>
                 <input id="settings-profile-file" type="file" accept="image/*"
@@ -99,7 +112,7 @@
               <div id="settings-bg-locked"
                    class="hidden p-4 rounded-xl bg-surface-container-high border border-outline-variant/30 text-xs text-on-surface-variant flex items-center gap-2">
                 <span class="material-symbols-outlined text-base text-on-surface-variant">lock</span>
-                <span>Only the board creator can change the background.</span>
+                <span>Only board members can change the background.</span>
               </div>
 
               <div id="settings-bg-editor" class="space-y-6">
@@ -159,6 +172,8 @@
   const profileEmailEl     = modalRoot.querySelector('#settings-profile-email');
   const profileFileInput   = modalRoot.querySelector('#settings-profile-file');
   const profileSaveBtn     = modalRoot.querySelector('#settings-profile-save');
+  const profileNameInput   = modalRoot.querySelector('#settings-profile-fullname');
+  const profileNameSaveBtn = modalRoot.querySelector('#settings-profile-name-save');
 
   const bgLockedEl   = modalRoot.querySelector('#settings-bg-locked');
   const bgEditorEl   = modalRoot.querySelector('#settings-bg-editor');
@@ -261,6 +276,15 @@
     return String(board.creator_id) === String(state.currentUserId);
   }
 
+  function canEditBoardBackground() {
+    const board = getActiveBoard();
+    if (!board) return false;
+    if (state.currentUserRole === 'admin') return true;
+    if (isBoardCreator()) return true;
+    const members = (state.boardMembersCache) || [];
+    return members.some(m => String(m.id) === String(state.currentUserId));
+  }
+
   async function refreshProfileTab() {
     profileNameEl.textContent  = 'Loading...';
     profileEmailEl.textContent = '—';
@@ -269,12 +293,14 @@
     profilePlaceholder.classList.remove('hidden');
     pendingProfileFile = null;
     profileFileInput.value = '';
+    if (profileNameInput) profileNameInput.value = '';
     try {
       const data = await api('/users/me');
       const user = data && data.user;
       if (!user) return;
       profileNameEl.textContent  = user.full_name || '—';
       profileEmailEl.textContent = user.email || '';
+      if (profileNameInput) profileNameInput.value = user.full_name || '';
       const src = user.profile_picture || user.avatar_url || '';
       if (src) {
         profilePreview.src = resolveBgUrl(src);
@@ -288,11 +314,39 @@
     }
   }
 
+  if (profileNameSaveBtn) {
+    profileNameSaveBtn.addEventListener('click', async () => {
+      const newName = (profileNameInput && profileNameInput.value || '').trim();
+      if (!newName) {
+        if (showToast) showToast('Name cannot be empty', 'error');
+        return;
+      }
+      profileNameSaveBtn.disabled = true;
+      const prev = profileNameSaveBtn.textContent;
+      profileNameSaveBtn.textContent = 'Saving...';
+      try {
+        const data = await api('/users/me', { method: 'PATCH', body: { full_name: newName } });
+        const user = data && data.user;
+        const finalName = (user && user.full_name) || newName;
+        profileNameEl.textContent = finalName;
+        const headerNameEl = document.getElementById('user-name');
+        if (headerNameEl) headerNameEl.textContent = finalName;
+        if (showToast) showToast('Name updated', 'check_circle');
+      } catch (err) {
+        console.error('[SettingsModal] update name failed:', err);
+        if (showToast) showToast(err.message || 'Could not update name', 'error');
+      } finally {
+        profileNameSaveBtn.disabled = false;
+        profileNameSaveBtn.textContent = prev;
+      }
+    });
+  }
+
   function refreshBackgroundTab() {
     pendingBgFile = null;
     bgFileInput.value = '';
 
-    if (!isBoardCreator()) {
+    if (!canEditBoardBackground()) {
       bgLockedEl.classList.remove('hidden');
       bgEditorEl.classList.add('hidden');
       return;
@@ -428,8 +482,8 @@
   });
 
   bgSaveBtn.addEventListener('click', async () => {
-    if (!isBoardCreator()) {
-      if (showToast) showToast('Only the board creator can change the background', 'lock');
+    if (!canEditBoardBackground()) {
+      if (showToast) showToast('Only board members can change the background', 'lock');
       return;
     }
     const boardId = state.activeBoardId;

@@ -612,10 +612,19 @@ exports.updateBackground = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Board not found' });
     }
 
-    if (req.user.role !== 'admin' && board.creator_id !== req.user.id) {
+    const isCreator = String(board.creator_id) === String(req.user.id);
+    const isAdmin   = req.user.role === 'admin';
+    let isMember = false;
+    if (!isCreator && !isAdmin) {
+      const membership = await BoardMember.findOne({
+        where: { board_id: board.id, user_id: req.user.id, status: 'accepted' },
+      });
+      isMember = !!membership;
+    }
+    if (!isCreator && !isAdmin && !isMember) {
       return res.status(403).json({
         status: 'error',
-        message: 'Only the board creator can update the background',
+        message: 'Only board members can update the background',
       });
     }
 
